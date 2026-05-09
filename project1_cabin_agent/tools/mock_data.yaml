@@ -1,0 +1,44 @@
+# project1_cabin_agent/tools/mock_data.yaml
+# POI 和导航模拟数据，方便测试和维护
+
+poi:
+  加油站:
+    - name: "中石化加油站（天府大道）"
+      distance: "0.8km"
+      rating: 4.5
+    - name: "中石油加油站（锦城大道）"
+      distance: "1.2km"
+      rating: 4.3
+    - name: "壳牌加油站（天府二街）"
+      distance: "2.1km"
+      rating: 4.7
+  停车场:
+    - name: "万象城地下停车场"
+      distance: "0.3km"
+      price: "5元/小时"
+    - name: "IFS国金中心停车场"
+      distance: "0.6km"
+      price: "8元/小时"
+  便利店:
+    - name: "全家便利店（天府三街）"
+      distance: "0.2km"
+    - name: "7-11（世纪城路）"
+      distance: "0.5km"
+
+navigation:
+  天府广场:
+    eta: "22分钟"
+    distance: "8.5km"
+    traffic: "畅通"
+  双流机场:
+    eta: "45分钟"
+    distance: "28km"
+    traffic: "拥堵"
+  春熙路:
+    eta: "18分钟"
+    distance: "6km"
+    traffic: "畅通"
+  机场:
+    eta: "45分钟"
+    distance: "28km"
+    traffic: "拥堵"

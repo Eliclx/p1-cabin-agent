@@ -1,0 +1,229 @@
+# 车辆模拟API mock数据 - 基于CrossWOZ北京POI精选
+# 锚点位置：北京市朝阳区国贸CBD（模拟当前车辆位置）
+# 添加距离/ETA/路况等车辆导航相关字段
+
+meta:
+  anchor_position: "北京市朝阳区国贸CBD"
+  description: "车辆模拟API mock数据，基于CrossWOZ北京POI精选，添加车辆导航相关字段"
+  generated: "2026-04-15"
+
+restaurants:
+  - name: "护国寺小吃店（护国寺总店）"
+    address: "北京市西城区护国寺大街93号(人民剧场对面)"
+    rating: 4.3
+    avg_price: 23
+    phone: "010-66181705"
+    open_hours: "5:30-21:00"
+    recommend_dishes:
+      - "老字号"
+      - "年糕"
+      - "豆腐脑"
+      - "豆汁"
+      - "驴打滚"
+    nearby_metro: "灯市口地铁站A口"
+    distance_km: 11.2
+    eta_minutes: 25
+    traffic: "缓行"
+
+  - name: "姚记炒肝店（鼓楼店）"
+    address: "北京市东城区鼓楼东大街311号（鼓楼湾东南角）"
+    rating: 4.4
+    avg_price: 22
+    phone: "010-84010570"
+    open_hours: ""
+    recommend_dishes:
+      - "当地口味"
+      - "老字号"
+      - "美食林风味"
+    nearby_metro: "鼓楼大街地铁站"
+    distance_km: 10.8
+    eta_minutes: 22
+    traffic: "畅通"
+
+  - name: "北新桥卤煮老店"
+    address: "东四北大街141号(近如家北新桥店)"
+    rating: 4.0
+    avg_price: 37
+    phone: "010-84015365"
+    open_hours: ""
+    recommend_dishes:
+      - "美食林风味"
+      - "当地口味"
+      - "深夜营业"
+    nearby_metro: "北新桥地铁站"
+    distance_km: 9.5
+    eta_minutes: 20
+    traffic: "畅通"
+
+  - name: "北京全聚德(王府井店)"
+    address: "王府井大街帅府园胡同9号"
+    rating: 3.8
+    avg_price: 197
+    phone: "010-65253310"
+    open_hours: ""
+    recommend_dishes:
+      - "老字号"
+      - "老建筑餐厅"
+      - "当地口味"
+    nearby_metro: "王府井地铁站"
+    distance_km: 5.6
+    eta_minutes: 14
+    traffic: "缓行"
+
+  - name: "东来顺(前门大街店)"
+    address: "前门大街143号2层"
+    rating: 3.8
+    avg_price: 146
+    phone: "010-83172726"
+    open_hours: ""
+    recommend_dishes:
+      - "当地必吃"
+      - "当地口味"
+      - "传统手切鲜羊上脑"
+    nearby_metro: "前门地铁站"
+    distance_km: 6.3
+    eta_minutes: 16
+    traffic: "缓行"
+
+  - name: "大董(南新仓店)"
+    address: "东四十条甲22号南新仓商务大厦1-2楼"
+    rating: 4.9
+    avg_price: 285
+    phone: "010-51690329"
+    open_hours: ""
+    recommend_dishes:
+      - "明星主厨"
+      - "话梅山药"
+      - "咸水鸭肝"
+    nearby_metro: "东四十条地铁站"
+    distance_km: 7.4
+    eta_minutes: 15
+    traffic: "畅通"
+
+  - name: "大董(北仓店)"
+    address: "华北路22号链仓商务大厦1-3楼"
+    rating: 4.7
+    avg_price: 300
+    phone: "010-51690429"
+    open_hours: ""
+    recommend_dishes:
+      - "明星主厨"
+      - "话梅山药"
+      - "咸水鸭肝"
+    nearby_metro: "东四十条地铁站"
+    distance_km: 3.4
+    eta_minutes: 10
+    traffic: "畅通"
+
+  - name: "钓鱼台国宾馆"
+    address: "阜成路2号(近三里河路)"
+    rating: 4.0
+    avg_price: 1842
+    phone: "010-58591588"
+    open_hours: ""
+    recommend_dishes:
+      - "牛角面包"
+      - "腐乳烧肉"
+      - "芝士烤鱼"
+    nearby_metro: "阜成门地铁站"
+    distance_km: 14.1
+    eta_minutes: 28
+    traffic: "拥堵"
+
+hotels:
+  - name: "北京饭店"
+    address: "北京市东城区东长安街33号"
+    rating: 4.3
+    price: 1243
+    phone: "010-65137766"
+    nearby_metro: "王府井地铁站"
+    distance_km: 5.2
+    eta_minutes: 12
+    traffic: "畅通"
+
+  - name: "如家快捷酒店(北京小西天店)"
+    address: "北京市海淀区新街口外大街"
+    rating: 4.3
+    price: 322
+    phone: "010-62231199"
+    nearby_metro: "积水潭地铁站"
+    distance_km: 13.7
+    eta_minutes: 30
+    traffic: "缓行"
+
+  - name: "如家快捷酒店(北京燕莎使馆区店)"
+    address: "北京市朝阳区"
+    rating: 4.5
+    price: 451
+    phone: "010-84512288"
+    nearby_metro: "亮马桥地铁站"
+    distance_km: 4.8
+    eta_minutes: 10
+    traffic: "畅通"
+
+attractions:
+  - name: "故宫"
+    address: "北京市东城区景山前街4号"
+    rating: 4.7
+    ticket: "60元"
+    open_hours: "8:30-17:00"
+    phone: "010-85007938"
+    nearby_metro: "天安门东地铁站"
+    distance_km: 7.8
+    eta_minutes: 18
+    traffic: "缓行"
+
+  - name: "天安门广场"
+    address: "北京市东城区长安街（天安门和正阳门之间）"
+    rating: 4.7
+    ticket: "免费"
+    open_hours: "全天"
+    phone: "010-65666606"
+    nearby_metro: "天安门东地铁站"
+    distance_km: 6.1
+    eta_minutes: 15
+    traffic: "缓行"
+
+  - name: "颐和园"
+    address: "北京市海淀区新建宫门路19号"
+    rating: 4.7
+    ticket: "30元"
+    open_hours: "6:30-18:00"
+    phone: "010-62881144"
+    nearby_metro: "北宫门地铁站"
+    distance_km: 21.3
+    eta_minutes: 35
+    traffic: "畅通"
+
+  - name: "什刹海"
+    address: "北京市西城区东起地安门外大街北侧、南至新街口北大街"
+    rating: 4.4
+    ticket: "免费"
+    open_hours: "全天"
+    phone: "010-84018677"
+    nearby_metro: "什刹海地铁站"
+    distance_km: 11.5
+    eta_minutes: 24
+    traffic: "畅通"
+
+  - name: "八达岭长城"
+    address: "北京市延庆县京藏高速58号出口右转"
+    rating: 4.6
+    ticket: "40元"
+    open_hours: "6:30-19:00"
+    phone: "010-69121383"
+    nearby_metro: "无（需驾车）"
+    distance_km: 65.2
+    eta_minutes: 78
+    traffic: "畅通"
+
+  - name: "鸟巢"
+    address: "北京市朝阳区国家体育场南路1号"
+    rating: 4.5
+    ticket: "50元"
+    open_hours: "9:00-21:00"
+    phone: "010-84373008"
+    nearby_metro: "奥体中心地铁站"
+    distance_km: 16.4
+    eta_minutes: 28
+    traffic: "缓行"
