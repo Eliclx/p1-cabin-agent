@@ -3,7 +3,7 @@
   "fast_rule_rate": 0.328125,
   "edge_hit_rate": 0.375,
   "cloud_fallback_rate": 0.203125,
-  "avg_latency_ms": 168.82244189480588,
+  "avg_latency_ms": 124.15459107017325,
   "total_cases": 64,
   "errors": [
     "去春熙路",
@@ -51,5 +51,5 @@
       "correct": 3
     }
   },
-  "timestamp": "2026-05-09T01:16:18.425375"
+  "timestamp": "2026-05-09T13:53:06.154783"
 }

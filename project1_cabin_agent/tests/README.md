@@ -40,7 +40,7 @@ tests/
 零 LLM 成本，从 intent schema + 口语模板批量合成：
 
 ```bash
-cd ~/llm/projects/cabin-ai-agent
+cd ~/llm/projects/p1-cabin-agent
 conda activate llm
 
 # 生成基础数据（~500条，含 hard negative）
@@ -74,7 +74,7 @@ python -m project1_cabin_agent.tests.synth_data --no-negatives
 从端侧模型的真实错误出发，针对性生成训练数据：
 
 ```bash
-cd ~/llm/projects/cabin-ai-agent
+cd ~/llm/projects/p1-cabin-agent
 
 # 确保端侧模型在线
 curl -s http://localhost:8001/v1/models | head -c 100

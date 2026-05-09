@@ -226,29 +226,30 @@ Layer 3: 场景联动 (activate_scene)
 ## 四、文件索引
 
 ```
-project1_cabin_agent/
-├── main.py              # 入口 + Gradio Demo（流式 + 会话隔离）
-├── graph.py             # LangGraph 状态图构建 + 条件路由
-├── state.py             # 全局状态定义 + reducer
-├── vehicle_state.py     # 车辆状态模拟器
-├── nodes/
-│   ├── intent.py        # 消息压缩 + 意图识别 + Carry-Over + 漂移检测
-│   ├── pipeline.py      # 单任务流水线（槽位追问 + 工具执行 + interrupt）
-│   ├── response.py      # session_update + wave_aggregator + response_gen + chitchat
-│   ├── fast_rules.py    # FastRules 规则层（18条短路规则）
-│   ├── slot_transfer.py # 黑板槽位回填
-│   ├── schema.py        # Schema 自动发现引擎
-│   ├── models.py        # Pydantic 数据模型
-│   ├── user_profile.py  # L2 长期记忆（用户画像，SQLite持久化）
-│   └── message_utils.py # 消息处理工具函数
-├── tools/
-│   └── cabin_tools.py   # 9个工具 + 注册表 + 黑板声明
-├── tests/
-│   ├── test_corner_cases.py  # 45个测试
-│   └── test_b1_direct_answer.py
-└── data/
-    ├── checkpoints.db        # SQLite checkpoint持久化
-    └── user_profile.db       # L2用户画像
+~/llm/projects/p1-cabin-agent/
+└── project1_cabin_agent/
+    ├── main.py              # 入口 + Gradio Demo（流式 + 会话隔离）
+    ├── graph.py             # LangGraph 状态图构建 + 条件路由
+    ├── state.py             # 全局状态定义 + reducer
+    ├── vehicle_state.py     # 车辆状态模拟器
+    ├── nodes/
+    │   ├── intent.py        # 消息压缩 + 意图识别 + Carry-Over + 漂移检测
+    │   ├── pipeline.py      # 单任务流水线（槽位追问 + 工具执行 + interrupt）
+    │   ├── response.py      # session_update + wave_aggregator + response_gen + chitchat
+    │   ├── fast_rules.py    # FastRules 规则层（18条短路规则）
+    │   ├── slot_transfer.py # 黑板槽位回填
+    │   ├── schema.py        # Schema 自动发现引擎
+    │   ├── models.py        # Pydantic 数据模型
+    │   ├── user_profile.py  # L2 长期记忆（用户画像，SQLite持久化）
+    │   └── message_utils.py # 消息处理工具函数
+    ├── tools/
+    │   └── cabin_tools.py   # 9个工具 + 注册表 + 黑板声明
+    ├── tests/
+    │   ├── test_corner_cases.py  # 45个测试
+    │   └── test_b1_direct_answer.py
+    └── data/
+        ├── checkpoints.db        # SQLite checkpoint持久化
+        └── user_profile.db       # L2用户画像
 ```
 
 ---
@@ -280,8 +281,8 @@ project1_cabin_agent/
 ## 六、如何运行
 
 ```bash
-# 1. 进入项目目录
-cd ~/llm/projects/cabin-ai-agent
+# 1. 进入项目目录（独立仓库）
+cd ~/llm/projects/p1-cabin-agent
 
 # 2. 激活环境（Python 3.12）
 conda activate llm
