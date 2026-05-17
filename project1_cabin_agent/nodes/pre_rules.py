@@ -1,6 +1,6 @@
 """
-project1_cabin_agent/nodes/fast_rules.py
-FastRules 前置规则层 — 0ms 短路，跳过 LLM 调用
+project1_cabin_agent/nodes/pre_rules.py
+前置规则层 — "这个请求要不要/怎么进模型？"
 
 插入位置：intent_classifier 之前（图节点 fast_rules）
 三层漏斗的 L0 层：
@@ -11,7 +11,8 @@ FastRules 前置规则层 — 0ms 短路，跳过 LLM 调用
 功能：
   1. OOS 拒绝     — 超出车载能力范围的请求，直接返回 no_support
   2. 高频意图短路 — 明确的空调/车窗/导航/媒体/座椅/灯光指令，直接生成 sub_task
-  3. 追问防误杀   — "还有多久"不是多意图，标记 is_followup 放行
+  3. 多意图检测   — 连接词/逗号/冲突动词 → 放行云端
+  4. 追问防误杀   — "还有多久"不是多意图，标记 is_followup 放行
 """
 
 import re
@@ -23,11 +24,11 @@ from shared.utils.logger import logger
 # 用户想做但我们不支持的
 
 OOS_KEYWORDS = [
-    ("点杯", "点单"), ("点单", "点单"), ("点菜", "点单"), ("点外卖", "点单"),
-    ("订票", "订票"), ("订一张", "订票"), ("买票", "订票"),
-    ("买一个", "购买"), ("买点", "购买"), ("下单", "购买"),
-    ("发微信", "发消息"), ("发消息给", "发消息"), ("发短信", "发消息"),
-    ("打电话", "打电话"), ("拨号", "打电话"),
+    ("点杯", "点单"), ("点单", "点单"), ("点菜", "点单"), ("点外卖", "点单"),   # 点单
+    ("订票", "订票"), ("订一张", "订票"), ("买票", "订票"),                    # 订票
+    ("买一个", "购买"), ("买点", "购买"), ("下单", "购买"),                 # 购买
+    ("发微信", "发消息"), ("发消息给", "发消息"), ("发短信", "发消息"),         # 发消息
+    ("打电话", "打电话"), ("拨号", "打电话"),                                  # 打电话
     ("外卖", "外卖"), ("快递", "快递"),
     ("转账", "转账"), ("付款", "转账"),
 ]
@@ -334,13 +335,13 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
     if not text:
         return None
 
-    # ===== 1. OOS 检测 =====
+    # ===== 1. OOS 检测 ===== 当前没有实现的功能
     oos = _detect_oos(text)
     if oos:
         logger.info(f"[FastRules] OOS 拒绝: '{text}' → {oos}")
         return _build_no_support_result(f"目前不支持{oos}，我可以帮您导航或调节车内环境")
 
-    # ===== 2. 追问防误杀 =====
+    # ===== 2. 追问防误杀 ===== 追问模式：包含"还有""再"但实际是追问，不是多意图
     # 只标记，不短路（追问仍需 LLM 处理，但标记 is_followup 供下游参考）
     # 放在短路规则之前，避免 "还有多久" 被误匹配到其他规则
     if _is_followup(text):
@@ -349,7 +350,7 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
 
     # ===== 2b. 多意图检测 =====
     # 1) 连接词 → 多意图
-    _MULTI_INTENT_MARKERS = {"然后", "顺便", "同时", "并且", "另外", "和"}
+    _MULTI_INTENT_MARKERS = {"然后", "顺便", "同时", "并且", "另外", "和", "接着"}
     if any(w in text for w in _MULTI_INTENT_MARKERS):
         logger.info(f"[FastRules] 多意图放行云端: '{text}'")
         return None

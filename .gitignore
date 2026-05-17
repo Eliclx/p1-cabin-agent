@@ -7,12 +7,19 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+*.egg-info/
 
 # 日志
 logs/
 
 # 数据/输出
 outputs/
+
+# 测试产物
+*.db
+*.jsonl
+eval_baseline.json
+eval_baseline_v4.json
 
 # IDE
 .vscode/
@@ -21,3 +28,6 @@ outputs/
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# pytest
+.pytest_cache/

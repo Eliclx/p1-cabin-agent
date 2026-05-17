@@ -2,7 +2,7 @@
 project1_cabin_agent/nodes/intent_slots.py
 槽位校验 + 降级结果生成。
 """
-from project1_cabin_agent.nodes.models import SubTask
+from project1_cabin_agent.nodes.constants import SubTask
 from project1_cabin_agent.nodes.schema import DYNAMIC_SCHEMA
 from project1_cabin_agent.tools.cabin_tools import INTENT_TO_TOOL
 from project1_cabin_agent.vehicle_state import vehicle_state

@@ -26,7 +26,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from project1_cabin_agent.edge_model import edge_model_infer
-from project1_cabin_agent.nodes.fast_rules import fast_rules_check
+from project1_cabin_agent.nodes.pre_rules import fast_rules_check
 from project1_cabin_agent.nodes.intent import _can_use_edge
 
 

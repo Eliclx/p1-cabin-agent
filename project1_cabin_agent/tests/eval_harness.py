@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 os.environ.setdefault("EDGE_ENABLED", "true")
 
 from project1_cabin_agent.edge_model import edge_model_infer
-from project1_cabin_agent.nodes.fast_rules import fast_rules_check
+from project1_cabin_agent.nodes.pre_rules import fast_rules_check
 from project1_cabin_agent.nodes.intent import _can_use_edge
 from project1_cabin_agent.tests.error_collector import ErrorLogger, ErrorRecord
 from project1_cabin_agent.tests.data_pipeline import run_pipeline

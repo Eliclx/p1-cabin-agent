@@ -13,6 +13,7 @@ from shared.utils.metrics import track_node
 
 from project1_cabin_agent.nodes.message_utils import _ensure_str
 from project1_cabin_agent.nodes.pipeline import _chitchat_reply
+from project1_cabin_agent.nodes.episodic_memory import auto_log_from_task_results
 
 
 # ── 节点 3：L1 记忆写入 ──
@@ -63,6 +64,10 @@ def session_update(state: CabinAgentState | dict) -> dict:
 
     if not context_update:
         logger.debug("[session_update] 无需写入（本轮无产出实体）")
+
+    # L1.5 行程记忆：自动归档事件
+    auto_log_from_task_results(task_results)
+
     return {"dialogue_context": context_update}
 
 
@@ -184,12 +189,37 @@ def response_gen(state: CabinAgentState | dict) -> dict:
 
 @track_node("chitchat_handler")
 def chitchat_handler(state: CabinAgentState | dict) -> dict:
-    response = _chitchat_reply(state["user_input"], state.get("messages", []))
+    user_input = state["user_input"]
+    messages = state.get("messages", [])
+    episodic_ctx = state.get("episodic_context")
+
+    if episodic_ctx:
+        response = _chitchat_reply_with_context(user_input, messages, episodic_ctx["text"])
+    else:
+        response = _chitchat_reply(user_input, messages)
+
     return {
         "final_response": response,
         "messages": [
-            # main.py 已经把用户输入追加到 messages 里了，这里不重复添加了
-            # {"role": "user", "content": state["user_input"]},
             {"role": "assistant", "content": response},
         ],
     }
+
+
+def _chitchat_reply_with_context(user_input: str, messages: list,
+                                  episodic_text: str) -> str:
+    """带行程上下文的闲聊回复。"""
+    try:
+        llm = get_llm("fast", temperature=0.3)
+        from project1_cabin_agent.nodes.message_utils import _format_history
+        history = _format_history(messages)
+        prompt = (
+            f"{episodic_text}\n\n"
+            f"对话历史：{history}\n"
+            f"用户：{user_input}\n\n"
+            f"你是车载助手。根据行程数据简洁回复（不超过30字）。"
+        )
+        resp = llm.invoke([HumanMessage(content=prompt)])
+        return _ensure_str(resp.content).strip()
+    except Exception:
+        return _chitchat_reply(user_input, messages)

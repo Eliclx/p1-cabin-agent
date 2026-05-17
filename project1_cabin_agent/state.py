@@ -153,3 +153,10 @@ class CabinAgentState(TypedDict):
         # reducer: merge_dict（栈式压入，不覆盖）
         # 生命周期：跨轮保留，不每轮重置
         # 写入时机：session_update 节点从 task_results 提取并打包写入
+
+    # ── L1.5 行程记忆（当前轮）──────────────────
+    episodic_context: Optional[dict]
+        # 本轮检索到的行程事件上下文（由 intent_classifier 的 Stage 1.5 写入）
+        # 格式: {"text": "...", "raw": [...]} 或 None
+        # 用途：chitchat_handler 等回复节点读取，生成自然语言回复
+        # 生命周期：仅限本轮（intent_classifier 每轮重新设置）

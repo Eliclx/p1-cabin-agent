@@ -144,6 +144,15 @@ def validate_slots(domain: str, intent: str, slots: dict) -> dict:
         stype = s.get("type")
 
         if stype == "number":
+            # 尝试转换字符串为数字（端侧LLM常输出 '26' 而非 26）
+            if isinstance(value, str):
+                try:
+                    value = int(value)
+                except ValueError:
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        continue
             if not isinstance(value, (int, float)):
                 continue
             lo, hi = s.get("range", [0, 9999])
@@ -151,7 +160,11 @@ def validate_slots(domain: str, intent: str, slots: dict) -> dict:
                 continue
         elif stype == "enum":
             v = str(value)
-            # 先尝试值映射（如模型输出 "on" → 工具要 "open"）
+            # 先尝试中文值映射（端侧LLM常输出中文如'开'→'on'）
+            mapped = _CN_VALUE_MAP.get(v)
+            if mapped is not None:
+                v = mapped
+            # 再尝试英文字段映射（如模型输出 "on" → 工具要 "open"）
             mapped = _VALUE_MAP.get((domain, intent, key, v))
             if mapped is not None:
                 v = mapped
@@ -169,6 +182,38 @@ def validate_slots(domain: str, intent: str, slots: dict) -> dict:
 # 值映射表：模型常用术语 → 工具期望术语
 # 格式: (domain, intent, slot_key, model_value) → tool_value
 # ═══════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════
+# Key 别名映射：端侧 3B 模型常见输出 → 白名单合法 key
+# ═══════════════════════════════════════════════════
+
+_KEY_ALIAS = {
+    # climate
+    "light": "action",        # 灯光控制时输出 {'light': '开'}
+    "seat": "action",         # 座椅控制时输出 {'seat': '座椅加热'}
+    "fan_level": "fan_level", # 一致
+    "temp": "temperature",
+    # media
+    "artist": "query",        # {'artist': '周杰伦'} → {'query': '周杰伦'}
+    "song": "query",
+    "volume_level": "action", # {'volume_level': '大一点'} → {'action': 'volume_up'} 需值映射
+    # vehicle
+    "check_type": "items",
+    "status": "items",
+}
+
+_CN_VALUE_MAP = {
+    # 中文值 → 英文 enum 值（端侧 3B 模型常见输出）
+    "开": "on", "打开": "on", "开启": "on",
+    "关": "off", "关闭": "off", "关掉": "off",
+    "调高": "adjust", "调低": "adjust", "调节": "adjust",
+    "暂停": "pause", "停止": "pause",
+    "下一首": "next", "切歌": "next",
+    "上一首": "previous",
+    "播放": "play", "放": "play",
+    "加热": "heat_on",
+    "通风": "ventilate_on",
+}
 
 _VALUE_MAP = {
     # window_control: 模型习惯输出 on/off，工具要 open/close
