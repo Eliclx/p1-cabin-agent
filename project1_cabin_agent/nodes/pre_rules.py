@@ -385,7 +385,14 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
         logger.info(f"[FastRules] 矛盾动词放行云端: '{text}'")
         return None
 
-    # ===== 2d. 极短输入保护 =====
+    # ===== 2d. 跨域多意图检测 =====
+    # 如果同时命中 >=2 个 domain 的关键词 → 可能是多意图，放行云端
+    # 必须在短路规则之前检测，避免被单意图规则误判
+    if _detect_cross_domain(text):
+        logger.info(f"[FastRules] 跨域多意图放行云端: '{text}'")
+        return None
+
+    # ===== 2e. 极短输入保护 =====
     # 单字/两字且不含明确指令词 → 放行云端（避免"调""嗯"误匹配）
     if len(text) <= 2:
         _SAFE_SHORT = {"26", "28", "30", "开空调", "关空调", "开灯", "关灯", "放歌"}
@@ -452,6 +459,30 @@ def _is_followup(text: str) -> bool:
     """判断是否是追问而非多意图"""
     for pattern in FOLLOWUP_PATTERNS:
         if pattern in text:
+            return True
+    return False
+
+
+def _detect_cross_domain(text: str) -> bool:
+    """跨域关键词检测：命中 ≥2 个 domain → 可能是多意图
+
+    用 edge_schemas.DOMAINS 的关键词做轻量字符串匹配（排除 chitchat/unknown），
+    比 LLM 解析快 3 个数量级。放在短路规则之前防误伤。
+
+    单字关键词（如"到""去""找"）太泛，容易在非目标语境误匹配
+    （例：navigation 的"到"误匹配"调到22度"），跳过。"""
+    from project1_cabin_agent.edge_schemas import DOMAINS as _DOMAINS
+    matched = set()
+    for domain_name, domain_info in _DOMAINS.items():
+        if domain_name in ("chitchat", "unknown"):
+            continue
+        for kw in domain_info.get("keywords", "").split():
+            if len(kw) <= 1:  # 单字太泛，跳过防误伤
+                continue
+            if kw in text:
+                matched.add(domain_name)
+                break
+        if len(matched) >= 2:
             return True
     return False
 

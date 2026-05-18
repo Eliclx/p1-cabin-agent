@@ -54,7 +54,18 @@ STAGE1_SYSTEM = """你是车载语音助手的领域分类器。
 - search: 搜索（周边设施、新闻、知识问答等）
 - vehicle: 车况（油量、胎压、车速、里程、保养等）
 - chitchat: 闲聊（打招呼、情感、日常对话、笑话、天气/时间/日期等）
+- multi: 多意图（用户一句话包含多个不相关的动作，如"开窗放音乐"）
 - unknown: 无法判断
+
+多意图识别规则（优先判断）：
+1. 如果输入包含来自不同领域的动作词，输出 multi
+   - 例："开窗放音乐" → 开窗(climate) + 放音乐(media) → multi
+   - 例："帮我打开空调并播放音乐" → 开空调(climate) + 放音乐(media) → multi
+2. 连接词提示多意图："并" "然后" "顺便" "同时" "再" "也" "接着"
+   - 例："先找加油站再导航过去" → multi
+3. 同一个领域的多个操作不算是 multi
+   - 例："打开空调调到22度" → climate（空调控制+调温是同一个领域）
+   - 例："关窗关灯" → climate（车窗和灯光都是车内环境）
 
 重要区分规则：
 1. 车窗、灯光、座椅加热都属于车内环境(climate)，不是车况(vehicle)
@@ -86,7 +97,8 @@ STAGE2_SYSTEM_TEMPLATE = """你是车载语音助手的语义解析器。
 2. slot key 必须用上面定义的英文名，不能自己造key
 3. slot value 必须符合类型要求（enum从可选值中选，数字在范围内）
 4. 无法确定的槽位不要填，留空即可（不要猜测）
-5. 只输出JSON，不要其他文字
+5. 只输出严格JSON，花括号必须配对，末尾不能有多余的}}或{{
+6. 只输出JSON，不要其他文字
 
 示例：
 {examples}"""
@@ -270,6 +282,11 @@ def _classify_domain(user_input: str) -> tuple[str, float]:
 
     raw = result["raw_text"].strip().lower()
     latency = result["latency_ms"]
+
+    # 显式处理 multi → 多意图，跳过 Stage2 直接降级云端
+    if "multi" in raw:
+        logger.info(f"[edge stage1] → multi-intent detected, bypass edge")
+        return "unknown", latency
 
     # 匹配合法 domain
     valid_domains = list(DOMAIN_INTENTS.keys())

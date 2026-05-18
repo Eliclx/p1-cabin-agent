@@ -42,38 +42,40 @@ DOMAIN_NAMES = list(DOMAINS.keys())
 # ── Intent + Slot Schema ──
 # 每个 domain 下可执行的 intent，含 slot 白名单
 
+# 每个 slot spec 含 required 标记（单一真相源，不再维护独立 INTENT_REQUIRED_SLOTS 表）
+# required=True 的 slot 全空 → is_acceptable=False → 降级云端
 INTENT_SCHEMAS = {
     "climate": {
         "ac_control": {
             "desc": "空调控制，开关/调温/调风",
             "slots": {
-                "action":    {"type": "enum",   "values": ["on", "off", "adjust"], "desc": "操作"},
-                "temperature": {"type": "number", "range": [16, 32], "desc": "目标温度"},
-                "mode":      {"type": "enum",   "values": ["cool", "heat", "auto"], "desc": "模式"},
-                "fan_level": {"type": "number", "range": [1, 5], "desc": "风速档位"},
+                "action":    {"type": "enum",   "values": ["on", "off", "adjust"], "desc": "操作", "required": False},
+                "temperature": {"type": "number", "range": [16, 32], "desc": "目标温度", "required": False},
+                "mode":      {"type": "enum",   "values": ["cool", "heat", "auto"], "desc": "模式", "required": False},
+                "fan_level": {"type": "number", "range": [1, 5], "desc": "风速档位", "required": False},
             },
         },
         "window_control": {
             "desc": "车窗/天窗/车门控制",
             "slots": {
-                "target": {"type": "enum", "values": ["window", "sunroof", "door"], "desc": "控制对象"},
-                "action":   {"type": "enum",   "values": ["open", "close", "adjust"], "desc": "操作"},
-                "percent": {"type": "number", "range": [0, 100], "desc": "开合百分比"},
+                "target": {"type": "enum", "values": ["window", "sunroof", "door"], "desc": "控制对象", "required": False},
+                "action":   {"type": "enum",   "values": ["open", "close", "adjust"], "desc": "操作", "required": True},
+                "percent": {"type": "number", "range": [0, 100], "desc": "开合百分比", "required": False},
             },
         },
         "seat_control": {
             "desc": "座椅加热/通风",
             "slots": {
-                "action": {"type": "enum", "values": ["heat_on", "heat_off", "ventilate_on", "ventilate_off"], "desc": "操作"},
-                "heat_level": {"type": "number", "range": [1, 3], "desc": "加热档位"},
+                "action": {"type": "enum", "values": ["heat_on", "heat_off", "ventilate_on", "ventilate_off"], "desc": "操作", "required": True},
+                "heat_level": {"type": "number", "range": [1, 3], "desc": "加热档位", "required": False},
             },
         },
         "light_control": {
             "desc": "灯光控制",
             "slots": {
-                "action": {"type": "enum", "values": ["on", "off", "adjust"], "desc": "操作"},
-                "target": {"type": "enum", "values": ["cabin", "reading", "ambient"], "desc": "灯光类型"},
-                "brightness": {"type": "number", "range": [0, 100], "desc": "亮度"},
+                "action": {"type": "enum", "values": ["on", "off", "adjust"], "desc": "操作", "required": True},
+                "target": {"type": "enum", "values": ["cabin", "reading", "ambient"], "desc": "灯光类型", "required": False},
+                "brightness": {"type": "number", "range": [0, 100], "desc": "亮度", "required": False},
             },
         },
     },
@@ -81,8 +83,8 @@ INTENT_SCHEMAS = {
         "start_navigation": {
             "desc": "导航到目的地",
             "slots": {
-                "destination": {"type": "string", "desc": "目的地名称"},
-                "mode": {"type": "enum", "values": ["fastest", "shortest", "avoid_highway", "avoid_toll"], "desc": "路线偏好"},
+                "destination": {"type": "string", "desc": "目的地名称", "required": True},
+                "mode": {"type": "enum", "values": ["fastest", "shortest", "avoid_highway", "avoid_toll"], "desc": "路线偏好", "required": False},
             },
         },
     },
@@ -90,9 +92,9 @@ INTENT_SCHEMAS = {
         "media_control": {
             "desc": "音乐播放/暂停/切歌",
             "slots": {
-                "action": {"type": "enum", "values": ["play", "pause", "next", "previous", "search", "volume_up", "volume_down", "set_volume"], "desc": "操作"},
-                "query": {"type": "string", "desc": "搜索关键词(歌名/歌手)"},
-                "volume": {"type": "number", "range": [0, 100], "desc": "音量"},
+                "action": {"type": "enum", "values": ["play", "pause", "next", "previous", "search", "volume_up", "volume_down", "set_volume"], "desc": "操作", "required": True},
+                "query": {"type": "string", "desc": "搜索关键词(歌名/歌手)", "required": False},
+                "volume": {"type": "number", "range": [0, 100], "desc": "音量", "required": False},
             },
         },
     },
@@ -100,7 +102,7 @@ INTENT_SCHEMAS = {
         "search_poi": {
             "desc": "搜索附近POI",
             "slots": {
-                "keyword": {"type": "string", "desc": "搜索关键词"},
+                "keyword": {"type": "string", "desc": "搜索关键词", "required": True},
             },
         },
     },
@@ -108,13 +110,13 @@ INTENT_SCHEMAS = {
         "query_vehicle_status": {
             "desc": "查询车况(油量/胎压/续航等)",
             "slots": {
-                "items": {"type": "string", "desc": "查询项目(fuel/tire/ac_temp等)"},
+                "items": {"type": "string", "desc": "查询项目(fuel/tire/ac_temp等)", "required": False},
             },
         },
         "activate_scene": {
             "desc": "场景模式(舒适/休息等)",
             "slots": {
-                "scene_name": {"type": "enum", "values": ["comfortable_driving", "sleep_mode", "departure_check"], "desc": "场景名"},
+                "scene_name": {"type": "enum", "values": ["comfortable_driving", "sleep_mode", "departure_check"], "desc": "场景名", "required": True},
             },
         },
     },
@@ -230,37 +232,13 @@ _VALUE_MAP = {
 }
 
 
-# ═══════════════════════════════════════════════════
-# 必填槽位定义（P0: is_acceptable 降级判断依据）
-# ═══════════════════════════════════════════════════
-# 规则：
-# - 有必填 slot 的 intent，如果所有必填都为空 → is_acceptable=False → 降级云端
-# - 无必填 slot 的 intent（如开空调、暂停播放）→ 纯 intent 就够用，不需要降级
-# - 只列"没这个 slot 等于没识别出来"的字段，不是所有 schema 字段
-
-INTENT_REQUIRED_SLOTS: dict[str, list[str]] = {
-    # navigation: 没目的地等于没识别
-    "start_navigation": ["destination"],
-    # search: 没关键词等于没识别
-    "search_poi": ["keyword"],
-    # media: play/pause/next 不需要额外 slot，但 volume 操作需要 action
-    # 设 action 为必填：模型至少要识别出操作类型
-    "media_control": ["action"],
-    # window: 至少要识别出动作
-    "window_control": ["action"],
-    # light: 至少要识别出动作
-    "light_control": ["action"],
-    # seat: 至少要识别出动作
-    "seat_control": ["action"],
-    # ac: "开空调"可以不要 slot，temperature/mode 都是可选的
-    "ac_control": [],
-    # vehicle: 查询可以不要具体 items（查全部）
-    "query_vehicle_status": [],
-    # scene: 至少要知道哪个场景
-    "activate_scene": ["scene_name"],
-}
-
-
 def get_required_slots(intent: str) -> list[str]:
-    """获取 intent 的必填 slot 列表，不在表里的 intent 返回空列表"""
-    return INTENT_REQUIRED_SLOTS.get(intent, [])
+    """从 INTENT_SCHEMAS 自动提取 required=True 的 slot key（单一真相源）"""
+    for domain_schemas in INTENT_SCHEMAS.values():
+        intent_schema = domain_schemas.get(intent)
+        if intent_schema:
+            return [
+                key for key, spec in intent_schema.get("slots", {}).items()
+                if spec.get("required")
+            ]
+    return []
