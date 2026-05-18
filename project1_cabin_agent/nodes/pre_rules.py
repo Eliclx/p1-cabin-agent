@@ -390,7 +390,7 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
     # 必须在短路规则之前检测，避免被单意图规则误判
     if _detect_cross_domain(text):
         logger.info(f"[FastRules] 跨域多意图放行云端: '{text}'")
-        return None
+        return {"_cross_domain_flag": True}
 
     # ===== 2e. 极短输入保护 =====
     # 单字/两字且不含明确指令词 → 放行云端（避免"调""嗯"误匹配）

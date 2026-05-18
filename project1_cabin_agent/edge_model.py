@@ -203,6 +203,7 @@ class EdgeResult:
     raw_text: str = ""
     latency_ms: float = 0.0
     error: str | None = None
+    all_slots_filtered: bool = False  # P2: 模型输出了 slot 但全部被白名单拒绝
 
     @property
     def is_acceptable(self) -> bool:
@@ -212,13 +213,18 @@ class EdgeResult:
         1. 无 error（domain/intent 都识别出来了）
         2. confidence 达标
         3. intent 不是跳过类（chitchat/unknown）
-        4. 必填 slots 至少有一个非空（P0：堵住"自信直出空 slots"的漏洞）
+        4. 白名单全空 → 降级（P2：模型输出 slot 但全部被拒绝=幻觉）
+        5. 必填 slots 至少有一个非空（P0：堵住"自信直出空 slots"的漏洞）
         """
         if self.error is not None:
             return False
         if self.confidence < EDGE_CONFIDENCE_THRESHOLD:
             return False
         if self.intent in _SKIP_INTENTS:
+            return False
+
+        # P2: 白名单全空 → 模型在猜测，降级云端
+        if self.all_slots_filtered:
             return False
 
         # P0: 必填 slots 检查
@@ -354,6 +360,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
         return EdgeResult(
             intent="chitchat", confidence=0.85, slots={},
             domain=domain, latency_ms=total_lat, error="domain_unknown",
+            all_slots_filtered=False,
         )
 
     # Stage2: intent + slots
@@ -364,6 +371,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
         return EdgeResult(
             intent="chitchat", confidence=0.85, slots={},
             domain=domain, latency_ms=total_lat, error="intent_unknown",
+            all_slots_filtered=False,
         )
 
     # 白名单校验
@@ -371,8 +379,12 @@ def edge_model_infer(user_input: str) -> EdgeResult:
 
     if raw_slots and not clean_slots:
         logger.info(f"[edge 白名单] 全部过滤: {raw_slots} → {{}} (domain={domain}, intent={intent})")
+        all_slots_filtered = True
     elif clean_slots != raw_slots:
         logger.info(f"[edge 白名单] 部分过滤: {raw_slots} → {clean_slots}")
+        all_slots_filtered = False
+    else:
+        all_slots_filtered = False
 
     logger.info(
         f"[edge result] domain={domain} intent={intent} "
@@ -385,6 +397,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
         slots=clean_slots,
         domain=domain,
         latency_ms=total_lat,
+        all_slots_filtered=all_slots_filtered,
     )
 
 

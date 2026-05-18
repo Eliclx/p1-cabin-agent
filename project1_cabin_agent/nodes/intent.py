@@ -210,10 +210,15 @@ def intent_classifier(state: CabinAgentState) -> dict:
     if oos_flag:
         logger.info(f"[意图识别] OOS flag 检出: {oos_flag}，跳过端侧，强制云端判断")
 
+    # ===== 跨域多意图 flag 检测：FastRules 检测到跨域，跳过端侧，强制云端拆子任务 =====
+    cross_domain_flag = state.get("_cross_domain_flag")
+    if cross_domain_flag:
+        logger.info("[意图识别] 跨域多意图 flag 检出，跳过端侧，强制云端拆子任务")
+
     # ===== Stage 2a: 端侧快路径（~1s，可选）=====
     from project1_cabin_agent.edge_model import EDGE_ENABLED, edge_model_infer, edge_result_to_subtask
 
-    if EDGE_ENABLED and _can_use_edge(user_input, active_frames) and not oos_flag:
+    if EDGE_ENABLED and _can_use_edge(user_input, active_frames) and not oos_flag and not cross_domain_flag:
         edge_result = edge_model_infer(user_input)
         if edge_result.is_acceptable:
             # 端侧直出，跳过云端 LLM
@@ -250,6 +255,8 @@ def intent_classifier(state: CabinAgentState) -> dict:
                 "intent": first.get("intent", "chitchat"),
                 "active_frames": new_frames,
                 "episodic_context": episodic_context,
+                "_oos_flag": None,
+                "_cross_domain_flag": None,
             }
         else:
             logger.info(
@@ -355,6 +362,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "active_frames": new_frames,
             "episodic_context": episodic_context,
             "_oos_flag": None,  # 清空 OOS flag
+            "_cross_domain_flag": None,  # 清空跨域 flag
         }
     except json.JSONDecodeError as je:
         logger.error(f"[意图识别] ❌ JSON 解析错误: {je}")
@@ -362,6 +370,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result = _create_fallback_result("json_error")
         result["episodic_context"] = episodic_context
         result["_oos_flag"] = None
+        result["_cross_domain_flag"] = None
         return result
 
     except Exception as e:
@@ -369,4 +378,5 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result = _create_fallback_result("unknown_error")
         result["episodic_context"] = episodic_context
         result["_oos_flag"] = None
+        result["_cross_domain_flag"] = None
         return result

@@ -137,6 +137,12 @@ class CabinAgentState(TypedDict):
         # 云端判断 true OOS → no_support；误杀 → 正常流程
         # 生命周期：仅限本轮，intent_classifier 读取后重置为 None
 
+    # ── 跨域多意图标记（fast_rules → intent_classifier）──
+    _cross_domain_flag: Optional[bool]
+        # FastRules 检测到跨域多意图时写入（True）
+        # intent_classifier 检测到此 flag → 跳过端侧，强制走云端 LLM 拆子任务
+        # 生命周期：仅限本轮，intent_classifier 读取后重置为 None
+
     # ── 对话帧追踪（Slot Carry-Over）────────────
     active_frames: List[dict]
         # 存"没完成的意图"——上一轮识别了意图但缺槽位，等用户下一轮补充
