@@ -241,8 +241,8 @@ class EdgeResult:
 # HTTP 调用
 # ═══════════════════════════════════════════════════
 
-def _call_llm(messages: list, max_tokens: int = 40) -> dict:
-    """调用 LMDeploy API，返回 {raw_text, latency_ms}"""
+def _call_llm(messages: list, max_tokens: int = 40, response_format: dict | None = None) -> dict:
+    """调用 LMDeploy API，返回 {raw_text, latency_ms}。可选 response_format 用于 guided generation。"""
     import time
     start = time.monotonic()
 
@@ -252,6 +252,8 @@ def _call_llm(messages: list, max_tokens: int = 40) -> dict:
         "temperature": 0.01,
         "max_tokens": max_tokens,
     }
+    if response_format:
+        payload_dict["response_format"] = response_format
 
     payload = json.dumps(payload_dict).encode("utf-8")
     url = f"{EDGE_BASE_URL}/chat/completions"
@@ -307,17 +309,25 @@ def _classify_domain(user_input: str) -> tuple[str, float]:
 
 
 def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, float]:
-    """Stage2: 提取 intent + slots，返回 (intent, slots, latency_ms)"""
+    """Stage2: 提取 intent + slots，返回 (intent, slots, latency_ms)。
+    
+    使用 guided generation (json_schema) 从生成层杜绝 JSON 格式错误。"""
     if domain == "unknown":
         return "unknown", {}, 0
+
+    from project1_cabin_agent.edge_schemas import build_json_schema
 
     system_prompt = _build_stage2_system(domain)
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_input},
     ]
+    
+    # 构建 json_schema 用于 guided generation（治本层）
+    json_schema = build_json_schema(domain)
+    
     try:
-        result = _call_llm(messages, max_tokens=60)
+        result = _call_llm(messages, max_tokens=60, response_format=json_schema)
     except Exception as e:
         logger.warning(f"[edge stage2] LLM error: {e}")
         return "unknown", {}, 0
@@ -406,27 +416,109 @@ def edge_model_infer(user_input: str) -> EdgeResult:
 # ═══════════════════════════════════════════════════
 
 def _parse_edge_json(text: str) -> dict | None:
-    """解析端侧模型输出的 JSON，兼容 markdown 包裹"""
+    """Harness 约束提取器：不信任 JSON 格式，多级降级从噪声中提取信号。
+
+    L1: json.loads 严格解析 → confidence × 1.0
+    L2: 去噪声 + json.loads（剥多余花括号、去尾部逗号、null 保留）
+    L3: 正则硬提取（intent + slot 逐个匹配，不依赖 JSON 结构）
+    
+    每一级提取的 {intent, slots} 仍会过 validate_slots 白名单校验。
+    """
+    import re
+
+    # ── 清理 ──
     if "```" in text:
         lines = text.split("\n")
         text = "\n".join(l for l in lines if not l.strip().startswith("```"))
-
     text = text.strip()
 
+    # ── L1: 严格解析 ──
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
+    # ── L2: 去噪声后解析 ──
+    cleaned = _level2_normalize(text)
+    if cleaned:
         try:
-            return json.loads(text[start:end+1])
+            parsed = json.loads(cleaned)
+            # null 保留语义（"用户没提到"），不转空串
+            if isinstance(parsed, dict) and "intent" in parsed:
+                return parsed
         except json.JSONDecodeError:
             pass
 
+    # ── L3: 正则硬提取（不依赖 JSON 结构）──
+    parsed = _level3_regex_extract(text)
+    if parsed and _validate_intent(parsed.get("intent", "")):
+        return parsed
+
     return None
+
+
+def _level2_normalize(text: str) -> str | None:
+    """L2 去噪声：剥多余花括号、去尾部逗号。保留 null 语义。"""
+    import re
+
+    # 剥首尾多余花括号（端侧 3B 常见：{{...}}）
+    text = re.sub(r'^\{\{+', '{', text)  # {{{...→ {
+    text = re.sub(r'\}\}+$', '}', text)  # ...}}} → }
+
+    # 数花括号，平衡配对
+    opens = text.count("{")
+    closes = text.count("}")
+    if closes > opens:
+        # 从尾部切除多余 }
+        idx = text.rfind("}")
+        text = text[:idx + 1]
+        opens = text.count("{")
+        closes = text.count("}")
+
+    if opens > closes:
+        return None  # 少 }，结构破损太严重
+
+    # 去尾部逗号: , }
+    text = re.sub(r",\s*}", "}", text)
+    text = re.sub(r",\s*\]", "]", text)
+
+    return text
+
+
+def _level3_regex_extract(text: str) -> dict | None:
+    """L3 正则硬提取：不依赖 JSON 结构，逐个匹配 intent + slot。"""
+    import re
+
+    # 提取 intent
+    intent_m = re.search(r'"intent"\s*:\s*"([a-z_]+)"', text)
+    if not intent_m:
+        return None
+
+    intent = intent_m.group(1)
+    slots = {}
+
+    # 提取 slot key-value 对: "key": "val" 或 "key": 数字 或 "key": null
+    for m in re.finditer(r'"(\w+)"\s*:\s*("([^"\\]*(\\.[^"\\]*)*)"|(\d+\.?\d*)|null)', text):
+        key = m.group(1)
+        if key == "intent":
+            continue
+        val_str = m.group(2)
+        if val_str == "null":
+            slots[key] = None  # 保留 null 语义
+        elif val_str.startswith('"'):
+            slots[key] = json.loads(val_str)  # 安全 parse 单个字符串值
+        else:
+            slots[key] = float(val_str) if "." in val_str else int(val_str)
+
+    return {"intent": intent, "slots": slots} if slots or intent else None
+
+
+def _validate_intent(intent: str) -> bool:
+    """校验 intent 是否在已知列表中（防正则误提取）"""
+    for domain_schemas in __import__("project1_cabin_agent.edge_schemas", fromlist=["INTENT_SCHEMAS"]).INTENT_SCHEMAS.values():
+        if intent in domain_schemas:
+            return True
+    return False
 
 
 def edge_result_to_subtask(result: EdgeResult) -> dict:

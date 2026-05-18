@@ -94,6 +94,37 @@ EXTENDED_SET = [
     ("开空调、关窗","multi",None),("打开空调 然后放歌","multi",None),
     ("第二个","needs_context",None),("还有多远","needs_context",None),
     ("最近的有多远","needs_context",None),
+    # ── 新增：跨域多意图（验证 cross_domain_flag）──
+    ("开窗放音乐","multi",None),
+    ("帮我打开空调并播放音乐","multi",None),
+    ("先找加油站再导航过去","multi",None),
+    ("导航到天府广场然后放点音乐","multi",None),
+    ("附近有便利店吗帮我调低温度","multi",None),
+    ("帮我加油顺便开空调","multi",None),
+    # ── 新增：高频补充 ──
+    ("打开空调","climate","ac_control"),
+    ("空调开到18度","climate","ac_control"),
+    ("关天窗","climate","window_control"),
+    ("开阅读灯","climate","light_control"),
+    ("座椅加热调到3档","climate","seat_control"),
+    ("关座椅通风","climate","seat_control"),
+    ("去最近的加油站","navigation","start_navigation"),
+    ("导航去成都避开高速","navigation","start_navigation"),
+    ("音量调小点","media","media_control"),
+    ("切歌","media","media_control"),
+    ("我想听周杰伦","media","media_control"),
+    ("有没有附近的火锅店","search","search_poi"),
+    ("胎压怎么样","vehicle","query_vehicle_status"),
+    ("睡眠模式","vehicle","activate_scene"),
+    # ── 新增：白名单边界（验证P2）──
+    ("空调暖风","climate","ac_control"),
+    ("车窗全开","climate","window_control"),
+    ("灯调亮点","climate","light_control"),
+    ("座椅加热开","climate","seat_control"),
+    ("放周杰伦","media","media_control"),
+    ("搜一下附近的加油站","search","search_poi"),
+    ("车还有多少电","vehicle","query_vehicle_status"),
+    ("运动模式","vehicle","activate_scene"),
 ]
 
 BOUNDARY_SET = [
@@ -118,7 +149,8 @@ def run_suite(cases: list, logger: ErrorLogger = None) -> dict:
 
         if exp_domain == "multi":
             fr = fast_rules_check(text, [])
-            ok = fr is None
+            # cross_domain_flag 或 None 都算正确（放行云端）
+            ok = (fr is None) or (isinstance(fr, dict) and fr.get("_cross_domain_flag"))
             if ok: stats["cloud_fallback"] += 1
         elif exp_domain == "needs_context":
             ok = not _can_use_edge(text, [])
