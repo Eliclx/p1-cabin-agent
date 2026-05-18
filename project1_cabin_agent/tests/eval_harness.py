@@ -168,8 +168,9 @@ def run_suite(cases: list, logger: ErrorLogger = None) -> dict:
             else: stats["cloud_fallback"] += 1
         else:
             fr = fast_rules_check(text, [])
-            if fr:
-                ok = fr.get("intent", "?") == exp_intent
+            # 区分"短路命中"和"信号flag"：flag dict(no intent)不算 FastRules hit
+            if fr and fr.get("intent") and not fr.get("_cross_domain_flag") and not fr.get("_oos_flag"):
+                ok = fr.get("intent") == exp_intent
                 if ok: stats["fast_rule_hit"] += 1
                 stats["latencies"].append(0)
             else:

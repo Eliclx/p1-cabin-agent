@@ -80,6 +80,60 @@ STAGE1_SYSTEM = """你是车载语音助手的领域分类器。
 # Stage1 不再需要单独的 user 模板，直接用裸输入
 
 
+def _build_stage1_system() -> str:
+    """构建 Stage1 系统 prompt，从 skill examples.yaml 动态注入 few-shot。
+    
+    单一真相源：skill 的 examples.yaml 定义 domain→example 映射，
+    未迁移的域用训练数据 training_stage1.jsonl 兜底。
+    """
+    examples = _load_stage1_examples()
+    if not examples:
+        return STAGE1_SYSTEM
+
+    lines = [STAGE1_SYSTEM, "", "示例（从 skill examples.yaml 自动注入）："]
+    for ex in examples:
+        lines.append(f"输入：{ex['input']} → {ex['domain']}")
+    return "\n".join(lines)
+
+
+def _load_stage1_examples() -> list[dict]:
+    """从 skill examples.yaml 加载 Stage1 few-shot 示例（单一真相源）
+    
+    已迁移的域：skills/{domain}/examples.yaml → stage1 示例
+    未迁移的域：无示例，依赖 STAGE1_SYSTEM 中的规则
+    """
+    import yaml, os
+    
+    examples = []
+    
+    # intent → domain 映射（边缘模型 domain 比 skill 细粒度）
+    intent_domain_map = {
+        "navigate_to": "navigation",
+        "search_nearby": "search",
+    }
+    
+    skills_dir = os.path.join(os.path.dirname(__file__), "skills")
+    for skill_name in os.listdir(skills_dir):
+        yaml_path = os.path.join(skills_dir, skill_name, "examples.yaml")
+        if not os.path.exists(yaml_path):
+            continue
+        try:
+            with open(yaml_path) as f:
+                data = yaml.safe_load(f) or {}
+            for intent_name, intent_examples in data.items():
+                if not isinstance(intent_examples, list):
+                    continue
+                domain = intent_domain_map.get(intent_name, skill_name)
+                for ex in intent_examples[:2]:
+                    inp = ex.get("input", "")
+                    if inp:
+                        examples.append({"input": inp, "domain": domain})
+        except Exception:
+            pass
+    
+    return examples[:10]
+
+
 # ═══════════════════════════════════════════════════
 # Stage2: Intent + Slot 提取 Prompt（按 domain 分）
 # ═══════════════════════════════════════════════════
@@ -277,9 +331,10 @@ def _call_llm(messages: list, max_tokens: int = 40, response_format: dict | None
 # ═══════════════════════════════════════════════════
 
 def _classify_domain(user_input: str) -> tuple[str, float]:
-    """Stage1: domain 分类，返回 (domain, latency_ms)"""
+    """Stage1: domain 分类，返回 (domain, latency_ms)。prompt 从 skill examples.yaml 动态构建。"""
+    system_prompt = _build_stage1_system()
     messages = [
-        {"role": "system", "content": STAGE1_SYSTEM},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_input},
     ]
     try:
