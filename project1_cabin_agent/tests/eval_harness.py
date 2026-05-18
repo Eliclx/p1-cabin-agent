@@ -125,6 +125,51 @@ EXTENDED_SET = [
     ("搜一下附近的加油站","search","search_poi"),
     ("车还有多少电","vehicle","query_vehicle_status"),
     ("运动模式","vehicle","activate_scene"),
+    # ── 新增：ASR噪声/口误（验证端侧鲁棒性）──
+    ("帮我把空挑关掉","climate","ac_control"),          # 空调→空挑
+    ("去到春熙路吧","navigation","start_navigation"),    # 去→去到
+    ("我想停歌","media","media_control"),               # 听歌→停歌(ASR)
+    ("把那啥温度调低一点","climate","ac_control"),      # 语气词+隐含
+    ("导一下航到天府广场","navigation","start_navigation"), # 口语拆分
+    ("太冷了 那个 调到26度","climate","ac_control"),     # 口吃/修正
+    # ── 新增：极口语化（验证3B模型对口语的理解）──
+    ("热成狗了","climate","ac_control"),
+    ("冻死我了","climate","ac_control"),
+    ("闷得喘不过气","climate","ac_control"),
+    ("亮瞎了","climate","light_control"),
+    ("啥也看不见","climate","light_control"),
+    ("耳朵要聋了","media","media_control"),              # → volume_down
+    ("吵死啦","media","media_control"),                  # → volume_down
+    ("来点带劲的音乐","media","media_control"),
+    ("这什么歌啊换掉","media","media_control"),
+    ("饿得不行了","search","search_poi"),               # → 搜餐厅
+    ("想喝奶茶","search","search_poi"),
+    ("困了找个地方睡觉","search","search_poi"),         # → 搜酒店
+    # ── 新增：域边界模糊（验证Stage1区分能力）──
+    ("打开暖风","climate","ac_control"),                # 暖风≠vehicle
+    ("车里好暗","climate","light_control"),              # 暗→灯光,非chitchat
+    ("后背好热","climate","seat_control"),              # 座椅通风,非ac
+    ("挡风玻璃起雾了","climate","ac_control"),      # 除雾=空调制热/制冷
+    ("前面堵不堵","navigation","start_navigation"),     # 路况→导航域
+    ("换一条路","navigation","start_navigation"),       # 重规划→导航
+    ("现在在哪儿","navigation","start_navigation"),     # 位置查询→导航
+    ("离机场还有多远","navigation","start_navigation"), # 导航进度
+    ("油灯亮了","vehicle","query_vehicle_status"),      # 油灯=油量告警
+    ("这个按钮干嘛的","chitchat",None),                 # 边界:不是车控
+    ("你好小Q","chitchat",None),                        # 唤醒词风格
+    # ── 新增：否定/修正（验证Cancel和意图切换）──
+    ("不是 我是说开窗","climate","window_control"),     # 修正
+    ("不对 关掉音乐","media","media_control"),           # 修正
+    ("别开空调了 开窗吧","multi",None),    # 否定AC+开窗 = 多意图
+    ("算了不去了","chitchat",None),                     # 取消→chitchat
+    # ── 新增：车载特有场景 ──
+    ("后排说冷","climate","ac_control"),
+    ("副驾太热","climate","ac_control"),
+    ("孩子睡着了 小声点","media","media_control"),      # → volume_down
+    ("路上还有多久","navigation","start_navigation"),   # ETA查询
+    ("前方有摄像头吗","search","search_poi"),           # 电子眼→POI
+    ("帮我记一下这个位置","navigation","start_navigation"), # 收藏位置
+    ("还剩多少公里","navigation","start_navigation"),   # 剩余里程
 ]
 
 BOUNDARY_SET = [
