@@ -1,0 +1,74 @@
+# Climate Skill Few-shot Examples
+
+ac_control:
+  - input: "打开空调"
+    output:
+      intent: "ac_control"
+      slots:
+        action: "on"
+    tags: ["literal"]
+  - input: "空调调到22度"
+    output:
+      intent: "ac_control"
+      slots:
+        action: "adjust"
+        temperature: 22
+    tags: ["literal"]
+  - input: "太热了"
+    output:
+      intent: "ac_control"
+      slots:
+        action: "adjust"
+        mode: "cool"
+    tags: ["implicit"]
+
+window_control:
+  - input: "开窗"
+    output:
+      intent: "window_control"
+      slots:
+        target: "window"
+        action: "open"
+    tags: ["literal"]
+  - input: "关窗"
+    output:
+      intent: "window_control"
+      slots:
+        target: "window"
+        action: "close"
+    tags: ["literal"]
+  - input: "天窗打开"
+    output:
+      intent: "window_control"
+      slots:
+        target: "sunroof"
+        action: "open"
+    tags: ["literal"]
+
+light_control:
+  - input: "开灯"
+    output:
+      intent: "light_control"
+      slots:
+        action: "on"
+    tags: ["literal"]
+  - input: "关灯"
+    output:
+      intent: "light_control"
+      slots:
+        action: "off"
+    tags: ["literal"]
+
+seat_control:
+  - input: "打开座椅加热"
+    output:
+      intent: "seat_control"
+      slots:
+        action: "heat_on"
+    tags: ["literal"]
+  - input: "关座椅通风"
+    output:
+      intent: "seat_control"
+      slots:
+        action: "ventilate_off"
+    tags: ["literal"]

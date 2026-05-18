@@ -40,13 +40,16 @@ def _domain_to_class_name(domain: str) -> str:
 # 未注册的走旧路径（INTENT_TO_TOOL → TOOL_REGISTRY）
 _MIGRATED_DOMAINS: set[str] = {
     "navigation",
+    "media",
+    "vehicle",
+    "search",
+    "climate",
 }
 
 # domain → intent 别名映射（新架构的 intent 名可能和旧的不一样）
 # 旧 intent → 新 intent 的映射，让新旧路径能互相识别
 _INTENT_MIGRATION_MAP: dict[str, str] = {
     "start_navigation": "navigate_to",
-    "search_poi": "search_nearby",
 }
 
 # 模块级缓存：避免每次查询都 importlib

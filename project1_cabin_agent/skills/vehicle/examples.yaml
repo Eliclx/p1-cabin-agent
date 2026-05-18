@@ -1,0 +1,41 @@
+# Vehicle Skill Few-shot Examples
+
+query_vehicle_status:
+  - input: "空调多少度"
+    output:
+      intent: "query_vehicle_status"
+      slots:
+        items: "ac_temp"
+    tags: ["literal"]
+  - input: "还有多少油"
+    output:
+      intent: "query_vehicle_status"
+      slots:
+        items: "fuel"
+    tags: ["literal"]
+  - input: "胎压怎么样"
+    output:
+      intent: "query_vehicle_status"
+      slots:
+        items: "tire"
+    tags: ["literal"]
+
+activate_scene:
+  - input: "舒适模式"
+    output:
+      intent: "activate_scene"
+      slots:
+        scene_name: "comfortable_driving"
+    tags: ["literal"]
+  - input: "休息模式"
+    output:
+      intent: "activate_scene"
+      slots:
+        scene_name: "sleep_mode"
+    tags: ["literal"]
+  - input: "出发前检查"
+    output:
+      intent: "activate_scene"
+      slots:
+        scene_name: "departure_check"
+    tags: ["literal"]

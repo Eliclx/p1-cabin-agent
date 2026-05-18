@@ -1,0 +1,47 @@
+# Media Skill Few-shot Examples
+# 用于 Stage1 领域分类 + Stage2 intent/slot 提取
+
+media_control:
+  - input: "放首歌"
+    output:
+      intent: "media_control"
+      slots:
+        action: "play"
+    tags: ["literal"]
+
+  - input: "下一首"
+    output:
+      intent: "media_control"
+      slots:
+        action: "next"
+    tags: ["literal"]
+
+  - input: "暂停音乐"
+    output:
+      intent: "media_control"
+      slots:
+        action: "pause"
+    tags: ["literal"]
+
+  - input: "声音大一点"
+    output:
+      intent: "media_control"
+      slots:
+        action: "volume_up"
+    tags: ["literal"]
+
+  - input: "播放周杰伦的歌"
+    output:
+      intent: "media_control"
+      slots:
+        action: "search"
+        query: "周杰伦"
+    tags: ["literal"]
+
+  - input: "音量调到50"
+    output:
+      intent: "media_control"
+      slots:
+        action: "set_volume"
+        volume: 50
+    tags: ["literal"]

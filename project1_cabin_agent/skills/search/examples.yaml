@@ -1,0 +1,37 @@
+# Search Skill Few-shot Examples
+
+search_poi:
+  - input: "附近有没有加油站"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "加油站"
+    tags: ["literal"]
+
+  - input: "帮我找下附近的医院"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "医院"
+    tags: ["literal"]
+
+  - input: "附近的火锅店"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "火锅店"
+    tags: ["literal"]
+
+  - input: "有没有川菜馆"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "川菜馆"
+    tags: ["literal"]
+
+  - input: "搜一下附近的加油站"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "加油站"
+    tags: ["literal", "colloquial"]

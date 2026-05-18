@@ -131,7 +131,7 @@ def _load_stage1_examples() -> list[dict]:
         except Exception:
             pass
     
-    return examples[:10]
+    return examples[:15]
 
 
 # ═══════════════════════════════════════════════════
