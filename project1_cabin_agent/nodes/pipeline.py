@@ -25,6 +25,15 @@ from project1_cabin_agent.nodes.schema import DYNAMIC_SCHEMA
 from project1_cabin_agent.nodes.intent import _validate_slots
 from project1_cabin_agent.nodes.message_utils import _ensure_str, _parse_json
 
+# v3 新路径
+from project1_cabin_agent.skills.registry import (
+    is_intent_migrated,
+    get_domain_for_intent,
+    get_harness,
+    get_tool_function,
+)
+from project1_cabin_agent.nodes.context_enrich import enrich_context_for_task
+
 
 # ═══════════════════════════════════════════════
 # 辅助函数（Prompt、规则判断、模板）
@@ -306,7 +315,200 @@ def _handle_resume(question: str, user_answer: str, intent: str,
 
 
 # ═══════════════════════════════════════════════
-# task_pipeline 子处理器
+# v3 新路径：skill-based task handler
+# ═══════════════════════════════════════════════
+
+async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
+                              intent: str, slots: dict) -> dict | Command:
+    """
+    v3 新路径：harness → context_enrich → tool → format_response。
+    已迁移的 domain（目前只有 navigation）走这条路径。
+    未迁移的 domain 走旧路径 _handle_tool_task。
+
+    流程：
+      1. registry 路由（domain → harness + tool_fn）
+      2. context_enrich（按 CONTEXT_DEPS 组装 AgentContext）
+      3. harness.pre_validate（必填检查 + 别名解析 + 默认值补全）
+      4. 工具执行
+      5. harness.post_validate（API 失败兜底 + 异常值拦截）
+      6. 高风险确认（复用 interrupt）
+      7. harness.format_response（确定性格式化）
+    """
+    msgs: list = []
+
+    # ── 1. registry 路由 ──
+    domain = get_domain_for_intent(intent)
+    if not domain:
+        # 不应该走到这里（task_pipeline 已经过滤），安全兜底
+        logger.error(f"[skill_task] intent={intent} 不在已迁移 domain 中，回退旧路径")
+        return await _handle_tool_task(state, task_id, task, intent, slots)
+
+    harness = get_harness(domain)
+    tool_fn = get_tool_function(domain, intent)
+
+    if not harness:
+        logger.error(f"[skill_task] {domain} harness 加载失败，回退旧路径")
+        return await _handle_tool_task(state, task_id, task, intent, slots)
+
+    if not tool_fn:
+        return _make_result(task_id, intent, "抱歉，该功能暂时不可用", task,
+                            status="error", error=f"tool_fn not found: {domain}.{intent}")
+
+    # ── 2. context_enrich ──
+    ctx = enrich_context_for_task(state, task)
+    if ctx is None:
+        logger.warning(f"[skill_task] context_enrich 返回 None，使用空 AgentContext")
+        from project1_cabin_agent.harness.context import AgentContext
+        ctx = AgentContext()
+
+    # ── 3. harness.pre_validate ──
+    pre_result = harness.pre_validate(slots, ctx)
+
+    # 3a. 追问（缺必填槽位）
+    if not pre_result.valid and pre_result.need_clarify:
+        clarify_msg = pre_result.clarify_message or "请提供更多信息"
+        clarify_count = state.get("clarify_count", 0)
+
+        if clarify_count < 3:
+            user_answer = interrupt({
+                "question": clarify_msg,
+                "missing_slots": [k for k in pre_result.slots if not pre_result.slots.get(k)],
+                "task_id": task_id,
+                "intent": intent,
+            })
+            msgs = [
+                {"role": "assistant", "content": clarify_msg},
+                {"role": "user", "content": user_answer},
+            ]
+            logger.info(f"[skill追问] 用户回答: {user_answer}")
+
+            # 取消/重定向
+            cancelled = _handle_resume(clarify_msg, user_answer, intent, task, task_id, msgs)
+            if cancelled:
+                return cancelled
+
+            # 从回答中提取 slot 并重新校验
+            missing = [k for k in pre_result.slots if not pre_result.slots.get(k)]
+            if missing:
+                new_slots = _extract_slots_from_reply(missing, user_answer, intent)
+                slots.update(new_slots)
+
+            # 二次 pre_validate
+            pre_result = harness.pre_validate(slots, ctx)
+
+            if not pre_result.valid and pre_result.need_clarify:
+                # 仍然缺槽位
+                still_missing_msg = pre_result.clarify_message or "还需要更多信息"
+                return {
+                    **_make_result(task_id, intent, still_missing_msg, task, msgs,
+                                   status="need_clarify",
+                                   missing_slots=list(pre_result.slots.keys()),
+                                   completed_ids=[]),
+                    "clarify_count": clarify_count + 1,
+                }
+        else:
+            logger.warning(f"[skill追问] 超过上限({clarify_count})，用现有 slots 强制执行")
+
+    # 3b. pre_validate 失败（非追问，如 fallback）
+    if not pre_result.valid and not pre_result.need_clarify:
+        fallback_msg = pre_result.block_reason or "输入校验失败"
+        logger.warning(f"[skill_task] pre_validate 失败: {fallback_msg}")
+        return _make_result(task_id, intent, "抱歉，无法处理您的请求，请换个方式说试试",
+                            task, status="error", error=fallback_msg)
+
+    # pre_validate 通过，使用修正后的 slots
+    slots = pre_result.slots
+    logger.info(f"[skill_task] pre_validate 通过, slots={slots}")
+
+    # ── 4. 工具执行 ──
+    try:
+        result = await asyncio.wait_for(tool_fn.ainvoke(slots), timeout=8)
+    except asyncio.TimeoutError:
+        logger.error(f"[skill_task] 工具超时: {domain}.{intent}")
+        return _make_result(task_id, intent, "操作超时，请稍后再试", task, msgs,
+                            status="error", error="timeout")
+    except Exception as e:
+        logger.error(f"[skill_task] 工具执行失败: {e}")
+        # 走 harness.post_validate 的失败兜底
+        post_result = harness.post_validate({"status": "error", "error": str(e)}, ctx)
+        if not post_result.valid:
+            fallback_reply = harness.format_response({"status": "error"})
+            return _make_result(task_id, intent, fallback_reply, task, msgs,
+                                status="error", error=str(e))
+        return _make_result(task_id, intent, "操作过程中发生错误", task, msgs,
+                            status="error", error=str(e))
+
+    # ── 5. harness.post_validate ──
+    tool_result = result if isinstance(result, dict) else {"raw": result}
+    post_result = harness.post_validate(tool_result, ctx)
+
+    if not post_result.valid:
+        # API 失败兜底 / 异常值拦截
+        if post_result.need_confirm:
+            # 异常值需要确认（如距离太远）
+            confirm_question = post_result.confirm_message or "请确认"
+            user_answer = interrupt({
+                "question": confirm_question,
+                "task_id": task_id,
+                "intent": intent,
+                "is_confirm": True,
+            })
+            msgs += [
+                {"role": "assistant", "content": confirm_question},
+                {"role": "user", "content": user_answer},
+            ]
+            cancelled = _handle_resume(confirm_question, user_answer, intent, task, task_id, msgs)
+            if cancelled:
+                return cancelled
+            if not _is_confirm_positive(user_answer):
+                return _make_result(task_id, intent, "好的，已取消", task, msgs, tool_result={})
+
+        elif post_result.need_clarify:
+            # post_validate 发现问题需要追问
+            clarify_msg = post_result.clarify_message or "请提供更多信息"
+            return _make_result(task_id, intent, clarify_msg, task, msgs,
+                                status="need_clarify")
+        else:
+            # 直接兜底回复
+            fallback_reply = harness.format_response(tool_result)
+            return _make_result(task_id, intent, fallback_reply, task, msgs,
+                                tool_result=tool_result)
+
+    # ── 6. 高风险确认（tool 返回 need_confirm） ──
+    if isinstance(tool_result, dict) and tool_result.get("status") == "need_confirm":
+        confirm_question = tool_result.get("voice_reply", "请确认")
+        user_answer = interrupt({
+            "question": confirm_question,
+            "task_id": task_id,
+            "intent": intent,
+            "is_confirm": True,
+        })
+        msgs += [
+            {"role": "assistant", "content": confirm_question},
+            {"role": "user", "content": user_answer},
+        ]
+        logger.info(f"[skill确认] 用户回答: {user_answer}")
+
+        cancelled = _handle_resume(confirm_question, user_answer, intent, task, task_id, msgs)
+        if cancelled:
+            return cancelled
+
+        if not _is_confirm_positive(user_answer):
+            return _make_result(task_id, intent, "好的，已取消", task, msgs, tool_result={})
+
+    # ── 7. harness.format_response ──
+    voice_reply = harness.format_response(tool_result)
+
+    # L2 记忆写入
+    user_profile.save_from_tool_result(intent, slots)
+
+    logger.info(f"[skill_task] {domain}.{intent} 完成, reply={voice_reply}")
+    return _make_result(task_id, intent, voice_reply, task, msgs,
+                        tool_result=tool_result)
+
+
+# ═══════════════════════════════════════════════
+# task_pipeline 子处理器（旧路径）
 # ═══════════════════════════════════════════════
 
 def _handle_chitchat(state: CabinAgentState, task_id: str, task: dict) -> dict:
@@ -577,12 +779,16 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
         reply = slots.get("answer", "抱歉，目前不支持此功能")
         return _make_result(task_id, intent, reply, task)
 
-    # 自动 OOS 检测：意图不在已知列表中 → 礼貌拒绝
+    # 自动 OOS 兜底：意图不在已知列表中 → chitchat 降级（而非直接拒绝）
     KNOWN_INTENTS = {"chitchat", "clarify", "direct_answer", "no_support"} | set(DYNAMIC_SCHEMA.keys())
     if intent not in KNOWN_INTENTS:
-        logger.warning(f"[OOS] 未知意图: {intent}, 自动拒绝")
-        return _make_result(task_id, intent,
-            "抱歉，我暂时还不支持这个功能。您可以试试导航、空调、音乐、车窗控制等车内操作。", task)
+        logger.warning(f"[OOS兜底] 未知意图: {intent}，降级 chitchat")
+        return _handle_chitchat(state, task_id, task)
 
     # 所有工具意图
+    # v3 新路径：已迁移的 domain 走 skill-based handler
+    if is_intent_migrated(intent):
+        return await _handle_skill_task(state, task_id, task, intent, slots)
+
+    # 旧路径：未迁移的 intent 走 INTENT_TO_TOOL 查表
     return await _handle_tool_task(state, task_id, task, intent, slots)

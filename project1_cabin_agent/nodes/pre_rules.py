@@ -335,11 +335,12 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
     if not text:
         return None
 
-    # ===== 1. OOS 检测 ===== 当前没有实现的功能
+    # ===== 1. OOS 检测 ===== 疑似超出能力范围，标记后放行给云端 LLM 二次判断
     oos = _detect_oos(text)
     if oos:
-        logger.info(f"[FastRules] OOS 拒绝: '{text}' → {oos}")
-        return _build_no_support_result(f"目前不支持{oos}，我可以帮您导航或调节车内环境")
+        logger.info(f"[FastRules] OOS 疑似命中: '{text}' → {oos}，放行云端二次判断")
+        # 不短路，返回带 flag 的空结果，让 intent_classifier 跳过端侧走云端
+        return {"_oos_flag": oos}
 
     # ===== 2. 追问防误杀 ===== 追问模式：包含"还有""再"但实际是追问，不是多意图
     # 只标记，不短路（追问仍需 LLM 处理，但标记 is_followup 供下游参考）

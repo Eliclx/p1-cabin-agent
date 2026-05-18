@@ -205,10 +205,15 @@ def intent_classifier(state: CabinAgentState) -> dict:
 
     history_text = _format_history(state.get("messages", []), needs_ctx)
 
+    # ===== OOS flag 检测：FastRules 疑似命中 OOS，跳过端侧，强制走云端 =====
+    oos_flag = state.get("_oos_flag")
+    if oos_flag:
+        logger.info(f"[意图识别] OOS flag 检出: {oos_flag}，跳过端侧，强制云端判断")
+
     # ===== Stage 2a: 端侧快路径（~1s，可选）=====
     from project1_cabin_agent.edge_model import EDGE_ENABLED, edge_model_infer, edge_result_to_subtask
 
-    if EDGE_ENABLED and _can_use_edge(user_input, active_frames):
+    if EDGE_ENABLED and _can_use_edge(user_input, active_frames) and not oos_flag:
         edge_result = edge_model_infer(user_input)
         if edge_result.is_acceptable:
             # 端侧直出，跳过云端 LLM
@@ -349,16 +354,19 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "intent": first.get("intent", "chitchat"),
             "active_frames": new_frames,
             "episodic_context": episodic_context,
+            "_oos_flag": None,  # 清空 OOS flag
         }
     except json.JSONDecodeError as je:
         logger.error(f"[意图识别] ❌ JSON 解析错误: {je}")
         logger.debug(f"[意图识别] LLM 原始输出: {raw_text[:500]}")
         result = _create_fallback_result("json_error")
         result["episodic_context"] = episodic_context
+        result["_oos_flag"] = None
         return result
 
     except Exception as e:
         logger.error(f"[意图识别] ❌ 异常: {e}")
         result = _create_fallback_result("unknown_error")
         result["episodic_context"] = episodic_context
+        result["_oos_flag"] = None
         return result

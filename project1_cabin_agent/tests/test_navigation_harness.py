@@ -73,6 +73,26 @@ def ctx_no_l2():
     )
 
 
+@pytest.fixture
+def ctx_with_l1_poi():
+    """有 L1 黑板 POI 搜索结果的上下文"""
+    return AgentContext(
+        vehicle=VehicleSnapshot(location="104.06,30.67", speed=60),
+        dialogue={
+            "entity.poi": {
+                "results": [
+                    {"name": "川菜馆", "dist_km": 0.3, "address": "天府大道100号"},
+                    {"name": "火锅店", "dist_km": 0.5, "address": "天府大道200号"},
+                    {"name": "面馆", "dist_km": 1.0, "address": "天府大道300号"},
+                ],
+                "count": 3,
+            },
+        },
+        session={},
+        user={"home_address": "天府大道388号"},
+    )
+
+
 # ══════════════════════════════════════════════════════════════════
 # CONTEXT_DEPS 声明
 # ══════════════════════════════════════════════════════════════════
@@ -80,6 +100,9 @@ def ctx_no_l2():
 class TestContextDeps:
     def test_deps_includes_vehicle(self):
         assert ContextDep.VEHICLE in NavigationHarness.CONTEXT_DEPS
+
+    def test_deps_includes_l1(self):
+        assert ContextDep.L1 in NavigationHarness.CONTEXT_DEPS
 
     def test_deps_includes_l2(self):
         assert ContextDep.L2 in NavigationHarness.CONTEXT_DEPS
@@ -243,6 +266,54 @@ class TestPreValidate:
         )
         assert result.valid is True
         assert result.need_confirm is False
+
+    # ── 序号指代消解：从 L1 黑板取 POI ──
+
+    def test_ordinal_first(self, harness, ctx_with_l1_poi):
+        """去第一个 → L1 黑板第 0 个 POI"""
+        result = harness.pre_validate(
+            slots={"destination": "第一个"},
+            ctx=ctx_with_l1_poi,
+        )
+        assert result.valid is True
+        assert result.slots["destination"] == "川菜馆"
+
+    def test_ordinal_second(self, harness, ctx_with_l1_poi):
+        """去第二个 → L1 黑板第 1 个 POI"""
+        result = harness.pre_validate(
+            slots={"destination": "第二个"},
+            ctx=ctx_with_l1_poi,
+        )
+        assert result.valid is True
+        assert result.slots["destination"] == "火锅店"
+
+    def test_ordinal_nearest(self, harness, ctx_with_l1_poi):
+        """去最近那个 → L1 黑板第 0 个 POI"""
+        result = harness.pre_validate(
+            slots={"destination": "最近那个"},
+            ctx=ctx_with_l1_poi,
+        )
+        assert result.valid is True
+        assert result.slots["destination"] == "川菜馆"
+
+    def test_ordinal_no_l1(self, harness, ctx_with_vehicle):
+        """去第一个但 L1 黑板没有搜索结果 → 追问"""
+        result = harness.pre_validate(
+            slots={"destination": "第一个"},
+            ctx=ctx_with_vehicle,
+        )
+        assert result.valid is False
+        assert result.need_clarify is True
+        assert "搜索结果" in result.clarify_message
+
+    def test_ordinal_out_of_range(self, harness, ctx_with_l1_poi):
+        """去第五个但只有 3 个结果 → 追问"""
+        result = harness.pre_validate(
+            slots={"destination": "第五个"},
+            ctx=ctx_with_l1_poi,
+        )
+        assert result.valid is False
+        assert result.need_clarify is True
 
 
 # ══════════════════════════════════════════════════════════════════

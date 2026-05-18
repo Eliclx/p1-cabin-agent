@@ -130,6 +130,13 @@ class CabinAgentState(TypedDict):
         # 用途：防止无限追问 —— 连续 >2 次追问降级为 chitchat，>3 次缺槽直接强制执行
         # 重置时机：用户输入完整新指令时，intent_classifier 返回 clarify_count=0
 
+    # ── OOS 标记（fast_rules → intent_classifier）──
+    _oos_flag: Optional[str]
+        # FastRules OOS 疑似命中时写入（值为 OOS reason，如 "点单""打电话"）
+        # intent_classifier 检测到此 flag → 跳过端侧，强制走云端 LLM 二次判断
+        # 云端判断 true OOS → no_support；误杀 → 正常流程
+        # 生命周期：仅限本轮，intent_classifier 读取后重置为 None
+
     # ── 对话帧追踪（Slot Carry-Over）────────────
     active_frames: List[dict]
         # 存"没完成的意图"——上一轮识别了意图但缺槽位，等用户下一轮补充

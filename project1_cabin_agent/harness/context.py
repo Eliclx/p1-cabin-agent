@@ -32,6 +32,10 @@ class VehicleSnapshot:
     ac_mode: str = "auto"
     ac_fan_level: int = 3
     window_percent: int = 0
+    sunroof_percent: int = 0
+    fuel: int = 68
+    battery: int = 82
+    temperature: float = 32.0
     light_on: bool = False
     light_brightness: int = 80
     volume: int = 50

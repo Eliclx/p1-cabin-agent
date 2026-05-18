@@ -213,6 +213,9 @@ _CN_VALUE_MAP = {
     "播放": "play", "放": "play",
     "加热": "heat_on",
     "通风": "ventilate_on",
+    # P1: 音量调节中文值 → media_control action enum
+    "调小": "volume_down", "调小点": "volume_down", "小一点": "volume_down",
+    "调大": "volume_up", "调大点": "volume_up", "大一点": "volume_up",
 }
 
 _VALUE_MAP = {
@@ -225,3 +228,39 @@ _VALUE_MAP = {
     # light_control: on/off 一致，不需要映射
     # ac_control: on/off 一致，不需要映射
 }
+
+
+# ═══════════════════════════════════════════════════
+# 必填槽位定义（P0: is_acceptable 降级判断依据）
+# ═══════════════════════════════════════════════════
+# 规则：
+# - 有必填 slot 的 intent，如果所有必填都为空 → is_acceptable=False → 降级云端
+# - 无必填 slot 的 intent（如开空调、暂停播放）→ 纯 intent 就够用，不需要降级
+# - 只列"没这个 slot 等于没识别出来"的字段，不是所有 schema 字段
+
+INTENT_REQUIRED_SLOTS: dict[str, list[str]] = {
+    # navigation: 没目的地等于没识别
+    "start_navigation": ["destination"],
+    # search: 没关键词等于没识别
+    "search_poi": ["keyword"],
+    # media: play/pause/next 不需要额外 slot，但 volume 操作需要 action
+    # 设 action 为必填：模型至少要识别出操作类型
+    "media_control": ["action"],
+    # window: 至少要识别出动作
+    "window_control": ["action"],
+    # light: 至少要识别出动作
+    "light_control": ["action"],
+    # seat: 至少要识别出动作
+    "seat_control": ["action"],
+    # ac: "开空调"可以不要 slot，temperature/mode 都是可选的
+    "ac_control": [],
+    # vehicle: 查询可以不要具体 items（查全部）
+    "query_vehicle_status": [],
+    # scene: 至少要知道哪个场景
+    "activate_scene": ["scene_name"],
+}
+
+
+def get_required_slots(intent: str) -> list[str]:
+    """获取 intent 的必填 slot 列表，不在表里的 intent 返回空列表"""
+    return INTENT_REQUIRED_SLOTS.get(intent, [])

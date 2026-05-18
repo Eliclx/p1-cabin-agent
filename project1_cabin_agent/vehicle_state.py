@@ -15,6 +15,7 @@ class VehicleState:
     mileage: int = 12456
     temperature: float = 32.0
     tire_status: str = "正常"
+    location: str = "104.06,30.67"  # 当前位置（经度,纬度 GCJ-02），mock 默认成都
 
     ac_on: bool = False
     ac_temp: float = 24.0

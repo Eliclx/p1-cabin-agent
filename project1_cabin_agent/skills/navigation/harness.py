@@ -18,13 +18,14 @@ class NavigationHarness(BaseHarness):
     """
     导航域 harness。
     
-    CONTEXT_DEPS = VEHICLE | L2 | L3
+    CONTEXT_DEPS = VEHICLE | L1 | L2 | L3
     - VEHICLE: 需要当前位置（补 origin）、车速（安全检查）
+    - L1: 需要黑板记忆（"去第一个"→从 entity.poi 取上次搜索结果）
     - L2: 需要行程记忆（"上次去的"指代消解）
     - L3: 需要用户偏好（"家"/"公司"地址解析）
     """
 
-    CONTEXT_DEPS = ContextDep.VEHICLE | ContextDep.L2 | ContextDep.L3
+    CONTEXT_DEPS = ContextDep.VEHICLE | ContextDep.L1 | ContextDep.L2 | ContextDep.L3
 
     # ── 语义别名映射（L3 级别的常用别名） ──
     _ALIAS_HOME = {"家", "回家", "回家"}
@@ -93,6 +94,19 @@ class NavigationHarness(BaseHarness):
                     block_reason=f"别名'{destination}'解析失败：L2 无 last_destination",
                 )
             slots = {**slots, "destination": last_dest}
+
+        # ── 4.5 序号指代消解："第一个"/"第二个"/"最近那个" → L1 黑板 ──
+        elif self._is_ordinal(destination):
+            resolved = self._resolve_ordinal(destination, ctx.dialogue)
+            if not resolved:
+                return HarnessResult(
+                    valid=False,
+                    slots=slots,
+                    need_clarify=True,
+                    clarify_message="没有找到之前的搜索结果，请告诉我具体目的地",
+                    block_reason=f"序号指代'{destination}'解析失败：L1 黑板无 entity.poi",
+                )
+            slots = {**slots, "destination": resolved}
 
         # ── 5. origin 补全：从 vehicle_state 取当前位置 ──
         if not slots.get("origin"):
@@ -203,3 +217,38 @@ class NavigationHarness(BaseHarness):
                 return f"为您找到{count}个结果：{'；'.join(items)}。"
 
         return "操作完成。"
+
+    # ── 序号指代消解辅助方法 ─────────────────────────────────────
+
+    _ORDINALS = {
+        "第一个": 0, "第二个": 1, "第三个": 2, "第四个": 3, "第五个": 4,
+        "第1个": 0, "第2个": 1, "第3个": 2, "第4个": 3, "第5个": 4,
+        "最近那个": 0, "最近的那家": 0, "最近的": 0,
+    }
+
+    def _is_ordinal(self, text: str) -> bool:
+        """判断是否是序号指代（"第一个"/"最近那个"）"""
+        return text in self._ORDINALS
+
+    def _resolve_ordinal(self, ordinal: str, dialogue: dict) -> str:
+        """从 L1 黑板 entity.poi 解析序号指代
+
+        dialogue 是黑板展开后的 flat dict，key 如 "entity.poi"
+        每个值是上次 search_nearby 的结果列表
+        """
+        idx = self._ORDINALS.get(ordinal, 0)
+
+        # 从黑板取 entity.poi 的栈顶（最新搜索结果）
+        poi_data = dialogue.get("entity.poi", {})
+        results = poi_data.get("results", []) if isinstance(poi_data, dict) else []
+
+        if idx < len(results):
+            resolved = results[idx].get("name", "")
+            if resolved:
+                import logging
+                logging.getLogger(__name__).info(
+                    f"[序号指代] '{ordinal}' → entity.poi[{idx}] = '{resolved}'"
+                )
+            return resolved
+
+        return ""
