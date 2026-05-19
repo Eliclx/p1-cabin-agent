@@ -36,12 +36,44 @@ class NavigationHarness(BaseHarness):
         """
         LLM 输出后、调 tool 前的校验+补全。
         
-        职责：
-        1. destination 必填检查
-        2. 语义别名解析（家→L3地址，公司→L3地址，上次去的→L2记录）
-        3. origin 补全（从 vehicle_state 取当前位置）
-        4. 安全检查（高速行驶中改目的地）
+        按 intent 分发：
+        - navigate_to: destination 必填 + 别名解析 + origin 补全
+        - search_nearby: keyword 必填 + location 补全
         """
+        intent = slots.get("_intent", "")
+        # 旧名兼容
+        if intent == "start_navigation":
+            intent = "navigate_to"
+        if intent == "search_poi":
+            intent = "search_nearby"
+        
+        if intent == "search_nearby":
+            return self._validate_search_nearby(slots, ctx)
+        return self._validate_navigate_to(slots, ctx)
+
+    def _validate_search_nearby(self, slots: dict, ctx: AgentContext) -> HarnessResult:
+        """search_nearby: keyword 必填 + location 自动补全"""
+        keyword = slots.get("keyword", "")
+        if not keyword:
+            return HarnessResult(
+                valid=False, slots=slots,
+                need_clarify=True,
+                clarify_message="请问您想搜索什么？",
+                block_reason="缺少 keyword",
+            )
+        # location 自动补全
+        if not slots.get("location"):
+            loc = ctx.vehicle.location
+            if not loc:
+                return HarnessResult(
+                    valid=False, slots=slots, fallback=True,
+                    block_reason="vehicle_state 无 location",
+                )
+            slots = {**slots, "location": loc}
+        return HarnessResult(valid=True, slots=slots)
+
+    def _validate_navigate_to(self, slots: dict, ctx: AgentContext) -> HarnessResult:
+        """navigate_to: 原有的导航校验逻辑"""
         destination = slots.get("destination", "")
 
         # ── 1. 必填检查 ──

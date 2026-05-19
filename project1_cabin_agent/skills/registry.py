@@ -50,6 +50,7 @@ _MIGRATED_DOMAINS: set[str] = {
 # 旧 intent → 新 intent 的映射，让新旧路径能互相识别
 _INTENT_MIGRATION_MAP: dict[str, str] = {
     "start_navigation": "navigate_to",
+    "search_poi": "search_nearby",
 }
 
 # 模块级缓存：避免每次查询都 importlib
