@@ -32,11 +32,21 @@ INTENT_TO_L2_KEY = {
     },
 }
 
+# ═══════════════════════════════════════════════════
+# SQLite
+# ═══════════════════════════════════════════════════
+
+_WAL_ENABLED_UP = False
+
 
 def _get_db() -> sqlite3.Connection:
     """获取数据库连接，自动创建目录和表"""
+    global _WAL_ENABLED_UP
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
+    if not _WAL_ENABLED_UP:
+        conn.execute("PRAGMA journal_mode=WAL")
+        _WAL_ENABLED_UP = True
     conn.execute("""
         CREATE TABLE IF NOT EXISTS user_profile (
             key TEXT PRIMARY KEY,
@@ -48,6 +58,22 @@ def _get_db() -> sqlite3.Connection:
     return conn
 
 
+def _retry_on_lock(fn):
+    """SQLite 写冲突重试"""
+    import time as _time
+    def wrapper(*args, **kwargs):
+        for i in range(3):
+            try:
+                return fn(*args, **kwargs)
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and i < 2:
+                    _time.sleep(0.05 * (2 ** i))
+                    continue
+                raise
+    return wrapper
+
+
+@_retry_on_lock
 def save_preference(key: str, value: str) -> None:
     """保存用户偏好"""
     conn = _get_db()

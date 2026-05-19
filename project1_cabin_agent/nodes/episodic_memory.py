@@ -55,9 +55,16 @@ def _get_current_time() -> datetime:
 # SQLite
 # ═══════════════════════════════════════════════════════════════
 
+_WAL_ENABLED = False  # 模块级 flag，首次连接时开启
+
+
 def _get_db() -> sqlite3.Connection:
+    global _WAL_ENABLED
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
+    if not _WAL_ENABLED:
+        conn.execute("PRAGMA journal_mode=WAL")  # 允许读写并发，减少 lock
+        _WAL_ENABLED = True
     conn.execute("""
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,10 +82,26 @@ def _get_db() -> sqlite3.Connection:
     return conn
 
 
+def _retry_on_lock(fn):
+    """SQLite 写冲突重试：WAL 模式下偶尔仍有 transient lock"""
+    import time as _time
+    def wrapper(*args, **kwargs):
+        for i in range(3):
+            try:
+                return fn(*args, **kwargs)
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and i < 2:
+                    _time.sleep(0.05 * (2 ** i))
+                    continue
+                raise
+    return wrapper
+
+
 # ═══════════════════════════════════════════════════════════════
 # 写入
 # ═══════════════════════════════════════════════════════════════
 
+@_retry_on_lock
 def log_event(event_type: str, summary: str, details: dict | None = None,
               timestamp: str | None = None) -> None:
     """写入一条事件日志。非白名单类型静默跳过。"""
