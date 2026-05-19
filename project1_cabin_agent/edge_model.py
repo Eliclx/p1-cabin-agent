@@ -377,11 +377,12 @@ def _classify_domain(user_input: str) -> tuple[str, float]:
 def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, float]:
     """Stage2: 提取 intent + slots，返回 (intent, slots, latency_ms)。
     
-    使用 guided generation (json_schema) 从生成层杜绝 JSON 格式错误。"""
+    Q2 优化：去掉 guided generation (xgrammar FSM)，改用纯 prompt 约束 + harness 兜底。
+    原因：LMDeploy xgrammar FSM 导致 decode 每token从8ms涨到33ms（+300%），
+    但 benchmark 132 case 对比显示准确率只差 0.9%（76.0% vs 76.9%），格式失败率不变。
+    延迟从 534ms → 192ms（-64%）。"""
     if domain == "unknown":
         return "unknown", {}, 0
-
-    from project1_cabin_agent.edge_schemas import build_json_schema
 
     system_prompt = _build_stage2_system(domain)
     messages = [
@@ -389,11 +390,8 @@ def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, 
         {"role": "user", "content": user_input},
     ]
     
-    # 构建 json_schema 用于 guided generation（治本层）
-    json_schema = build_json_schema(domain)
-    
     try:
-        result = _call_llm(messages, max_tokens=60, response_format=json_schema)
+        result = _call_llm(messages, max_tokens=60)
     except Exception as e:
         logger.warning(f"[edge stage2] LLM error: {e}")
         return "unknown", {}, 0
