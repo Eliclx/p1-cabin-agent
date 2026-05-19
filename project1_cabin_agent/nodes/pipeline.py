@@ -362,6 +362,8 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
         ctx = AgentContext()
 
     # ── 3. harness.pre_validate ──
+    # 注入 _intent，供 harness 按意图分发子校验器（climate 域需要区分 ac/window/light/seat）
+    slots = {**slots, "_intent": intent}
     pre_result = harness.pre_validate(slots, ctx)
 
     # 3a. 追问（缺必填槽位）
@@ -421,8 +423,16 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
     logger.info(f"[skill_task] pre_validate 通过, slots={slots}")
 
     # ── 4. 工具执行 ──
+    # skill 纯函数：过滤内部字段，**kwargs 展开；LangChain @tool：走 .ainvoke()
+    exec_slots = {k: v for k, v in slots.items() if not k.startswith("_")}
     try:
-        result = await asyncio.wait_for(tool_fn.ainvoke(slots), timeout=8)
+        if hasattr(tool_fn, "ainvoke"):
+            result = await asyncio.wait_for(tool_fn.ainvoke(exec_slots), timeout=8)
+        else:
+            result = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, lambda: tool_fn(**exec_slots)),
+                timeout=8,
+            )
     except asyncio.TimeoutError:
         logger.error(f"[skill_task] 工具超时: {domain}.{intent}")
         return _make_result(task_id, intent, "操作超时，请稍后再试", task, msgs,

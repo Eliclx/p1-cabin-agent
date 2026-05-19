@@ -26,7 +26,7 @@ from project1_cabin_agent.edge_schemas import validate_slots, get_required_slots
 
 EDGE_ENABLED = os.getenv("EDGE_ENABLED", "false").lower() == "true"
 EDGE_BASE_URL = os.getenv("EDGE_BASE_URL", "http://localhost:8001/v1")
-EDGE_MODEL = os.getenv("EDGE_MODEL", "Qwen/Qwen2.5-3B-Instruct-AWQ")
+EDGE_MODEL = os.getenv("EDGE_MODEL", "Qwen2.5-3B-Instruct-AWQ")
 EDGE_TIMEOUT = int(os.getenv("EDGE_TIMEOUT", "5"))
 EDGE_CONFIDENCE_THRESHOLD = float(os.getenv("EDGE_CONFIDENCE_THRESHOLD", "0.85"))
 
@@ -80,20 +80,31 @@ STAGE1_SYSTEM = """你是车载语音助手的领域分类器。
 # Stage1 不再需要单独的 user 模板，直接用裸输入
 
 
+_STAGE1_CACHED_PROMPT: str | None = None
+
+
 def _build_stage1_system() -> str:
     """构建 Stage1 系统 prompt，从 skill examples.yaml 动态注入 few-shot。
     
     单一真相源：skill 的 examples.yaml 定义 domain→example 映射，
     未迁移的域用训练数据 training_stage1.jsonl 兜底。
+    
+    结果缓存到模块级变量，只在首次调用时读文件（yaml 不会热更新）。
     """
+    global _STAGE1_CACHED_PROMPT
+    if _STAGE1_CACHED_PROMPT is not None:
+        return _STAGE1_CACHED_PROMPT
+
     examples = _load_stage1_examples()
     if not examples:
-        return STAGE1_SYSTEM
+        _STAGE1_CACHED_PROMPT = STAGE1_SYSTEM
+        return _STAGE1_CACHED_PROMPT
 
     lines = [STAGE1_SYSTEM, "", "示例（从 skill examples.yaml 自动注入）："]
     for ex in examples:
         lines.append(f"输入：{ex['input']} → {ex['domain']}")
-    return "\n".join(lines)
+    _STAGE1_CACHED_PROMPT = "\n".join(lines)
+    return _STAGE1_CACHED_PROMPT
 
 
 def _load_stage1_examples() -> list[dict]:
