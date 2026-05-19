@@ -190,6 +190,18 @@ def response_gen(state: CabinAgentState | dict) -> dict:
 @track_node("chitchat_handler")
 def chitchat_handler(state: CabinAgentState | dict) -> dict:
     user_input = state["user_input"]
+    
+    # FastRules ABANDON 短路：sub_tasks 中有预填的 voice_reply → 直接复用，不调 LLM
+    sub_tasks = state.get("sub_tasks", [])
+    if sub_tasks and sub_tasks[0].get("voice_reply"):
+        reply = sub_tasks[0]["voice_reply"]
+        return {
+            "final_response": reply,
+            "messages": [{"role": "assistant", "content": reply}],
+            "clarify_count": 0,
+            "active_frames": [],
+        }
+    
     messages = state.get("messages", [])
     episodic_ctx = state.get("episodic_context")
 

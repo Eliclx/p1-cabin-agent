@@ -171,6 +171,43 @@ def _detect_context_bleeding(user_input: str, sub_tasks: list, messages: list, n
 # 3. Slot Carry-Over（原 intent_carry.py）
 # ═══════════════════════════════════════════════════════════════
 
+# intent → domain 映射（用于 carry-over 跨域拦截）
+_INTENT_TO_DOMAIN = {
+    "ac_control": "climate", "window_control": "climate",
+    "light_control": "climate", "seat_control": "climate",
+    "start_navigation": "navigation",
+    "media_control": "media",
+    "search_poi": "search",
+    "query_vehicle_status": "vehicle", "activate_scene": "vehicle",
+    "chitchat": "chitchat",
+}
+
+# 各 domain 的明确信号词：如果 pending frame 是 climate，但输入含 navigation 信号词 → 拦截
+_DOMAIN_SIGNALS = {
+    "navigation": {"去", "导航", "回家", "回", "到"},
+    "media": {"听", "唱", "放歌", "播放", "暂停", "切歌"},
+    "search": {"搜", "查", "附近", "有没有"},
+    "climate": {"冷", "热", "度", "空调", "开", "关", "窗", "灯", "座椅"},
+    "vehicle": {"油量", "电量", "续航", "胎压", "模式"},
+}
+
+
+def _cross_domain_carry_over(frame: dict, user_input: str) -> bool:
+    """检测 carry-over 是否跨域：输入信号词和 frame 的 domain 不一致 → 拦截。"""
+    frame_intent = frame.get("intent", "")
+    frame_domain = _INTENT_TO_DOMAIN.get(frame_intent, "")
+    if not frame_domain:
+        return False  # 未知 domain，放行
+    
+    for domain, signals in _DOMAIN_SIGNALS.items():
+        if domain == frame_domain:
+            continue
+        if any(w in user_input for w in signals):
+            logger.info(f"[Carry-Over] 跨域拦截: frame={frame_domain}, 输入信号={domain}, input='{user_input}'")
+            return True
+    return False
+
+
 def _try_carry_over(user_input: str, active_frames: list) -> dict | None:
     """纯规则 Slot Carry-Over：检查新输入能否填充某个活跃帧的缺失槽位（0ms）。"""
     for frame in active_frames:
@@ -183,6 +220,9 @@ def _try_carry_over(user_input: str, active_frames: list) -> dict | None:
             continue
         if len(user_input.strip()) <= 10 and len(missing) == 1:
             if any(w in user_input for w in INDEPENDENT_KEYWORDS):
+                return None
+            # 跨域拦截：输入信号词和 frame 的 domain 不一致 → 不 carry-over
+            if _cross_domain_carry_over(frame, user_input):
                 return None
             # 不 mutate 原 frame，返回新 dict
             new_extracted = {**extracted, missing[0]: user_input.strip()}

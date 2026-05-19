@@ -342,6 +342,13 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
         # 不短路，返回带 flag 的空结果，让 intent_classifier 跳过端侧走云端
         return {"_oos_flag": oos}
 
+    # ===== 1b. 纯取消词检测 ===== "算了/不用了/取消" → 0ms 短路，清 pending frame
+    # 仅拦截无操作对象的纯取消词（≤3字）。带操作对象的取消（"不开空调了"）走完整链路。
+    PURE_ABANDON = {"算了", "不用了", "取消", "不了", "别了", "不要了"}
+    if text in PURE_ABANDON:
+        logger.info(f"[FastRules] 纯取消词短路: '{text}' → chitchat")
+        return _build_short_circuit_result("chitchat", {"voice_reply": "好的"}, "abandon")
+
     # ===== 2. 追问防误杀 ===== 追问模式：包含"还有""再"但实际是追问，不是多意图
     # 只标记，不短路（追问仍需 LLM 处理，但标记 is_followup 供下游参考）
     # 放在短路规则之前，避免 "还有多久" 被误匹配到其他规则
