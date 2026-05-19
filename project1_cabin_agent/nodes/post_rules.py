@@ -184,11 +184,15 @@ def _try_carry_over(user_input: str, active_frames: list) -> dict | None:
         if len(user_input.strip()) <= 10 and len(missing) == 1:
             if any(w in user_input for w in INDEPENDENT_KEYWORDS):
                 return None
-            frame["extracted_slots"][missing[0]] = user_input.strip()
-            new_missing = [s for s in required if s not in frame["extracted_slots"] or not frame["extracted_slots"][s]]
-            frame["status"] = "completed" if not new_missing else "pending"
+            # 不 mutate 原 frame，返回新 dict
+            new_extracted = {**extracted, missing[0]: user_input.strip()}
+            new_missing = [s for s in required if s not in new_extracted or not new_extracted[s]]
             logger.info(f"[Carry-Over] 匹配帧 {frame.get('task_id')}, 填充 {missing[0]}={user_input.strip()}")
-            return frame
+            return {
+                **frame,
+                "extracted_slots": new_extracted,
+                "status": "completed" if not new_missing else "pending",
+            }
     return None
 
 
