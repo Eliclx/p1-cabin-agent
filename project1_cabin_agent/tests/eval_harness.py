@@ -182,7 +182,33 @@ BOUNDARY_SET = [
 # ── 评估核心 ──
 
 def run_suite(cases: list, logger: ErrorLogger = None) -> dict:
-    """运行测试套件，返回指标"""
+    """
+    Evaluate a suite of test cases and aggregate evaluation metrics.
+    
+    Parameters:
+        cases (list): Iterable of test cases, each a tuple (text, exp_domain, exp_intent) where
+            `text` is the input utterance, `exp_domain` is the expected domain (e.g., "multi",
+            "unknown", domain name, or special tags like "needs_context"), and `exp_intent` is the
+            expected intent or None for domain-only checks.
+    
+    Returns:
+        dict: Aggregated metrics and diagnostics including at least the following keys:
+            - total: total number of cases processed
+            - correct: number of cases judged correct
+            - fast_rule_hit: count of cases resolved by fast rules
+            - edge_hit: count of cases resolved by the edge model
+            - cloud_fallback: count of cases routed to cloud fallback
+            - errors: list of input texts that were judged incorrect
+            - latencies: list of latency values (ms) recorded for model inferences (fast-rule hits use 0)
+            - by_domain: mapping of domain -> {"total": int, "correct": int}
+            - accuracy: overall accuracy (correct / total)
+            - avg_latency_ms: average latency in milliseconds
+            - fast_rule_rate: fast_rule_hit / total
+            - edge_hit_rate: edge_hit / total
+            - cloud_fallback_rate: cloud_fallback / total
+            - elapsed_s: wall-clock seconds spent running the suite
+            - timestamp: ISO8601 timestamp when the run completed
+    """
     stats = {"total": 0, "correct": 0, "fast_rule_hit": 0, "edge_hit": 0, "cloud_fallback": 0,
              "errors": [], "latencies": [], "by_domain": {}}
     t0 = time.monotonic()

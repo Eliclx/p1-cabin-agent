@@ -34,11 +34,16 @@ class NavigationHarness(BaseHarness):
 
     def pre_validate(self, slots: dict, ctx: AgentContext) -> HarnessResult:
         """
-        LLM 输出后、调 tool 前的校验+补全。
+        Validate and complete intent slots before invoking tools, dispatching to intent-specific validators.
         
-        按 intent 分发：
-        - navigate_to: destination 必填 + 别名解析 + origin 补全
-        - search_nearby: keyword 必填 + location 补全
+        Performs backward-compatible intent remapping ("start_navigation" → "navigate_to", "search_poi" → "search_nearby") and then calls the corresponding validator: _validate_search_nearby for search intents or _validate_navigate_to for navigation intents.
+        
+        Parameters:
+            slots (dict): Collected intent slots from the LLM turn.
+            ctx (AgentContext): Agent context containing vehicle, user, session, and dialogue state used to fill or validate slots.
+        
+        Returns:
+            HarnessResult: Validation outcome including flags (e.g., valid, need_clarify, need_confirm, fallback), any updated slots, and optional block_reason.
         """
         intent = slots.get("_intent", "")
         # 旧名兼容
@@ -52,7 +57,21 @@ class NavigationHarness(BaseHarness):
         return self._validate_navigate_to(slots, ctx)
 
     def _validate_search_nearby(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """search_nearby: keyword 必填 + location 自动补全"""
+        """
+        Validate and complete slots for a "search_nearby" intent.
+        
+        This checks that the `keyword` slot is present and ensures `location` is populated:
+        - If `keyword` is missing, returns a HarnessResult with `valid=False`, `need_clarify=True`, and `clarify_message="请问您想搜索什么？"`.
+        - If `location` is missing, attempts to fill it from `ctx.vehicle.location`; if that is absent, returns a HarnessResult with `valid=False`, `fallback=True`, and `block_reason="vehicle_state 无 location"`.
+        - On success, returns a HarnessResult with `valid=True` and `slots` (possibly updated with a filled `location`).
+        
+        Parameters:
+            slots (dict): Input slot values for the intent; may be updated with a resolved `location`.
+            ctx (AgentContext): Agent context used to read vehicle state (specifically `ctx.vehicle.location`).
+        
+        Returns:
+            HarnessResult: Result object describing validation outcome. When valid, `slots` may include a filled `location`; when invalid, fields such as `need_clarify`, `clarify_message`, `fallback`, and `block_reason` indicate the failure mode.
+        """
         keyword = slots.get("keyword", "")
         if not keyword:
             return HarnessResult(
@@ -73,7 +92,22 @@ class NavigationHarness(BaseHarness):
         return HarnessResult(valid=True, slots=slots)
 
     def _validate_navigate_to(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """navigate_to: 原有的导航校验逻辑"""
+        """
+        Validate and normalize slots for a "navigate_to" intent, resolving aliases and completing missing context.
+        
+        This function ensures the `destination` slot is present (or resolves semantic aliases such as home, company, last destination, or ordinal references), fills `origin` from the vehicle's current location when missing, and normalizes legacy `mode` into `route_type` when necessary. It may return a HarnessResult that:
+        - requests clarification when required destination information or address settings are missing,
+        - returns a fallback result if vehicle location is needed but unavailable,
+        - asks for user confirmation if the vehicle is moving faster than 100 km/h,
+        - or returns a validated set of slots ready for downstream tooling.
+        
+        Parameters:
+            slots (dict): Incoming slot values; expected keys include `destination`, optional `origin`, `mode`, and `route_type`.
+            ctx (AgentContext): Agent context providing user profile, session data, vehicle state, and dialogue state used for alias resolution.
+        
+        Returns:
+            HarnessResult: Validation outcome containing `valid` and optional flags (`need_clarify`, `fallback`, `need_confirm`), an updated `slots` dict, and contextual messages (`clarify_message`, `confirm_message`, `block_reason`) describing any required user interaction or blocking condition.
+        """
         destination = slots.get("destination", "")
 
         # ── 1. 必填检查 ──

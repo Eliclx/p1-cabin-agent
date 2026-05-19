@@ -28,8 +28,23 @@ VEHICLE_INTENTS: dict[str, type[BaseModel]] = {
 
 
 def get_intent_schema(intent: str) -> type[BaseModel] | None:
+    """
+    Lookup the Pydantic slot schema class for a given vehicle intent name.
+    
+    Parameters:
+        intent (str): The intent name to look up (e.g., "query_vehicle_status", "activate_scene").
+    
+    Returns:
+        type[BaseModel] | None: The Pydantic `BaseModel` subclass registered for the intent, or `None` if no schema is registered for that name.
+    """
     return VEHICLE_INTENTS.get(intent)
 
 
 def get_all_intent_names() -> list[str]:
+    """
+    Return a list of all registered vehicle intent names.
+    
+    Returns:
+        list[str]: All intent names present in the VEHICLE_INTENTS registry.
+    """
     return list(VEHICLE_INTENTS.keys())

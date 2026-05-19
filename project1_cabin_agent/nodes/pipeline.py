@@ -57,7 +57,19 @@ SLOT_EXTRACT_PROMPT = """从用户回答中提取缺失槽位的值。只返回�
 
 
 def _extract_slots_from_reply(missing_slots: list, user_reply: str, intent: str, current_slots: dict | None = None) -> dict:
-    """用 LLM 从用户回答中提取缺失的槽位值。解析失败时重试一次。"""
+    """
+    Extract missing slot values from a user's reply using the LLM; retries once on parse failure.
+    
+    Parameters:
+        missing_slots (list): Names of slots to extract.
+        user_reply (str): The user's reply text to parse.
+        intent (str): The intent name used to provide extraction context.
+        current_slots (dict | None): Known slot values to include as context for extraction.
+    
+    Returns:
+        dict: Mapping of slot names to extracted non-empty values for keys that are in `missing_slots`.
+              Returns an empty dict if extraction fails or yields no valid values.
+    """
     llm = get_llm("fast", temperature=0)
     known = json.dumps(current_slots or {}, ensure_ascii=False)
     prompt = SLOT_EXTRACT_PROMPT.format(
@@ -322,19 +334,20 @@ def _handle_resume(question: str, user_answer: str, intent: str,
 async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
                               intent: str, slots: dict) -> dict | Command:
     """
-    v3 新路径：harness → context_enrich → tool → format_response。
-    已迁移的 domain（目前只有 navigation）走这条路径。
-    未迁移的 domain 走旧路径 _handle_tool_task。
-
-    流程：
-      1. registry 路由（domain → harness + tool_fn）
-      2. context_enrich（按 CONTEXT_DEPS 组装 AgentContext）
-      3. harness.pre_validate（必填检查 + 别名解析 + 默认值补全）
-      4. 工具执行
-      5. harness.post_validate（API 失败兜底 + 异常值拦截）
-      6. 高风险确认（复用 interrupt）
-      7. harness.format_response（确定性格式化）
-    """
+                              Route and execute a migrated skill intent using the domain harness, context enrichment, tool invocation, and harness-based response formatting.
+                              
+                              Performs registry lookup for the domain harness and tool, enriches task context, runs harness.pre_validate (may ask for missing slots), invokes the tool (supports async or sync tool functions), runs harness.post_validate (handles API failures, clarifications, or confirm-needed cases), optionally prompts the user for high-risk confirmations, formats the final voice response via harness.format_response, and persists learned slot values to user profile.
+                              
+                              Parameters:
+                                  state (CabinAgentState): Current agent state and runtime context.
+                                  task_id (str): Identifier of the current task.
+                                  task (dict): Raw task payload from the pipeline.
+                                  intent (str): The intent to execute (must be a migrated skill intent).
+                                  slots (dict): Extracted and inferred slot values for the intent; an internal `_intent` field is injected before validation.
+                              
+                              Returns:
+                                  dict | Command: A pipeline result dictionary (including `task_results`, `completed_task_ids`, and possible `status`, `missing_slots`, or `tool_result`) or a Command for control flow (e.g., redirect/cancel). 
+                              """
     msgs: list = []
 
     # ── 1. registry 路由 ──
@@ -530,7 +543,24 @@ def _handle_chitchat(state: CabinAgentState, task_id: str, task: dict) -> dict:
 
 def _handle_clarify(state: CabinAgentState, task_id: str, task: dict,
                      slots: dict) -> dict:
-    """歧义追问分支：LLM 给的追问优先，否则模板拼装，0ms。"""
+    """
+                     Construct a clarification prompt for ambiguous user intent, preferring an LLM-provided clarification message when available.
+                     
+                     Increments the state's clarify counter and:
+                     - If the counter exceeds 2, returns a result that downgrades the flow to "chitchat" with a canned apology and resets clarify_count to 0.
+                     - Otherwise, uses slots["clarify_message"] if present; if absent, builds a clarification question from slots["candidates"].
+                     
+                     Parameters:
+                         state (CabinAgentState): Current pipeline state; its "clarify_count" is read and incremented.
+                         task_id (str): Identifier of the current task.
+                         task (dict): The current task object passed through to the result factory.
+                         slots (dict): Slot container which may include:
+                             - "clarify_message" (str): an LLM-provided clarification prompt to use preferentially.
+                             - "candidates" (list): candidate intents used to synthesize a clarification question when no clarify_message is provided.
+                     
+                     Returns:
+                         dict: A task result produced by _make_result. For normal clarify flow, intent is "clarify" and clarify_count is incremented; when downgraded, intent is "chitchat" and clarify_count is 0.
+                     """
     clarify_count = state.get("clarify_count", 0) + 1
     if clarify_count > 2:
         logger.warning(f"[歧义追问] 连续追问 {clarify_count} 次，降级 chitchat")
@@ -586,9 +616,20 @@ def _resolve_ref(value: str, upstream_result: dict) -> str:
 async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
                              intent: str, slots: dict) -> dict | Command:
     """
-    工具任务分支：槽位检查 → interrupt → 工具执行 → 高风险确认 → interrupt。
-    包含两个 interrupt 点，恢复后统一走 _handle_resume。
-    """
+                             Handle non-migrated tool intents by validating required slots, optionally prompting the user for missing information, invoking the mapped tool, and performing any required confirmation flow.
+                             
+                             This branch may perform up to two user interrupts (slot clarification and post-tool confirmation) and delegates resume/cancel/redirect decisions to the centralized resume handler. It will write any tool-derived user preferences to long-term memory and return either a task result dict or a Command produced by the resume flow.
+                             
+                             Parameters:
+                                 state (CabinAgentState): Current agent state and context.
+                                 task_id (str): Identifier of the current task.
+                                 task (dict): Full task object (may be updated in-place with extracted_slots).
+                                 intent (str): Intent name driving the tool invocation.
+                                 slots (dict): Extracted slot values for the task; may be updated with values from memory, upstream tasks, or user clarification.
+                             
+                             Returns:
+                                 dict | Command: A result dict (containing task_results and related fields) for normal completion or clarification responses, or a Command when the resume handler requests a control transfer (e.g., redirect after cancel).
+                             """
     msgs: list = []
 
     # ── 1. 槽位缺失检查 → interrupt ──

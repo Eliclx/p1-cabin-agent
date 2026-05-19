@@ -27,8 +27,23 @@ SEARCH_INTENTS: dict[str, type[BaseModel]] = {
 
 
 def get_intent_schema(intent: str) -> type[BaseModel] | None:
+    """
+    Retrieve the Pydantic model type registered for a given intent name.
+    
+    Parameters:
+        intent (str): The intent name to look up in the intent registry.
+    
+    Returns:
+        type[BaseModel] | None: The Pydantic model class associated with `intent`, or `None` if the intent is not registered.
+    """
     return SEARCH_INTENTS.get(intent)
 
 
 def get_all_intent_names() -> list[str]:
+    """
+    Return all registered intent names for the search skill.
+    
+    Returns:
+        list[str]: Intent name strings registered in SEARCH_INTENTS.
+    """
     return list(SEARCH_INTENTS.keys())

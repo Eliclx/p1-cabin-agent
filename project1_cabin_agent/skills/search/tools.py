@@ -45,7 +45,18 @@ _MOCK_POIS = {
 
 
 def _search_mock(keyword: str, limit: int = 3) -> list[dict]:
-    """从 mock 数据中搜索"""
+    """
+    Searches the mock POI dataset for entries matching the given keyword.
+    
+    Performs an exact-key lookup on the mock dataset first; if no exact key matches, performs a simple fuzzy match by returning the first category whose key is a substring of the keyword or vice versa. Returns up to `limit` POI dictionaries.
+    
+    Parameters:
+        keyword (str): The search keyword used to match dataset keys.
+        limit (int): Maximum number of POI entries to return.
+    
+    Returns:
+        list[dict]: A list of POI dictionaries (possibly empty) with at most `limit` items.
+    """
     # 精确匹配
     if keyword in _MOCK_POIS:
         return _MOCK_POIS[keyword][:limit]
@@ -57,12 +68,27 @@ def _search_mock(keyword: str, limit: int = 3) -> list[dict]:
 
 
 def search_poi(keyword: str, category: str = None, radius: float = 5.0, limit: int = 3) -> dict:
-    """搜索周边兴趣点。
-
-    keyword: 搜索关键词
-    category: 类别过滤（可选）
-    radius: 搜索半径(公里)
-    limit: 返回数量
+    """
+    Search for nearby points of interest using mock data and return results in a standardized format.
+    
+    This function queries an internal mock dataset for `keyword` and formats matched POIs into a response object. If no matches are found it returns a single simulated POI entry. The `category` and `radius` parameters are accepted but not used by the mock implementation.
+    
+    Parameters:
+        keyword (str): Search keyword to look up in the mock POI dataset.
+        category (str, optional): Category filter (reserved; not applied by the mock).
+        radius (float, optional): Search radius in kilometers (reserved; not used).
+        limit (int, optional): Maximum number of POIs to return.
+    
+    Returns:
+        dict: A response object with the following keys:
+            - "status": Always `"success"` for this mock implementation.
+            - "keyword": The original search `keyword`.
+            - "results": A list of POI objects. Each POI contains:
+                - "name" (str): POI name.
+                - "distance" (str): Distance formatted as "<value>km" or "?" if unknown.
+                - "rating" (optional, numeric): POI rating when available.
+                - "avg_price" (optional, str): Formatted as "¥{value}/人" for per-person prices.
+                - "price" (optional, str): Formatted as "¥{value}/晚" for per-night prices.
     """
     pois = _search_mock(keyword, limit)
 

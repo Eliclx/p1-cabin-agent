@@ -176,6 +176,31 @@ ASR置信度：{asr_confidence}
 
 @track_node("intent_classifier")
 def intent_classifier(state: CabinAgentState) -> dict:
+    """
+    Dispatch the intent recognition pipeline (Stage 0–4) and return structured sub-tasks and updated frame state.
+    
+    Performs slot carry-over, decides whether to use edge fast-path or call the cloud LLM, applies post-processing (depends_on validation, context-bleeding detection, ambiguity detection, episodic extraction guard), and updates active_frames. Ensures OOS and cross-domain flags are cleared in all LLM and fallback returns.
+    
+    Parameters:
+        state (CabinAgentState): Agent runtime state containing at least:
+            - "user_input": the current user utterance
+            - optional "active_frames": list of existing frames
+            - optional "_oos_flag" and "_cross_domain_flag": routing hints
+            - optional "messages", "dialogue_context", "asr_confidence", etc.
+    
+    Returns:
+        dict: A result dictionary with keys including:
+            - "sub_tasks": list of subtask dicts (each contains task_id, intent, required_slots, extracted_slots, depends_on, intent_confidence, voice_reply, etc.)
+            - "is_complex": `True` if multiple sub_tasks were produced
+            - "task_results": reserved (currently None)
+            - "completed_task_ids": reserved (currently None)
+            - "intent": the primary intent (from the first subtask or "chitchat")
+            - "active_frames": updated list of frames (pending/completed)
+            - "episodic_context": injected episodic context if any, otherwise None
+            - "_oos_flag": cleared (`None`) on LLM and fallback returns
+            - "_cross_domain_flag": cleared (`None`) on LLM and fallback returns
+    
+    """
     user_input = state["user_input"]
     active_frames = state.get("active_frames", [])
     episodic_context = None  # Stage 1.5 会设置

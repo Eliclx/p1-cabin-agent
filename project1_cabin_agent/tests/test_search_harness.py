@@ -9,11 +9,23 @@ from project1_cabin_agent.harness.context import AgentContext, VehicleSnapshot
 
 @pytest.fixture
 def harness():
+    """
+    Pytest fixture that provides a fresh SearchHarness instance for tests.
+    
+    Returns:
+        SearchHarness: A newly instantiated SearchHarness for use in test cases.
+    """
     return SearchHarness()
 
 
 @pytest.fixture
 def ctx():
+    """
+    Create an AgentContext containing a VehicleSnapshot at a fixed location for tests.
+    
+    Returns:
+        AgentContext: An AgentContext whose `vehicle` is a VehicleSnapshot with location "104.06,30.67".
+    """
     return AgentContext(vehicle=VehicleSnapshot(location="104.06,30.67"))
 
 

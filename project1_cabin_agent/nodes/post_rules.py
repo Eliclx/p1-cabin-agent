@@ -193,7 +193,16 @@ _DOMAIN_SIGNALS = {
 
 
 def _cross_domain_carry_over(frame: dict, user_input: str) -> bool:
-    """检测 carry-over 是否跨域：输入信号词和 frame 的 domain 不一致 → 拦截。"""
+    """
+    Determine whether a pending frame's carry-over should be blocked because the user input contains signals for a different domain than the frame's domain.
+    
+    Parameters:
+        frame (dict): Active frame dictionary; its `"intent"` value is mapped to a domain to evaluate cross-domain conflict.
+        user_input (str): The current user utterance to scan for domain signal keywords.
+    
+    Returns:
+        bool: `True` if the input contains signals associated with a domain different from the frame's domain (carry-over should be blocked), `False` otherwise.
+    """
     frame_intent = frame.get("intent", "")
     frame_domain = _INTENT_TO_DOMAIN.get(frame_intent, "")
     if not frame_domain:
@@ -209,7 +218,18 @@ def _cross_domain_carry_over(frame: dict, user_input: str) -> bool:
 
 
 def _try_carry_over(user_input: str, active_frames: list) -> dict | None:
-    """纯规则 Slot Carry-Over：检查新输入能否填充某个活跃帧的缺失槽位（0ms）。"""
+    """
+    Attempt to fill a single missing required slot of a pending active frame using the new user input.
+    
+    If a pending frame has exactly one missing required slot and the stripped user input is short, the function will try to use the input to populate that slot and return a new frame dict with updated `extracted_slots` and a recalculated `status`. Carry-over is not performed and `None` is returned when any of the following are true: the input is too long or multiple slots are missing, the input contains any independent-keyword signals, or the input signals indicate a different domain than the frame (cross-domain conflict). The original frame objects are not mutated.
+    
+    Parameters:
+        user_input (str): Raw user input considered for filling a missing slot.
+        active_frames (list): List of frame dictionaries. Each frame is expected to contain keys like `"status"`, `"extracted_slots"`, `"required_slots"`, and may include `"task_id"`.
+    
+    Returns:
+        dict | None: A new frame dictionary with the missing slot filled and `status` set to `"completed"` if no required slots remain (or `"pending"` otherwise), or `None` if no carry-over was applied.
+    """
     for frame in active_frames:
         if frame.get("status") != "pending":
             continue

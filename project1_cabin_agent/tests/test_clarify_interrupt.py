@@ -24,7 +24,14 @@ from project1_cabin_agent.main import get_agent, _build_initial_state
 
 
 def _extract_response(result: dict) -> str:
-    """从 astream 最后一帧提取回复文本"""
+    """
+    Extract the last assistant reply text from an astream-style result.
+    
+    Supports either a streaming `messages` list (returns the last item's `content` or its string form) or a Gradio-style `history` list (returns the last assistant entry's `content`).
+    
+    Returns:
+    	A string containing the last assistant reply, or an empty string if none is found.
+    """
     # 尝试多种路径
     msgs = result.get("messages", [])
     if msgs:
@@ -40,7 +47,15 @@ def _extract_response(result: dict) -> str:
 
 
 def _build_noisy_history(turns: int = 6) -> list[dict]:
-    """构造无关历史：聊周末、聊电影、问天气"""
+    """
+    Builds a synthetic unrelated conversation history for noise testing.
+    
+    Parameters:
+        turns (int): Number of user-assistant turns to include; capped to the number of available preset noise turns (default 6).
+    
+    Returns:
+        list[dict]: A list of message dicts in chronological order, each with keys `"role"` (`"user"` or `"assistant"`) and `"content"`. Each turn contributes two entries: a user message followed by an assistant reply.
+    """
     noise = [
         ("周末去哪玩了", "我去了青城山，空气很好！"),
         ("最近有什么好看的电影", "最近《流浪地球3》口碑不错，推荐去看"),
@@ -58,7 +73,22 @@ def _build_noisy_history(turns: int = 6) -> list[dict]:
 
 
 async def run_one_turn(user_input: str, history: list, session_id: str) -> tuple[str, str, list]:
-    """单轮对话：发送 user_input，返回 (final_reply, intent, debug_info)"""
+    """
+    Run a single conversational turn against the agent and collect the reply, detected intent, and debug traces.
+    
+    This sends `user_input` together with `history` to the agent, streams the agent's outputs to determine the final assistant reply and intent, and returns collected debug entries. This function mutates `history` in-place by appending the user turn and the assistant's final reply. The provided `session_id` is used to scope the agent session/thread.
+    
+    Parameters:
+        user_input (str): The user's input for this turn.
+        history (list): Conversation history as a list of dicts with keys `"role"` and `"content"`; the list is updated in-place with this turn's user and assistant entries.
+        session_id (str): Identifier used to scope the agent session/thread.
+    
+    Returns:
+        tuple[str, str, list]: A tuple of `(final_reply, intent, debug)` where
+            - `final_reply` is the assistant's reply (returns "(no reply)" when empty),
+            - `intent` is the agent-detected intent as a string (may be empty),
+            - `debug` is a list of short diagnostic strings extracted from streamed agent outputs.
+    """
     # 把 history 转成最简单的 messages 格式
     msg_list = []
     for h in history:
@@ -153,6 +183,14 @@ async def run_one_turn(user_input: str, history: list, session_id: str) -> tuple
 # ══════════════════════════════════════════════
 
 async def main():
+    """
+    Run the clarify/interruption test suite, print per-case results and return a process exit code.
+    
+    Executes a set of conversational test cases covering ambiguity clarification, slot interruption, and resistance to noisy history (cases A1–A4 and B1). Each case is run via the test harness, its reply and intent are printed, and a pass/fail decision is recorded and summarized to stdout.
+    
+    Returns:
+        int: Exit code `0` if all test cases passed, `1` otherwise.
+    """
     results = []
 
     print("=" * 60)

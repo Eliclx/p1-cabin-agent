@@ -70,12 +70,16 @@ def is_intent_migrated(intent: str) -> bool:
 
 
 def get_domain_for_intent(intent: str) -> Optional[str]:
-    """根据 intent 名反查 domain
-
-    查找顺序：
-    0. 先查 INTENT_MIGRATION_MAP（旧名→新名映射，如 start_navigation→navigate_to）
-    1. 遍历已迁移 domain 的 schema，看 intent 是否在其中定义
-    2. 未找到 → 返回 None（走旧路径）
+    """
+    Locate the migrated skill domain that defines the given intent.
+    
+    The function first normalizes legacy intent names using the internal intent migration map, then searches each migrated domain's schema intents mapping for the normalized intent. If a migrated domain defines the intent, its domain name is returned; otherwise None is returned so callers can fall back to legacy registry resolution.
+    
+    Parameters:
+        intent (str): Intent name to resolve. Legacy intent names (e.g., "start_navigation") are normalized before lookup.
+    
+    Returns:
+        Optional[str]: The migrated domain name that declares the intent, or `None` if no migrated domain defines it.
     """
     # 先做旧名→新名转换
     migrated_intent = _INTENT_MIGRATION_MAP.get(intent, intent)

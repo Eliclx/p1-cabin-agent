@@ -74,8 +74,23 @@ CLIMATE_INTENTS: dict[str, type[BaseModel]] = {
 
 
 def get_intent_schema(intent: str) -> type[BaseModel] | None:
+    """
+    Retrieve the Pydantic slot model class associated with a climate intent name.
+    
+    Parameters:
+        intent (str): The intent key to look up in the climate intents registry.
+    
+    Returns:
+        type[BaseModel] | None: The Pydantic `BaseModel` subclass registered for the intent, or `None` if the intent is not present.
+    """
     return CLIMATE_INTENTS.get(intent)
 
 
 def get_all_intent_names() -> list[str]:
+    """
+    List all registered climate intent names.
+    
+    Returns:
+        list[str]: Registered intent name strings from the climate intent registry.
+    """
     return list(CLIMATE_INTENTS.keys())

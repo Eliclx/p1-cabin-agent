@@ -325,11 +325,18 @@ SHORT_CIRCUIT_RULES = [
 
 def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
     """
-    FastRules 前置检查。在 intent_classifier 之前调用。
-
-    返回值：
-      dict  — 命中规则，返回和 intent_classifier 相同格式的 sub_tasks 结果，跳过 LLM
-      None  — 未命中，放行给 LLM
+    Apply front-door fast rules to determine whether the user input should be short-circuited before intent classification.
+    
+    Parameters:
+        user_input (str): Raw user utterance to evaluate.
+        active_frames (list): Active conversation frames; used to detect pending carry-over state which prevents short-circuiting.
+    
+    Returns:
+        dict | None: If a rule or special condition is triggered, returns a dict intended to match the intent_classifier's sub_tasks result or a control-flag object; otherwise returns `None` to allow normal intent classification. Possible observable return forms include:
+          - {"_oos_flag": "<reason>"} when the input appears out-of-scope.
+          - {"_cross_domain_flag": True} when the input matches keywords from multiple domains.
+          - A short-circuit sub_tasks result dict (intent, extracted_slots, etc.) when a single-domain rule matches.
+          - For exact pure cancellation tokens (e.g., "算了", "取消"), a short-circuit chitchat result with a `voice_reply` of "好的".
     """
     text = user_input.strip()
     if not text:
@@ -463,7 +470,12 @@ def _detect_oos(text: str) -> str:
 
 
 def _is_followup(text: str) -> bool:
-    """判断是否是追问而非多意图"""
+    """
+    Detects whether the input is a follow-up question phrase.
+    
+    Returns:
+        `True` if the input contains any substring from `FOLLOWUP_PATTERNS`, `False` otherwise.
+    """
     for pattern in FOLLOWUP_PATTERNS:
         if pattern in text:
             return True
@@ -471,13 +483,17 @@ def _is_followup(text: str) -> bool:
 
 
 def _detect_cross_domain(text: str) -> bool:
-    """跨域关键词检测：命中 ≥2 个 domain → 可能是多意图
-
-    用 edge_schemas.DOMAINS 的关键词做轻量字符串匹配（排除 chitchat/unknown），
-    比 LLM 解析快 3 个数量级。放在短路规则之前防误伤。
-
-    单字关键词（如"到""去""找"）太泛，容易在非目标语境误匹配
-    （例：navigation 的"到"误匹配"调到22度"），跳过。"""
+    """
+    Detect whether the input text matches keywords from two or more different domains.
+    
+    Uses the edge schema domain keyword lists to perform lightweight substring matching. This check excludes the "chitchat" and "unknown" domains and ignores single-character keywords to reduce false positives.
+    
+    Parameters:
+        text (str): The user input to check.
+    
+    Returns:
+        bool: `True` if keywords from at least two distinct domains are found in `text`, `False` otherwise.
+    """
     from project1_cabin_agent.edge_schemas import DOMAINS as _DOMAINS
     matched = set()
     for domain_name, domain_info in _DOMAINS.items():
@@ -495,7 +511,17 @@ def _detect_cross_domain(text: str) -> bool:
 
 
 def _build_short_circuit_result(intent: str, slots: dict, rule_name: str) -> dict:
-    """构建短路结果，格式和 intent_classifier 返回值一致"""
+    """
+    Builds a short-circuit result matching the intent classifier output format.
+    
+    Parameters:
+        intent (str): The intent name to set on the generated task.
+        slots (dict): Extracted slot values to populate `extracted_slots` for the task.
+        rule_name (str): Identifier of the rule that produced this short-circuit (kept for traceability).
+    
+    Returns:
+        dict: A result object containing a single `task_0` in `sub_tasks` with the provided `intent` and `extracted_slots`, fixed metadata (e.g. `intent_confidence=0.95`, empty `required_slots`), `is_complex=False`, and `active_frames` set to an empty list to prevent carry-over.
+    """
     return {
         "sub_tasks": [{
             "task_id": "task_0",

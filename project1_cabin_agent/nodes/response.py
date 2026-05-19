@@ -189,6 +189,25 @@ def response_gen(state: CabinAgentState | dict) -> dict:
 
 @track_node("chitchat_handler")
 def chitchat_handler(state: CabinAgentState | dict) -> dict:
+    """
+    Handle casual user chit-chat, optionally using episodic (itinerary) context or reusing a prefilled subtask reply.
+    
+    If the first sub-task contains a prefilled `voice_reply`, that reply is returned immediately (bypassing LLM). Otherwise, produce a conversational reply using episodic context when available.
+    
+    Parameters:
+        state (CabinAgentState | dict): Agent state containing:
+            - user_input (str): The user's utterance.
+            - sub_tasks (list, optional): Sub-task list; if the first item has `voice_reply`, it will be reused.
+            - messages (list, optional): Conversation history passed to the chitchat model.
+            - episodic_context (dict, optional): If present, its `text` will be used as itinerary context for the reply.
+    
+    Returns:
+        dict: Response payload with keys:
+            - final_response (str): The assistant's reply text.
+            - messages (list[dict]): List containing a single assistant message {"role": "assistant", "content": final_response}.
+            - clarify_count (int, optional): Present and set to 0 when reusing a prefilled sub-task reply.
+            - active_frames (list, optional): Present and empty when reusing a prefilled sub-task reply.
+    """
     user_input = state["user_input"]
     
     # FastRules ABANDON 短路：sub_tasks 中有预填的 voice_reply → 直接复用，不调 LLM

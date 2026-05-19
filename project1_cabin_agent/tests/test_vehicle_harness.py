@@ -9,11 +9,23 @@ from project1_cabin_agent.harness.context import AgentContext, VehicleSnapshot
 
 @pytest.fixture
 def harness():
+    """
+    Create a new VehicleHarness instance for use in tests.
+    
+    Returns:
+        VehicleHarness: a fresh VehicleHarness instance.
+    """
     return VehicleHarness()
 
 
 @pytest.fixture
 def ctx():
+    """
+    Create an AgentContext initialized with a new VehicleSnapshot.
+    
+    Returns:
+        AgentContext: an AgentContext whose `vehicle` attribute is a fresh VehicleSnapshot instance.
+    """
     return AgentContext(vehicle=VehicleSnapshot())
 
 

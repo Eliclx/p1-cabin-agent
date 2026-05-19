@@ -34,7 +34,21 @@ ALL_CASES = GOLDEN_SET + EXTENDED_SET + BOUNDARY_SET
 # ═══════════════════════════════════════════════════
 
 def stage2_current(user_input: str, domain: str) -> dict:
-    """当前方式：带 guided generation (json_schema FSM)"""
+    """
+    Extracts intent and optional slots from a user utterance using guided JSON-schema constrained generation.
+    
+    Parameters:
+        user_input (str): The user's input text to parse.
+        domain (str): Domain identifier used to build the stage2 system prompt and JSON schema.
+    
+    Returns:
+        dict: A result dictionary with keys:
+            - raw (str): Raw text returned by the model.
+            - parsed (dict | None): Parsed structured output (e.g., {"intent": ..., "slots": {...}}) or `None` if parsing failed.
+            - latency_ms (float): Round-trip latency in milliseconds for the model call.
+            - parse_ok (bool): `true` if `parsed` is not `None`, `false` otherwise.
+            - method (str): The stage2 method label, `"guided_gen"`.
+    """
     system_prompt = _build_stage2_system(domain)
     messages = [
         {"role": "system", "content": system_prompt},
@@ -55,7 +69,19 @@ def stage2_current(user_input: str, domain: str) -> dict:
 
 
 def stage2_no_fsm(user_input: str, domain: str) -> dict:
-    """Q2：去掉 guided generation，纯 prompt 约束"""
+    """
+    Run Stage2 parsing using only a prompt-based system message (no JSON-schema guided generation).
+    
+    Calls the Stage2 system prompt for the given domain with the provided user input, invokes the LLM, and parses its raw text output into structured intent/slots when possible.
+    
+    Returns:
+        dict: A summary of the call containing:
+            - `raw`: the raw text content returned by the model.
+            - `parsed`: the parsed structure (`{"intent": ..., "slots": {...}}`) or `None` if parsing failed.
+            - `latency_ms`: observed round-trip latency in milliseconds.
+            - `parse_ok`: `true` if `parsed` is not `None`, `false` otherwise.
+            - `method`: the stage2 method label (value: `"no_fsm"`).
+    """
     system_prompt = _build_stage2_system(domain)
     messages = [
         {"role": "system", "content": system_prompt},
@@ -97,7 +123,17 @@ COMPACT_SYSTEM_TEMPLATE = """你是车载语音助手的语义解析器。
 
 
 def _build_compact_system(domain: str) -> str:
-    """构建紧凑格式的 system prompt"""
+    """
+    Builds a compact-format system prompt for the specified domain.
+    
+    This prompt embeds the domain schema and a set of compact examples where each example's output is formatted as `intent` or `intent|k=v|...` to guide a lightweight, pipe-separated parser.
+    
+    Parameters:
+        domain (str): The domain name whose schema and examples will be included in the prompt.
+    
+    Returns:
+        str: A system prompt string formatted according to the compact template for the domain.
+    """
     # 复用原有的 schema block
     from project1_cabin_agent.edge_model import _build_schema_block
     schema_block = _build_schema_block(domain)
@@ -137,7 +173,17 @@ def _build_compact_system(domain: str) -> str:
 
 
 def parse_compact(raw: str) -> dict | None:
-    """解析紧凑格式 intent|k1=v1|k2=v2"""
+    """
+    Parse a compact intent and slots string in the form `intent|k1=v1|k2=v2`.
+    
+    This function accepts an output string that may optionally begin with a Chinese prefix like "输出" and extracts the leading intent plus optional pipe-separated slot key/value pairs. Slot values are converted to an int if they look like integers, otherwise to a float if they look like floats, otherwise left as strings. Parts without an `=` are ignored.
+    
+    Parameters:
+    	raw (str): Raw model output potentially containing an optional prefix and a compact `intent|k=v|...` payload.
+    
+    Returns:
+    	dict | None: A dictionary with keys `intent` (str) and `slots` (dict) when parsing succeeds, or `None` if the input does not match the expected compact format.
+    """
     raw = raw.strip()
     # 去掉可能的前缀文字
     m = re.search(r'(?:输出[：:]?\s*)?(\w+(?:_\w+)*)(?:\|(.*))?', raw)
@@ -164,7 +210,19 @@ def parse_compact(raw: str) -> dict | None:
 
 
 def stage2_compact(user_input: str, domain: str) -> dict:
-    """Q2+Q3：去掉 FSM + 紧凑输出格式"""
+    """
+    Run Stage2 parsing using a compact `intent|k=v|...` text output format and parse the result.
+    
+    The function sends a compact-format system prompt (domain-specific) and the user input to the LLM, then parses the model's short textual response into a structured form.
+    
+    Returns:
+        dict: A result dictionary with the following keys:
+            raw (str): Raw text returned by the model.
+            parsed (dict | None): Parsed structure `{"intent": <str>, "slots": {<k>: <v>, ...}}` when parsing succeeds, or `None` if parsing failed.
+            latency_ms (float): Observed call latency in milliseconds.
+            parse_ok (bool): `True` if `parsed` is not `None`, `False` otherwise.
+            method (str): Fixed string `"compact"` identifying this variant.
+    """
     system_prompt = _build_compact_system(domain)
     messages = [
         {"role": "system", "content": system_prompt},
@@ -188,7 +246,31 @@ def stage2_compact(user_input: str, domain: str) -> dict:
 # ═══════════════════════════════════════════════════
 
 def run_benchmark(stage2_fn, label: str) -> dict:
-    """跑完整测试集，只测端侧路径（跳过 fast_rule 命中的）"""
+    """
+    Run the full Stage2 benchmark over the aggregated test cases, evaluating parse success, intent accuracy, and latency.
+    
+    Parameters:
+        stage2_fn (callable): A Stage2 function that accepts (user_input: str, domain: str) and returns a dict containing at least the keys:
+            - "raw" (str): raw model output,
+            - "parsed" (dict | None): parsed result with "intent" and optional "slots",
+            - "latency_ms" (float): call latency in milliseconds,
+            - "parse_ok" (bool): whether parsing succeeded,
+            - "method" (str): identifier of the Stage2 variant.
+        label (str): A short label identifying this benchmark run.
+    
+    Returns:
+        dict: Summary metrics and diagnostics with keys:
+            - "label" (str): the provided label,
+            - "total" (int): number of evaluated cases,
+            - "correct" (int): count of cases with matching intent,
+            - "accuracy" (float): correct / total (0 if total is 0),
+            - "parse_fail" (int): count of parse/format failures,
+            - "parse_fail_rate" (float): parse_fail / total (0 if total is 0),
+            - "avg_latency_ms" (float): average latency across evaluated cases (0 if none),
+            - "p50_latency_ms" (float): median (P50) latency (0 if none),
+            - "errors" (list): diagnostic records for parse failures and intent mismatches; each record includes "input", "exp" (expected domain/intent), "domain" (predicted domain), truncated "raw", and an "error" tag (e.g., "parse_fail" or "intent_wrong"); intent-mismatch records also include "got_intent",
+            - "timestamp" (str): ISO-8601 timestamp when the benchmark finished.
+    """
     total = 0
     correct = 0
     parse_fail = 0
@@ -252,7 +334,23 @@ def run_benchmark(stage2_fn, label: str) -> dict:
 
 
 def measure_tokens(stage2_fn, domain: str, user_input: str) -> dict:
-    """测单次请求的 token 数和延迟分解"""
+    """
+    Measure token usage and latency for a single Stage2 request.
+    
+    Builds and sends a chat/completions request to the EDGE API using a payload chosen to match the provided Stage2 function variant, then returns token counts, measured latency, and a truncated model output.
+    
+    Parameters:
+        stage2_fn (callable): Stage2 function variant used to determine the request format (expected: stage2_current, stage2_no_fsm, or stage2_compact).
+        domain (str): Domain name to build the system prompt or schema for the request.
+        user_input (str): User utterance to include as the user message.
+    
+    Returns:
+        dict: A summary containing:
+            - prompt_tokens: prompt token count from the response usage or "?" if unavailable.
+            - completion_tokens: completion token count from the response usage or "?" if unavailable.
+            - latency_ms: round-trip latency in milliseconds measured for the HTTP call.
+            - output: first 60 characters of the model's returned content.
+    """
     if stage2_fn == stage2_current:
         system_prompt = _build_stage2_system(domain)
         messages = [

@@ -9,21 +9,45 @@ from project1_cabin_agent.harness.context import AgentContext, VehicleSnapshot
 
 @pytest.fixture
 def harness():
+    """
+    Create and return a new ClimateHarness instance for tests.
+    
+    Returns:
+        ClimateHarness: A fresh ClimateHarness object.
+    """
     return ClimateHarness()
 
 
 @pytest.fixture
 def ctx():
+    """
+    Create an AgentContext with a VehicleSnapshot located at "104.06,30.67" and a speed of 60.
+    
+    Returns:
+        AgentContext: An AgentContext whose `vehicle` is a VehicleSnapshot with `location` "104.06,30.67" and `speed` 60.
+    """
     return AgentContext(vehicle=VehicleSnapshot(location="104.06,30.67", speed=60))
 
 
 @pytest.fixture
 def ctx_stopped():
+    """
+    Builds an AgentContext representing a stopped vehicle.
+    
+    Returns:
+        AgentContext: An AgentContext whose vehicle snapshot has speed set to 0.
+    """
     return AgentContext(vehicle=VehicleSnapshot(speed=0))
 
 
 @pytest.fixture
 def ctx_highway():
+    """
+    Creates an AgentContext with a VehicleSnapshot representing a vehicle traveling at highway speed.
+    
+    Returns:
+        AgentContext: context whose vehicle snapshot has speed set to 120.
+    """
     return AgentContext(vehicle=VehicleSnapshot(speed=120))
 
 

@@ -40,7 +40,14 @@ _WAL_ENABLED_UP = False
 
 
 def _get_db() -> sqlite3.Connection:
-    """获取数据库连接，自动创建目录和表"""
+    """
+    Provide a SQLite connection to the user profile database, ensuring the database file, WAL journal mode, and required table exist.
+    
+    Ensures the database directory is created if missing, enables WAL journal mode once per process, and creates the `user_profile` table with columns `key`, `value`, and `updated_at` if it does not already exist.
+    
+    Returns:
+        sqlite3.Connection: An open connection to the user profile database file.
+    """
     global _WAL_ENABLED_UP
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -59,9 +66,30 @@ def _get_db() -> sqlite3.Connection:
 
 
 def _retry_on_lock(fn):
-    """SQLite 写冲突重试"""
+    """
+    Decorator that retries a wrapped function up to three times when a SQLite "locked" OperationalError occurs.
+    
+    The wrapper will call the decorated function and, if it raises sqlite3.OperationalError whose message contains "locked", retry up to two more times with exponential backoff sleeps of 0.05 * (2 ** attempt). Non-lock OperationalErrors and the final failed attempt are re-raised.
+    
+    Parameters:
+        fn (callable): Function to wrap.
+    
+    Returns:
+        callable: A wrapped function with retry-on-lock behavior.
+    """
     import time as _time
     def wrapper(*args, **kwargs):
+        """
+        Retry a wrapped callable up to three times when SQLite reports a lock.
+        
+        Attempts to call the wrapped function; if a sqlite3.OperationalError containing "locked" occurs, retries up to two more times with an exponential backoff (0.05 * 2**i seconds) before re-raising. Other OperationalError conditions are raised immediately.
+        
+        Returns:
+            The return value of the wrapped function.
+        
+        Raises:
+            sqlite3.OperationalError: Re-raised if the error is not a lock or if retries are exhausted.
+        """
         for i in range(3):
             try:
                 return fn(*args, **kwargs)
@@ -75,7 +103,13 @@ def _retry_on_lock(fn):
 
 @_retry_on_lock
 def save_preference(key: str, value: str) -> None:
-    """保存用户偏好"""
+    """
+    Persist a user preference key-value pair to the module's persistent user profile store.
+    
+    Parameters:
+        key (str): The preference key to store.
+        value (str): The preference value to store; will be converted to a string and saved with the current timestamp.
+    """
     conn = _get_db()
     conn.execute(
         "INSERT OR REPLACE INTO user_profile (key, value, updated_at) VALUES (?, ?, ?)",

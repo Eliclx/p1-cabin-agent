@@ -6,7 +6,17 @@ from project1_cabin_agent.vehicle_state import vehicle_state
 
 
 def query_vehicle_status(items: str = None) -> dict:
-    """查询车辆状态 — 油量/胎压/电量/温度等"""
+    """
+    Retrieve vehicle status or a specific status item.
+    
+    If `items` names a key present in the vehicle status, returns that item's `value` and `voice_reply`; otherwise returns a default overall status reply with `items` set to the provided name or `"all"`.
+    
+    Parameters:
+        items (str, optional): The specific status key to query (e.g., "fuel", "tire", "battery", "temperature"). If omitted or not found, the function returns the overall/default status reply.
+    
+    Returns:
+        dict: A result dictionary. When a specific item is found, includes `{"status": "success", "items": items, "value": <item value>, "voice_reply": <item voice>}`. Otherwise includes `{"status": "success", "items": items or "all", "voice_reply": "好的，车辆状态正常"}`.
+    """
     status = vehicle_state.to_mock_status()
     if items and items in status:
         info = status[items]
@@ -18,7 +28,24 @@ def query_vehicle_status(items: str = None) -> dict:
 
 
 def activate_scene(scene_name: str) -> dict:
-    """场景联动 — 舒适驾驶/休息模式/出发前检查"""
+    """
+    Activate a predefined in-vehicle scene by adjusting cabin systems and return a voice-ready response.
+    
+    This function triggers changes to cabin state (HVAC, media, lights, seats) for known scenes and returns a normalized result describing the activated scene and a voice reply. Recognized scenes:
+    - "comfortable_driving": sets a comfort driving profile (AC, light music, seat heating).
+    - "sleep_mode": sets a resting profile (mild AC, lights off, media paused).
+    - "departure_check": gathers concise status phrases for fuel, battery, and tire and composes a check-list voice reply.
+    For any other scene name, the function returns a generic success message acknowledging activation without performing predefined controls.
+    
+    Parameters:
+        scene_name (str): The identifier of the scene to activate; known values are "comfortable_driving", "sleep_mode", and "departure_check".
+    
+    Returns:
+        dict: A payload with keys:
+            - "status": fixed string `"success"`.
+            - "scene": human-readable scene name or the provided `scene_name`.
+            - "voice_reply": a short string suitable for vocalization describing the result of the activation.
+    """
     import project1_cabin_agent.tools.cabin_tools as ct
 
     if scene_name == "comfortable_driving":

@@ -233,7 +233,12 @@ _VALUE_MAP = {
 
 
 def get_required_slots(intent: str) -> list[str]:
-    """从 INTENT_SCHEMAS 自动提取 required=True 的 slot key（单一真相源）"""
+    """
+    Get slot keys that are marked `required` for the given intent.
+    
+    Returns:
+        list[str]: Slot keys whose `required` flag is `True` for the first matching intent definition in INTENT_SCHEMAS, or an empty list if the intent is not found.
+    """
     for domain_schemas in INTENT_SCHEMAS.values():
         intent_schema = domain_schemas.get(intent)
         if intent_schema:
@@ -245,13 +250,14 @@ def get_required_slots(intent: str) -> list[str]:
 
 
 def build_json_schema(domain: str) -> dict:
-    """为 LMDeploy guided generation 构建 JSON Schema（治本层）
+    """
+    Build a JSON Schema for LM-guided generation that constrains the response to an `intent` and `slots`.
     
-    约束模型输出合法 JSON，从生成层杜绝 46.8% 的格式错误。
+    Parameters:
+        domain (str): Domain name whose intents will be enumerated in the schema.
     
     Returns:
-        {"type": "json_schema", "json_schema": {"name": "...", "schema": {...}}}
-        可直接传给 OpenAI API 的 response_format 参数。
+        dict: A JSON-schema payload suitable for use as a model response_format (shape: `{"type": "json_schema", "json_schema": {"name": "<...>", "schema": {...}}}`) where the top-level object requires `intent` (enum of domain intents) and `slots`. Returns `None` if the domain has no defined intents.
     """
     intent_names = [name for name in INTENT_SCHEMAS.get(domain, {}).keys()]
     if not intent_names:

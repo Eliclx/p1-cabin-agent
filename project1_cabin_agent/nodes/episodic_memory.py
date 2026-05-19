@@ -59,6 +59,14 @@ _WAL_ENABLED = False  # 模块级 flag，首次连接时开启
 
 
 def _get_db() -> sqlite3.Connection:
+    """
+    Ensure the SQLite database file and schema exist and open a connection to it.
+    
+    Creates the parent directory for DB_PATH if missing, enables WAL journal mode on the first invocation to allow concurrent reads/writes, and ensures the `events` table and its timestamp index exist.
+    
+    Returns:
+        sqlite3.Connection: A connection to the SQLite database at DB_PATH.
+    """
     global _WAL_ENABLED
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -83,9 +91,32 @@ def _get_db() -> sqlite3.Connection:
 
 
 def _retry_on_lock(fn):
-    """SQLite 写冲突重试：WAL 模式下偶尔仍有 transient lock"""
+    """
+    Wrap a function to retry on transient SQLite "locked" OperationalError.
+    
+    The returned wrapper will attempt to call the wrapped function up to 3 times when a
+    sqlite3.OperationalError is raised and its message contains "locked". Between
+    attempts it uses exponential backoff delays of 0.05, 0.1, then 0.2 seconds.
+    If the error does not indicate a lock or the retries are exhausted, the original
+    exception is re-raised.
+    
+    Parameters:
+        fn (callable): Function to wrap. It will be invoked with the same arguments
+            and return value as the wrapper.
+    
+    Returns:
+        callable: A wrapper function that applies the retry-on-lock behavior.
+    """
     import time as _time
     def wrapper(*args, **kwargs):
+        """
+        Retry a callable up to three times when a SQLite `OperationalError` containing "locked" occurs.
+        
+        The wrapper calls the wrapped function with the provided arguments and returns its result. If an `sqlite3.OperationalError` is raised and its message contains "locked", the call is retried up to two additional times with exponential backoff delays (0.05s, 0.1s, then 0.2s). Any other `OperationalError` or a final failure is propagated.
+         
+        Returns:
+            The value returned by the wrapped function.
+        """
         for i in range(3):
             try:
                 return fn(*args, **kwargs)
@@ -104,7 +135,17 @@ def _retry_on_lock(fn):
 @_retry_on_lock
 def log_event(event_type: str, summary: str, details: dict | None = None,
               timestamp: str | None = None) -> None:
-    """写入一条事件日志。非白名单类型静默跳过。"""
+    """
+              Record an event into the episodic events database.
+              
+              If `event_type` is not listed in EVENT_TYPES_TO_LOG the call is silently ignored. The provided `details` mapping is serialized to JSON and stored; if `timestamp` is omitted the current time is used (ISO 8601 string). This function inserts the event record into the underlying SQLite database and commits the transaction.
+              
+              Parameters:
+                  event_type (str): The event type identifier; only types in EVENT_TYPES_TO_LOG are persisted.
+                  summary (str): A short human-readable summary of the event.
+                  details (dict | None): Optional additional event data; serialized to JSON when stored.
+                  timestamp (str | None): Optional ISO 8601 timestamp string to use for the event; if omitted the current time is used.
+              """
     if event_type not in EVENT_TYPES_TO_LOG:
         return
 

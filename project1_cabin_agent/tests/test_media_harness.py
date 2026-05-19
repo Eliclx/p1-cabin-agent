@@ -9,11 +9,23 @@ from project1_cabin_agent.harness.context import AgentContext, VehicleSnapshot
 
 @pytest.fixture
 def harness():
+    """
+    Create and return a fresh MediaHarness instance for use in tests.
+    
+    Returns:
+        MediaHarness: A new, isolated MediaHarness instance.
+    """
     return MediaHarness()
 
 
 @pytest.fixture
 def ctx():
+    """
+    Create an AgentContext initialized with an empty VehicleSnapshot for testing.
+    
+    Returns:
+        AgentContext: An AgentContext whose `vehicle` is a fresh, empty VehicleSnapshot.
+    """
     return AgentContext(vehicle=VehicleSnapshot())
 
 

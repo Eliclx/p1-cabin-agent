@@ -28,8 +28,23 @@ MEDIA_INTENTS: dict[str, type[BaseModel]] = {
 
 
 def get_intent_schema(intent: str) -> type[BaseModel] | None:
+    """
+    Retrieve the Pydantic model class registered for a given intent name.
+    
+    Parameters:
+        intent (str): The intent name to look up.
+    
+    Returns:
+        type[BaseModel] | None: The Pydantic `BaseModel` subclass associated with `intent`, or `None` if no schema is registered for that intent.
+    """
     return MEDIA_INTENTS.get(intent)
 
 
 def get_all_intent_names() -> list[str]:
+    """
+    List all registered intent names for the media skill.
+    
+    Returns:
+        intent_names (list[str]): A list of registered intent name strings from MEDIA_INTENTS.
+    """
     return list(MEDIA_INTENTS.keys())

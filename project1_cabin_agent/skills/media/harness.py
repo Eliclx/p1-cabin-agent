@@ -22,6 +22,21 @@ class MediaHarness(BaseHarness):
     # ── pre_validate: LLM 输出后、调工具前 ─────────────────────────
 
     def pre_validate(self, slots: dict, ctx: AgentContext) -> HarnessResult:
+        """
+        Validate and normalize the incoming media action slots before tool invocation.
+        
+        Parameters:
+            slots (dict): Extracted action slots; may be mutated and returned with normalized values (e.g., clamped volume).
+            ctx (AgentContext): Agent context (unused for validation but provided for consistency).
+        
+        Returns:
+            HarnessResult: Validation outcome. If valid, returns with possibly-updated `slots`.
+                - If `action` is missing: `valid=False`, `need_clarify=True`, `clarify_message="请问您想怎么操作音乐？"`, `block_reason="missing action"`.
+                - If `action` is not one of the allowed media actions: `valid=False`, `fallback=True`, `block_reason="illegal action: {action}"`.
+                - If `action == "search"` and `query` is missing: `valid=False`, `need_clarify=True`, `clarify_message="请问您想听什么？"`, `block_reason="search 缺 query"`.
+                - If `action == "set_volume"` and `volume` is missing: `valid=False`, `need_clarify=True`, `clarify_message="请问音量调到多少？"`, `block_reason="set_volume 缺 volume"`.
+                - If `action == "set_volume"` and `volume` is outside [0, 100]: volume is clamped into the range and returned in `slots`.
+        """
         action = slots.get("action", "")
 
         # 1. action 必填
@@ -73,6 +88,15 @@ class MediaHarness(BaseHarness):
     # ── post_validate: 工具返回后校验 ───────────────────────────────
 
     def post_validate(self, tool_result: dict, ctx: AgentContext) -> HarnessResult:
+        """
+        Validate a tool's execution result and normalize any returned volume.
+        
+        Parameters:
+            tool_result (dict): Tool response expected to include a "status" key and optionally a "volume" key. If "status" is not "success", the function marks the result as failing. If "volume" is present and not `Ellipsis`, it will be clamped into the harness's valid range.
+        
+        Returns:
+            HarnessResult: If the tool status is not "success", returns `valid=False`, `fallback=True`, and `block_reason` set to the tool's status. Otherwise returns `valid=True` after ensuring any returned volume is within the allowed range.
+        """
         if not tool_result.get("status") == "success":
             logger.warning(f"[media-harness] post_validate: tool failed → fallback")
             return HarnessResult(
@@ -93,6 +117,20 @@ class MediaHarness(BaseHarness):
     # ── format_response: 确定性格式化，不信任工具的 voice_reply ─────
 
     def format_response(self, tool_result: dict) -> str:
+        """
+        Produce a deterministic user-facing message describing the media action result.
+        
+        This uses the `action` key of `tool_result` to select a fixed, localized response and inserts `query` or `volume` when applicable. Supported actions: "play", "pause", "next", "previous", "search", "volume_up", "volume_down", "set_volume". Unknown actions produce a generic acknowledgement.
+        
+        Parameters:
+            tool_result (dict): Tool output expected to contain:
+                - action (str): the media action performed.
+                - volume (int | None): current or set volume, used for "set_volume" responses.
+                - query (str): search query or track name, used for "search" responses.
+        
+        Returns:
+            str: A localized confirmation message appropriate for the action (e.g., "好的，开始播放音乐", "好的，音量调到{volume}").
+        """
         action = tool_result.get("action", "")
         volume = tool_result.get("volume")
         query = tool_result.get("query", "")
