@@ -72,12 +72,15 @@ def get_domain_for_intent(intent: str) -> Optional[str]:
     """根据 intent 名反查 domain
 
     查找顺序：
+    0. 先查 INTENT_MIGRATION_MAP（旧名→新名映射，如 start_navigation→navigate_to）
     1. 遍历已迁移 domain 的 schema，看 intent 是否在其中定义
     2. 未找到 → 返回 None（走旧路径）
     """
+    # 先做旧名→新名转换
+    migrated_intent = _INTENT_MIGRATION_MAP.get(intent, intent)
     for domain in _MIGRATED_DOMAINS:
         intents_attr = _get_intents_attr(domain)
-        if intents_attr and intent in intents_attr:
+        if intents_attr and migrated_intent in intents_attr:
             return domain
     return None
 

@@ -120,6 +120,10 @@ class NavigationHarness(BaseHarness):
                 )
             slots = {**slots, "origin": current_location}
 
+        # ── 5.5 槽位名归一化：旧 prompt 用 mode，新 schema 用 route_type ──
+        if "mode" in slots and "route_type" not in slots:
+            slots = {**slots, "route_type": slots["mode"]}
+
         # ── 6. 安全检查：高速行驶中改目的地 ──
         if ctx.vehicle.speed > 100 and slots.get("origin"):
             return HarnessResult(
