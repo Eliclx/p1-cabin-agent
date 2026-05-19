@@ -48,6 +48,14 @@ class ClimateHarness(BaseHarness):
             return HarnessResult(valid=False, slots=slots, fallback=True,
                 block_reason=f"illegal action: {action}")
 
+        # adjust 必须有调节目标（温度/模式/风速至少一个）
+        if action == "adjust":
+            has_target = any(slots.get(k) is not None for k in ("temperature", "mode", "fan_level"))
+            if not has_target:
+                logger.info("[climate-harness] ac: adjust without target → clarify")
+                return HarnessResult(valid=False, slots=slots, need_clarify=True,
+                    clarify_message="请问要调到多少度？", block_reason="adjust without target")
+
         # 温度范围 clamp
         temp = slots.get("temperature")
         if temp is not None:

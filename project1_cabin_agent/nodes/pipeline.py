@@ -530,15 +530,20 @@ def _handle_chitchat(state: CabinAgentState, task_id: str, task: dict) -> dict:
 
 def _handle_clarify(state: CabinAgentState, task_id: str, task: dict,
                      slots: dict) -> dict:
-    """歧义追问分支：模板拼装，0ms，不调 LLM。"""
+    """歧义追问分支：LLM 给的追问优先，否则模板拼装，0ms。"""
     clarify_count = state.get("clarify_count", 0) + 1
     if clarify_count > 2:
         logger.warning(f"[歧义追问] 连续追问 {clarify_count} 次，降级 chitchat")
         return _make_result(task_id, "chitchat", "抱歉没太明白，您可以换个方式说试试",
                             task, clarify_count=0)
-    candidates = slots.get("candidates", [])
-    reply = _build_clarify_reply(candidates)
-    logger.info(f"[歧义追问] candidates={candidates}, reply={reply}, count={clarify_count}")
+    # LLM 给的追问优先
+    clarify_message = slots.get("clarify_message", "")
+    if clarify_message:
+        reply = clarify_message
+    else:
+        candidates = slots.get("candidates", [])
+        reply = _build_clarify_reply(candidates)
+    logger.info(f"[歧义追问] clarify_message={clarify_message!r}, candidates={slots.get('candidates', [])}, reply={reply}, count={clarify_count}")
     return _make_result(task_id, "clarify", reply, task, clarify_count=clarify_count)
 
 
