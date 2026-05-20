@@ -13,6 +13,12 @@ query_vehicle_status:
       slots:
         items: "fuel"
     tags: ["literal"]
+  - input: "车速多少"
+    output:
+      intent: "query_vehicle_status"
+      slots:
+        items: "speed"
+    tags: ["literal"]
   - input: "胎压怎么样"
     output:
       intent: "query_vehicle_status"

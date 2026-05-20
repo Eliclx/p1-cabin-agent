@@ -37,22 +37,17 @@ class NavigationHarness(BaseHarness):
         LLM 输出后、调 tool 前的校验+补全。
         
         按 intent 分发：
-        - navigate_to: destination 必填 + 别名解析 + origin 补全
-        - search_nearby: keyword 必填 + location 补全
+        - start_navigation: destination 必填 + 别名解析 + origin 补全
+        - search_poi: keyword 必填 + location 补全
         """
         intent = slots.get("_intent", "")
-        # 旧名兼容
-        if intent == "start_navigation":
-            intent = "navigate_to"
-        if intent == "search_poi":
-            intent = "search_nearby"
         
-        if intent == "search_nearby":
-            return self._validate_search_nearby(slots, ctx)
-        return self._validate_navigate_to(slots, ctx)
+        if intent == "search_poi":
+            return self._validate_search_poi(slots, ctx)
+        return self._validate_start_navigation(slots, ctx)
 
-    def _validate_search_nearby(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """search_nearby: keyword 必填 + location 自动补全"""
+    def _validate_search_poi(self, slots: dict, ctx: AgentContext) -> HarnessResult:
+        """search_poi: keyword 必填 + location 自动补全"""
         keyword = slots.get("keyword", "")
         if not keyword:
             return HarnessResult(
@@ -72,8 +67,8 @@ class NavigationHarness(BaseHarness):
             slots = {**slots, "location": loc}
         return HarnessResult(valid=True, slots=slots)
 
-    def _validate_navigate_to(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """navigate_to: 原有的导航校验逻辑"""
+    def _validate_start_navigation(self, slots: dict, ctx: AgentContext) -> HarnessResult:
+        """start_navigation: 原有的导航校验逻辑"""
         destination = slots.get("destination", "")
 
         # ── 1. 必填检查 ──
@@ -188,7 +183,7 @@ class NavigationHarness(BaseHarness):
 
         data = tool_result.get("data", {})
 
-        # ── 2. search_nearby 空结果 ──
+        # ── 2. search_poi 空结果 ──
         if "results" in data:
             count = data.get("count", 0)
             if count == 0:
@@ -198,7 +193,7 @@ class NavigationHarness(BaseHarness):
                     block_reason="搜索无结果",
                 )
 
-        # ── 3. navigate_to 距离异常 ──
+        # ── 3. start_navigation 距离异常 ──
         distance = data.get("distance")
         if distance is not None and distance > 5000:
             return HarnessResult(
@@ -222,7 +217,7 @@ class NavigationHarness(BaseHarness):
 
         data = tool_result.get("data", {})
 
-        # ── navigate_to 结果格式化 ──
+        # ── start_navigation 结果格式化 ──
         if "route_text" in data:
             distance = data.get("distance", 0)
             duration = data.get("duration", 0)
@@ -233,16 +228,16 @@ class NavigationHarness(BaseHarness):
                 parts.append(f"过路费约{int(tolls)}元")
             return "，".join(parts) + "。"
 
-        # ── search_nearby 结果格式化 ──
+        # ── search_poi 结果格式化 ──
         if "results" in data:
             results = data.get("results", [])
             count = data.get("count", 0)
 
             if count == 0:
                 return "附近没有找到相关地点。"
-
-            # 只播报前 3 个
+            # 播报前 3 个，超出部分提示
             top = results[:3]
+            remaining = count - len(top)
             if count == 1:
                 r = top[0]
                 return f"找到一家{r['name']}，距离{r['dist_km']}公里，地址是{r['address']}。"
@@ -250,7 +245,10 @@ class NavigationHarness(BaseHarness):
                 items = []
                 for i, r in enumerate(top, 1):
                     items.append(f"第{i}，{r['name']}，{r['dist_km']}公里")
-                return f"为您找到{count}个结果：{'；'.join(items)}。"
+                text = f"为您找到{count}个结果：{'；'.join(items)}"
+                if remaining > 0:
+                    text += f"；还有{remaining}个，需要可以说第几个"
+                return text + "。"
 
         return "操作完成。"
 
@@ -270,7 +268,7 @@ class NavigationHarness(BaseHarness):
         """从 L1 黑板 entity.poi 解析序号指代
 
         dialogue 是黑板展开后的 flat dict，key 如 "entity.poi"
-        每个值是上次 search_nearby 的结果列表
+        每个值是上次 search_poi 的结果列表
         """
         idx = self._ORDINALS.get(ordinal, 0)
 

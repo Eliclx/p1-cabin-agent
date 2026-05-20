@@ -419,7 +419,7 @@ def fast_rules_check(user_input: str, active_frames: list) -> dict | None:
                 slots = slots_extractor(text)
                 if slots is None:
                     continue
-                logger.info(f"[FastRules] ✅ 短路命中: rule={rule_name}, intent={intent}, slots={slots}")
+                logger.info(f"[FastRules] ✅ 短路命中: input='{text}', rule={rule_name}, intent={intent}, slots={slots}")
                 return _build_short_circuit_result(intent, slots, rule_name)
         except Exception as e:
             logger.warning(f"[FastRules] 规则 {rule_name} 执行异常: {e}")

@@ -10,21 +10,21 @@
 # 注意：examples 里 slots 的 key 必须和 schema.py 的 Pydantic 字段名完全一致
 
 # ═══════════════════════════════════════════════════════
-# Intent: navigate_to
+# Intent: start_navigation
 # Schema: NavigateToSlots(destination, origin?, route_type?)
 # ═══════════════════════════════════════════════════════
-navigate_to:
+start_navigation:
   # ── 字面意图（用户直接说导航） ──
   - input: "导航到天府广场"
     output:
-      intent: "navigate_to"
+      intent: "start_navigation"
       slots:
         destination: "天府广场"
     tags: ["literal"]
 
   - input: "去春熙路怎么走"
     output:
-      intent: "navigate_to"
+      intent: "start_navigation"
       slots:
         destination: "春熙路"
     tags: ["literal"]
@@ -32,14 +32,14 @@ navigate_to:
   # ── 隐含推理（用户没直接说导航，但意图是导航） ──
   - input: "回家"
     output:
-      intent: "navigate_to"
+      intent: "start_navigation"
       slots:
         destination: "家"
     tags: ["implicit", "alias"]
 
   - input: "去公司，避开高速"
     output:
-      intent: "navigate_to"
+      intent: "start_navigation"
       slots:
         destination: "公司"
         route_type: "avoid_highway"
@@ -47,7 +47,7 @@ navigate_to:
 
   - input: "我想找个不远的加油站"
     output:
-      intent: "navigate_to"
+      intent: "start_navigation"
       slots:
         destination: "加油站"
     tags: ["implicit"]
@@ -55,27 +55,27 @@ navigate_to:
   # ── 更多字面意图 ──
   - input: "加油站还有多远"
     output:
-      intent: "navigate_to"
+      intent: "start_navigation"
       slots:
         destination: "加油站"
     tags: ["literal"]
 
 # ═══════════════════════════════════════════════════════
-# Intent: search_nearby
+# Intent: search_poi
 # Schema: SearchNearbySlots(keyword, location?, radius?)
 # ═══════════════════════════════════════════════════════
-search_nearby:
+search_poi:
   # ── 字面意图 ──
   - input: "附近有没有加油站"
     output:
-      intent: "search_nearby"
+      intent: "search_poi"
       slots:
         keyword: "加油站"
     tags: ["literal"]
 
   - input: "周边有什么好吃的"
     output:
-      intent: "search_nearby"
+      intent: "search_poi"
       slots:
         keyword: "餐厅"
     tags: ["literal", "colloquial"]
@@ -83,14 +83,14 @@ search_nearby:
   # ── 隐含推理 ──
   - input: "找个停车场停进去"
     output:
-      intent: "search_nearby"
+      intent: "search_poi"
       slots:
         keyword: "停车场"
     tags: ["implicit"]
 
   - input: "我饿了"
     output:
-      intent: "search_nearby"
+      intent: "search_poi"
       slots:
         keyword: "餐厅"
     tags: ["implicit", "emotion_to_search"]
@@ -98,7 +98,7 @@ search_nearby:
   # ── 更多字面意图 ──
   - input: "附近有没有厕所，有的话过去"
     output:
-      intent: "search_nearby"
+      intent: "search_poi"
       slots:
         keyword: "厕所"
     tags: ["literal", "compound_intent"]

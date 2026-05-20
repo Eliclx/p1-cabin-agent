@@ -22,7 +22,7 @@ from typing import Optional, Literal
 
 
 # ═══════════════════════════════════════════════════════════════
-# Intent 1: navigate_to — 导航到目的地
+# Intent 1: start_navigation — 导航到目的地
 # ═══════════════════════════════════════════════════════════════
 
 class NavigateToSlots(BaseModel):
@@ -48,7 +48,7 @@ class NavigateToSlots(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════
-# Intent 2: search_nearby — 搜索周边
+# Intent 2: search_poi — 搜索周边
 # ═══════════════════════════════════════════════════════════════
 
 class SearchNearbySlots(BaseModel):
@@ -73,8 +73,8 @@ class SearchNearbySlots(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 
 NAVIGATION_INTENTS: dict[str, type[BaseModel]] = {
-    "navigate_to": NavigateToSlots,
-    "search_nearby": SearchNearbySlots,
+    "start_navigation": NavigateToSlots,
+    "search_poi": SearchNearbySlots,
 }
 
 
@@ -97,8 +97,8 @@ def build_stage2_intent_list() -> str:
     生成 Stage2 prompt 的 intent 列表文本。
     
     输出示例：
-      navigate_to: 导航到目的地 → 槽位: destination(string), origin(string), route_type(enum)
-      search_nearby: 搜索周边设施 → 槽位: keyword(string), location(string), radius(integer)
+      start_navigation: 导航到目的地 → 槽位: destination(string), origin(string), route_type(enum)
+      search_poi: 搜索周边设施 → 槽位: keyword(string), location(string), radius(integer)
     """
     lines = []
     for intent_name, model_cls in NAVIGATION_INTENTS.items():

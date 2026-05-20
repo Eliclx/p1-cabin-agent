@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from shared.utils.logger import logger
 from project1_cabin_agent.edge_schemas import validate_slots, get_required_slots
+from project1_cabin_agent.skills.registry import registry
 
 # ── 配置 ──
 
@@ -108,40 +109,20 @@ def _build_stage1_system() -> str:
 
 
 def _load_stage1_examples() -> list[dict]:
-    """从 skill examples.yaml 加载 Stage1 few-shot 示例（单一真相源）
-    
-    已迁移的域：skills/{domain}/examples.yaml → stage1 示例
-    未迁移的域：无示例，依赖 STAGE1_SYSTEM 中的规则
-    """
-    import yaml, os
-    
+    """从 registry 加载 Stage1 few-shot 示例"""
     examples = []
-    
-    # intent → domain 映射（边缘模型 domain 比 skill 细粒度）
-    intent_domain_map = {
-        "navigate_to": "navigation",
-        "search_nearby": "search",
-    }
-    
-    skills_dir = os.path.join(os.path.dirname(__file__), "skills")
-    for skill_name in os.listdir(skills_dir):
-        yaml_path = os.path.join(skills_dir, skill_name, "examples.yaml")
-        if not os.path.exists(yaml_path):
+    for domain in registry.get_all_intents():
+        registry._ensure_examples_loaded(domain)
+        entry = registry._skills.get(domain)
+        if entry is None:
             continue
-        try:
-            with open(yaml_path) as f:
-                data = yaml.safe_load(f) or {}
-            for intent_name, intent_examples in data.items():
-                if not isinstance(intent_examples, list):
-                    continue
-                domain = intent_domain_map.get(intent_name, skill_name)
-                for ex in intent_examples[:2]:
-                    inp = ex.get("input", "")
-                    if inp:
-                        examples.append({"input": inp, "domain": domain})
-        except Exception:
-            pass
-    
+        for intent_name, cases in entry.examples.items():
+            if not isinstance(cases, list):
+                continue
+            for ex in cases[:2]:
+                inp = ex.get("input", "")
+                if inp:
+                    examples.append({"input": inp, "domain": domain})
     return examples[:15]
 
 
@@ -168,84 +149,94 @@ STAGE2_SYSTEM_TEMPLATE = """你是车载语音助手的语义解析器。
 示例：
 {examples}"""
 
-# 按 domain 提供对应的 few-shot 示例
-_DOMAIN_EXAMPLES = {
-    "climate": (
-        "输入：打开空调\n输出：{{\"intent\": \"ac_control\", \"slots\": {{\"action\": \"on\"}}}}\n"
-        "输入：空调调到22度\n输出：{{\"intent\": \"ac_control\", \"slots\": {{\"action\": \"adjust\", \"temperature\": 22}}}}\n"
-        "输入：关车窗\n输出：{{\"intent\": \"window_control\", \"slots\": {{\"target\": \"window\", \"action\": \"close\"}}}}\n"
-        "输入：调小点\n输出：{{\"intent\": \"ac_control\", \"slots\": {{}}}}"
-    ),
-    "navigation": (
-        "输入：导航去天府广场\n输出：{{\"intent\": \"start_navigation\", \"slots\": {{\"destination\": \"天府广场\"}}}}\n"
-        "输入：我想去\n输出：{{\"intent\": \"start_navigation\", \"slots\": {{}}}}"
-    ),
-    "media": (
-        "输入：播放周杰伦的歌\n输出：{{\"intent\": \"media_control\", \"slots\": {{\"action\": \"play\", \"query\": \"周杰伦\"}}}}\n"
-        "输入：调小点\n输出：{{\"intent\": \"media_control\", \"slots\": {{\"action\": \"volume_down\"}}}}\n"
-        "输入：打开\n输出：{{\"intent\": \"media_control\", \"slots\": {{\"action\": \"play\"}}}}"
-    ),
-    "search": (
-        "输入：附近有没有加油站\n输出：{{\"intent\": \"search_poi\", \"slots\": {{\"keyword\": \"加油站\"}}}}"
-    ),
-    "vehicle": (
-        "输入：还有多少油\n输出：{{\"intent\": \"query_vehicle_status\", \"slots\": {{}}}}\n"
-        "输入：舒适模式\n输出：{{\"intent\": \"activate_scene\", \"slots\": {{\"scene_name\": \"comfortable_driving\"}}}}"
-    ),
-    "chitchat": (
-        "输入：你好啊\n输出：{{\"intent\": \"chitchat\", \"slots\": {{}}}}"
-    ),
-    "unknown": (
-        "输入：随便说点什么\n输出：{{\"intent\": \"unknown\", \"slots\": {{}}}}"
-    ),
-}
+# ── SSOT: 从 registry 构建 few-shot / intents / schema ──
 
-# 领域→意图映射（与 eval_harness / fast_rules 对齐）
-DOMAIN_INTENTS = {
-    "climate": [
-        "ac_control", "window_control", "light_control", "seat_control",
-    ],
-    "navigation": [
-        "start_navigation",
-    ],
-    "media": [
-        "media_control",
-    ],
-    "search": [
-        "search_poi",
-    ],
-    "vehicle": [
-        "query_vehicle_status", "activate_scene",
-    ],
-    "chitchat": ["chitchat"],
-    "unknown": ["unknown"],
-}
+
+def _build_domain_examples(max_per_intent: int = 2) -> dict:
+    """从 registry 构建 domain examples，保留双花括号转义格式用于 STAGE2_SYSTEM_TEMPLATE.format()"""
+    result = {}
+    for domain in registry.get_all_intents():
+        registry._ensure_examples_loaded(domain)
+        entry = registry._skills.get(domain)
+        if entry is None:
+            continue
+        lines = []
+        for intent_name, cases in entry.examples.items():
+            if not isinstance(cases, list):
+                continue
+            # 优先 literal，再补其他
+            selected = [c for c in cases if "literal" in c.get("tags", [])]
+            fallback = [c for c in cases if "literal" not in c.get("tags", [])]
+            picked = (selected + fallback)[:max_per_intent]
+
+            for c in picked:
+                raw_output = json.dumps(
+                    {"intent": c["output"]["intent"], "slots": c["output"]["slots"]},
+                    ensure_ascii=False,
+                )
+                # 双花括号转义：虽然 .format() 不二次处理替换值中的花括号，
+                # 但模板 STAGE2_SYSTEM_TEMPLATE 内部用 {{ }} 表示示例格式，
+                # 保持 examples 和模板风格一致，模型已适配此格式
+                escaped = raw_output.replace("{", "{{").replace("}", "}}")
+                lines.append(f"输入：{c['input']}\n输出：{escaped}")
+
+        if lines:
+            result[domain] = "\n".join(lines) + "\n"
+    return result
+
+
+DOMAIN_INTENTS = registry.get_all_intents()
+
+# chitchat/unknown 不在 skills 目录，兜底补上
+for _d in ("chitchat", "unknown"):
+    if _d not in DOMAIN_INTENTS:
+        DOMAIN_INTENTS[_d] = [_d]
+
+_DOMAIN_EXAMPLES = _build_domain_examples()
+# chitchat/unknown 兜底 examples（双花括号转义保持一致）
+for _d in ("chitchat", "unknown"):
+    if _d not in _DOMAIN_EXAMPLES:
+        _DOMAIN_EXAMPLES[_d] = (
+            f'输入：你好啊\n输出：{{{{"intent": "{_d}", "slots": {{}}}}}}\n'
+            f'输入：随便说点什么\n输出：{{{{"intent": "{_d}", "slots": {{}}}}}}'
+        )
 
 
 def _build_schema_block(domain: str) -> str:
-    """从 INTENT_SCHEMAS 生成精简的 schema 描述，注入 Stage2 prompt"""
-    from project1_cabin_agent.edge_schemas import INTENT_SCHEMAS
-    domain_schemas = INTENT_SCHEMAS.get(domain, {})
-    if not domain_schemas:
+    """从 registry 构建 schema block，格式和旧版 edge_schemas 一致"""
+    all_intents = registry.get_all_intents()
+    intent_names = all_intents.get(domain, [])
+    if not intent_names:
         return "无"
     lines = []
-    for intent_name, schema in domain_schemas.items():
-        desc = schema.get("desc", "")
+    for intent_name in intent_names:
+        spec = registry.get_intent_spec(intent_name)
+        if spec is None:
+            continue
+        desc = spec.description
         slot_parts = []
-        for key, spec in schema.get("slots", {}).items():
-            stype = spec["type"]
-            sdesc = spec.get("desc", "")
-            if stype == "enum":
-                vals = "|".join(spec["values"])
+        for key, slot_def in spec.slots.items():
+            # Handle anyOf (Optional fields)
+            effective = slot_def
+            if "anyOf" in slot_def:
+                for item in slot_def["anyOf"]:
+                    if item.get("type") != "null":
+                        effective = item
+                        break
+            # description 可能在 anyOf 父级，优先取父级
+            sdesc = slot_def.get("description", slot_def.get("desc", "")) or effective.get("description", effective.get("desc", ""))
+            if "enum" in effective:
+                vals = "|".join(effective["enum"])
                 slot_parts.append(f"{key}({sdesc}, 可选值:{vals})")
-            elif stype == "number":
-                lo, hi = spec.get("range", [0, 9999])
+            elif effective.get("type") in ("integer", "number"):
+                lo = effective.get("minimum", 0)
+                hi = effective.get("maximum", 9999)
                 slot_parts.append(f"{key}({sdesc}, 数字{lo}~{hi})")
             else:
                 slot_parts.append(f"{key}({sdesc}, 文本)")
         slots_str = ", ".join(slot_parts) if slot_parts else "无槽位"
         lines.append(f"- {intent_name}({desc}): {slots_str}")
-    return "\n".join(lines)
+    return "\n".join(lines) if lines else "无"
 
 
 def _build_stage2_system(domain: str) -> str:

@@ -68,13 +68,13 @@ def geocode(address: str, city: str = "成都") -> Optional[str]:
 
 # ── Intent 对应的工具函数 ────────────────────────────────────────
 
-def navigate_to(
+def start_navigation(
     destination: str,
     origin: Optional[str] = None,
     route_type: str = "fastest",
 ) -> dict:
     """
-    对应 intent: navigate_to
+    对应 intent: start_navigation
     驾车路径规划。
     
     Args:
@@ -138,14 +138,14 @@ def navigate_to(
         return {"success": False, "error": str(e)}
 
 
-def search_nearby(
+def search_poi(
     keyword: str,
     location: Optional[str] = None,
     radius: int = 3000,
     limit: int = 5,
 ) -> dict:
     """
-    对应 intent: search_nearby
+    对应 intent: search_poi
     周边搜索。
     
     Args:
