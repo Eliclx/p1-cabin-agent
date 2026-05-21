@@ -41,86 +41,165 @@ DOMAIN_NAMES = list(DOMAINS.keys())
 
 # ── Intent + Slot Schema ──
 # 每个 domain 下可执行的 intent，含 slot 白名单
-
+#
 # 每个 slot spec 含 required 标记（单一真相源，不再维护独立 INTENT_REQUIRED_SLOTS 表）
 # required=True 的 slot 全空 → is_acceptable=False → 降级云端
-INTENT_SCHEMAS = {
-    "climate": {
-        "ac_control": {
-            "desc": "空调控制，开关/调温/调风",
-            "slots": {
-                "action":    {"type": "enum",   "values": ["on", "off", "adjust"], "desc": "操作", "required": False},
-                "temperature": {"type": "number", "range": [16, 32], "desc": "目标温度", "required": False},
-                "mode":      {"type": "enum",   "values": ["cool", "heat", "auto"], "desc": "模式", "required": False},
-                "fan_level": {"type": "number", "range": [1, 5], "desc": "风速档位", "required": False},
-            },
-        },
-        "window_control": {
-            "desc": "车窗/天窗/车门控制",
-            "slots": {
-                "target": {"type": "enum", "values": ["window", "sunroof", "door"], "desc": "控制对象", "required": False},
-                "action":   {"type": "enum",   "values": ["open", "close", "adjust"], "desc": "操作", "required": True},
-                "percent": {"type": "number", "range": [0, 100], "desc": "开合百分比", "required": False},
-            },
-        },
-        "seat_control": {
-            "desc": "座椅加热/通风",
-            "slots": {
-                "action": {"type": "enum", "values": ["heat_on", "heat_off", "ventilate_on", "ventilate_off"], "desc": "操作", "required": True},
-                "heat_level": {"type": "number", "range": [1, 3], "desc": "加热档位", "required": False},
-            },
-        },
-        "light_control": {
-            "desc": "灯光控制",
-            "slots": {
-                "action": {"type": "enum", "values": ["on", "off", "adjust"], "desc": "操作", "required": True},
-                "target": {"type": "enum", "values": ["cabin", "reading", "ambient"], "desc": "灯光类型", "required": False},
-                "brightness": {"type": "number", "range": [0, 100], "desc": "亮度", "required": False},
-            },
-        },
-    },
-    "navigation": {
-        "start_navigation": {
-            "desc": "导航到目的地",
-            "slots": {
-                "destination": {"type": "string", "desc": "目的地名称", "required": True},
-                "mode": {"type": "enum", "values": ["fastest", "shortest", "avoid_highway", "avoid_toll"], "desc": "路线偏好", "required": False},
-            },
-        },
-    },
-    "media": {
-        "media_control": {
-            "desc": "音乐播放/暂停/切歌",
-            "slots": {
-                "action": {"type": "enum", "values": ["play", "pause", "next", "previous", "search", "volume_up", "volume_down", "set_volume"], "desc": "操作", "required": True},
-                "query": {"type": "string", "desc": "搜索关键词(歌名/歌手)", "required": False},
-                "volume": {"type": "number", "range": [0, 100], "desc": "音量", "required": False},
-            },
-        },
-    },
-    "search": {
-        "search_poi": {
-            "desc": "搜索附近POI",
-            "slots": {
-                "keyword": {"type": "string", "desc": "搜索关键词", "required": True},
-            },
-        },
-    },
-    "vehicle": {
-        "query_vehicle_status": {
-            "desc": "查询车况(油量/胎压/续航等)",
-            "slots": {
-                "items": {"type": "string", "desc": "查询项目(fuel/tire/ac_temp等)", "required": False},
-            },
-        },
-        "activate_scene": {
-            "desc": "场景模式(舒适/休息等)",
-            "slots": {
-                "scene_name": {"type": "enum", "values": ["comfortable_driving", "sleep_mode", "departure_check"], "desc": "场景名", "required": True},
-            },
-        },
-    },
-}
+#
+# 由 _build_intent_schemas() 从 SkillRegistry 动态生成
+
+
+def _build_intent_schemas() -> dict:
+    """从 SkillRegistry 动态构建 INTENT_SCHEMAS。
+
+    转换规则:
+    1. type="string" + enum → {"type": "enum", "values": [...]}
+    2. type="number"/"integer" + minimum/maximum → {"type": "number", "range": [min, max]}
+    3. type="string" 无 enum → {"type": "string"}
+    4. anyOf 结构: 从 anyOf[0]（非null分支）提取实际类型
+    5. required 判断: 无 default 且 anyOf 中无 null → True
+    """
+    from project1_cabin_agent.skills.registry import registry
+
+    # 需要 skip 的 (domain, intent) 组合：
+    # - navigation/search_poi 与 search/search_poi 重复，skip navigation 版本
+    _SKIP_INTENTS = {("navigation", "search_poi")}
+
+    # slot 名映射：registry 名 → edge_schemas 名（兼容旧格式）
+    _SLOT_NAME_MAP = {
+        ("navigation", "start_navigation", "route_type"): "mode",
+    }
+
+    # intent 名映射：registry 名 → edge_schemas 名
+    _INTENT_NAME_MAP = {
+        # 无需映射，intent 名一致
+    }
+
+    # 额外 slot 需要 skip 的（不导出到 edge schema）
+    _SKIP_SLOTS = {
+        ("navigation", "start_navigation", "origin"),
+    }
+
+    schemas: dict[str, dict] = {}
+
+    for domain, intent_list in registry.get_all_intents().items():
+        for intent_name in intent_list:
+            # skip 重复
+            if (domain, intent_name) in _SKIP_INTENTS:
+                continue
+
+            spec = registry.get_intent_spec(intent_name)
+            if spec is None:
+                continue
+
+            # 最终 intent 名
+            final_intent = _INTENT_NAME_MAP.get((domain, intent_name), intent_name)
+
+            # 构建 slots
+            slots: dict[str, dict] = {}
+            for slot_name, slot_def in spec.slots.items():
+                # skip 不需要的 slot
+                if (domain, intent_name, slot_name) in _SKIP_SLOTS:
+                    continue
+
+                # 最终 slot 名
+                final_slot = _SLOT_NAME_MAP.get(
+                    (domain, intent_name, slot_name), slot_name
+                )
+
+                slots[final_slot] = _convert_slot(slot_def)
+
+            # 写入 schemas
+            if domain not in schemas:
+                schemas[domain] = {}
+            schemas[domain][final_intent] = {
+                "desc": spec.description,
+                "slots": slots,
+            }
+
+    return schemas
+
+
+def _convert_slot(slot_def: dict) -> dict:
+    """将 registry 的 JSON Schema slot 转换为 edge_schemas 格式。"""
+    # 1) 判断 required
+    required = _slot_is_required(slot_def)
+
+    # 2) 规范化：如果是 anyOf，取非 null 分支
+    normalized = _normalize_slot(slot_def)
+
+    # 3) 提取 desc
+    desc = _extract_short_desc(normalized.get("description", ""))
+
+    # 4) 判断类型并构建结果
+    result = {"desc": desc, "required": required}
+
+    stype = normalized.get("type", "string")
+    enum_vals = normalized.get("enum")
+
+    if enum_vals is not None:
+        # string + enum → enum
+        result["type"] = "enum"
+        result["values"] = enum_vals
+    elif stype in ("number", "integer"):
+        lo = normalized.get("minimum")
+        hi = normalized.get("maximum")
+        result["type"] = "number"
+        if lo is not None and hi is not None:
+            result["range"] = [lo, hi]
+    else:
+        # 纯 string
+        result["type"] = "string"
+
+    return result
+
+
+def _slot_is_required(slot_def: dict) -> bool:
+    """判断 slot 是否必填（无 default 且无 anyOf 含 null）"""
+    if "default" in slot_def:
+        return False
+    if "anyOf" in slot_def:
+        return not any(
+            t.get("type") == "null"
+            for t in slot_def["anyOf"]
+            if isinstance(t, dict)
+        )
+    return True
+
+
+def _normalize_slot(slot_def: dict) -> dict:
+    """如果是 anyOf 结构，取非 null 分支的实际定义。"""
+    if "anyOf" not in slot_def:
+        return slot_def
+
+    for item in slot_def["anyOf"]:
+        if isinstance(item, dict) and item.get("type") != "null":
+            # 合并外层 description（anyOf 分支可能没有）
+            merged = dict(item)
+            if "description" not in merged and "description" in slot_def:
+                merged["description"] = slot_def["description"]
+            return merged
+
+    # fallback: 返回原始
+    return slot_def
+
+
+def _extract_short_desc(description: str) -> str:
+    """从 description 提取简短中文描述（取冒号前的部分或整句）。"""
+    if not description:
+        return ""
+    # 取第一行
+    first_line = description.strip().split("\n")[0]
+    # 如果有冒号，取冒号前
+    if ":" in first_line or "：" in first_line:
+        sep = ":" if ":" in first_line else "："
+        return first_line.split(sep)[0].strip()
+    # 如果有括号，取括号前
+    if "(" in first_line:
+        return first_line.split("(")[0].strip()
+    return first_line
+
+
+INTENT_SCHEMAS = _build_intent_schemas()
 
 
 def get_allowed_slot_keys(domain: str, intent: str) -> set:
