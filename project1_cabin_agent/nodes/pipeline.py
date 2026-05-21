@@ -12,9 +12,6 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command, interrupt
 
 from project1_cabin_agent.state import CabinAgentState
-from project1_cabin_agent.tools.cabin_tools import (
-    TOOL_REGISTRY, INTENT_TO_TOOL,
-)
 from shared.utils.llm_factory import get_llm
 from shared.utils.logger import logger
 from shared.utils.metrics import track_node
@@ -210,11 +207,20 @@ def _quick_intent_map(text: str) -> dict | None:
 
 
 def _execute_confirmed(intent: str, slots: dict, tool_result: dict = None) -> dict:
-    """确认后执行高风险工具：从 TOOL_REGISTRY 查表调用 confirmed_execute。"""
-    tool_name = INTENT_TO_TOOL.get(intent, "")
-    executor = TOOL_REGISTRY.get(tool_name, {}).get("confirmed_execute")
-    if executor:
-        return executor(slots, tool_result or {})
+    """确认后执行高风险工具：通过 registry 获取工具函数并重新执行。"""
+    domain = get_domain_for_intent(intent)
+    if domain:
+        tool_fn = get_tool_function(domain, intent)
+        if tool_fn and callable(tool_fn):
+            try:
+                if hasattr(tool_fn, "invoke"):
+                    result = tool_fn.invoke(slots)
+                else:
+                    result = tool_fn(**slots)
+                if isinstance(result, dict):
+                    return result
+            except Exception as e:
+                logger.warning(f"[confirmed_execute] 工具调用失败: {e}")
     return {"status": "success", "voice_reply": "好的，已执行"}
 
 
@@ -592,8 +598,7 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
     msgs: list = []
 
     # ── 1. 槽位缺失检查 → interrupt ──
-    tool_name = INTENT_TO_TOOL.get(intent, "")
-    schema = DYNAMIC_SCHEMA.get(tool_name, {})
+    schema = DYNAMIC_SCHEMA.get(intent, {})
     required = schema.get("required", [])
     missing = [s for s in required if s not in slots or not slots[s]]
 
@@ -697,28 +702,33 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
     elif missing:
         logger.warning(f"[追问] 超过上限，强制执行，缺失={missing}")
 
-    # ── 2. 工具路由 ──
-    tool_name = INTENT_TO_TOOL.get(intent)
-    if not tool_name:
+    # ── 2. 工具路由（通过 registry） ──
+    domain = get_domain_for_intent(intent)
+    if not domain:
         return _make_result(task_id, intent, f"抱歉，未知意图{intent}", task, msgs,
                             status="error", error=f"未知意图: {intent}")
-    tool_fn = TOOL_REGISTRY.get(tool_name)
-    tool_fn = tool_fn.get("function") if tool_fn else None
+    tool_fn = get_tool_function(domain, intent)
     if not tool_fn:
-        return _make_result(task_id, intent, f"抱歉，未知工具{tool_name}", task, msgs,
-                            status="error", error=f"未知工具: {tool_name}")
+        return _make_result(task_id, intent, f"抱歉，未知工具{intent}", task, msgs,
+                            status="error", error=f"未知工具: {intent}")
 
     # ── 3. 工具执行 ──
     try:
-        result = await asyncio.wait_for(tool_fn.ainvoke(slots), timeout=8)
+        if hasattr(tool_fn, "ainvoke"):
+            result = await asyncio.wait_for(tool_fn.ainvoke(slots), timeout=8)
+        else:
+            result = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, lambda: tool_fn(**slots)),
+                timeout=8,
+            )
     except asyncio.TimeoutError:
-        logger.error(f"[工具执行] 超时: {tool_name} 超过 8s")
-        decs = DYNAMIC_SCHEMA.get(tool_name, {}).get("description", "")
+        logger.error(f"[工具执行] 超时: {intent} 超过 8s")
+        decs = DYNAMIC_SCHEMA.get(intent, {}).get("description", "")
         return _make_result(task_id, intent, f"{decs}操作超时，请稍后再试", task, msgs,
                             status="error", error="timeout")
     except Exception as e:
         logger.error(f"[工具执行] 失败: {e}")
-        decs = DYNAMIC_SCHEMA.get(tool_name, {}).get("description", "")
+        decs = DYNAMIC_SCHEMA.get(intent, {}).get("description", "")
         return _make_result(task_id, intent, f"执行{decs}过程中发生错误", task, msgs,
                             status="error", error=str(e))
 
@@ -746,7 +756,7 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
         if _is_confirm_positive(user_answer):
             confirmed_result = _execute_confirmed(intent, slots, result)
             voice_reply = confirmed_result.get("voice_reply", "好的，已执行")
-            logger.info(f"[确认执行] {tool_name} 结果: {voice_reply}")
+            logger.info(f"[确认执行] {intent} 结果: {voice_reply}")
             return _make_result(task_id, intent, voice_reply, task, msgs,
                                 tool_result=confirmed_result)
 
@@ -761,7 +771,7 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
     # L2 长期记忆：从工具结果自动写入用户画像
     user_profile.save_from_tool_result(intent, slots)
 
-    logger.info(f"[子任务{task_id}] [工具调用]-[{tool_name}] [处理结果]-[{result}] [回复]-[{voice_reply}]")
+    logger.info(f"[子任务{task_id}] [工具调用]-[{intent}] [处理结果]-[{result}] [回复]-[{voice_reply}]")
     return _make_result(task_id, intent, voice_reply, task, msgs,
                         tool_result=result)
 
@@ -806,5 +816,5 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
     if is_intent_migrated(intent):
         return await _handle_skill_task(state, task_id, task, intent, slots)
 
-    # 旧路径：未迁移的 intent 走 INTENT_TO_TOOL 查表
+    # 旧路径：未迁移的 intent 走 registry 工具查表
     return await _handle_tool_task(state, task_id, task, intent, slots)

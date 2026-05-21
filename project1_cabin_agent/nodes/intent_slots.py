@@ -4,7 +4,7 @@ project1_cabin_agent/nodes/intent_slots.py
 """
 from project1_cabin_agent.nodes.constants import SubTask
 from project1_cabin_agent.nodes.schema import DYNAMIC_SCHEMA
-from project1_cabin_agent.tools.cabin_tools import INTENT_TO_TOOL
+# INTENT_TO_TOOL 已移除 — intent 名即 tool 名，直接用 intent 作 DYNAMIC_SCHEMA 的 key
 from project1_cabin_agent.vehicle_state import vehicle_state
 from shared.utils.logger import logger
 
@@ -54,8 +54,7 @@ def _validate_slots(task: dict):
     if not extracted:
         return
 
-    tool_name = INTENT_TO_TOOL.get(intent, "")
-    schema = DYNAMIC_SCHEMA.get(tool_name, {})
+    schema = DYNAMIC_SCHEMA.get(intent, {})
     valid_keys = set(schema.get("required", []) + schema.get("optional", []))
 
     if valid_keys:

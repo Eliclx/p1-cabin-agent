@@ -6,7 +6,7 @@ project1_cabin_agent/nodes/response.py
 from langchain_core.messages import HumanMessage
 
 from project1_cabin_agent.state import CabinAgentState
-from project1_cabin_agent.tools.cabin_tools import TOOL_REGISTRY
+from project1_cabin_agent.tools.cabin_tools import BLACKBOARD_DECLS
 from shared.utils.llm_factory import get_llm
 from shared.utils.logger import logger
 from shared.utils.metrics import track_node
@@ -40,8 +40,7 @@ def session_update(state: CabinAgentState | dict) -> dict:
         if not intent or not tool_result:
             continue
 
-        reg = TOOL_REGISTRY.get(intent, {})
-        bb = reg.get("blackboard")
+        bb = BLACKBOARD_DECLS.get(intent)
         # 只有声明了 blackboard 标签的工具产出才写入 L1 结构化记忆，供后续轮次查询使用
         if not bb or "produces" not in bb:
             continue

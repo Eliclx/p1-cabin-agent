@@ -171,16 +171,20 @@ def _detect_context_bleeding(user_input: str, sub_tasks: list, messages: list, n
 # 3. Slot Carry-Over（原 intent_carry.py）
 # ═══════════════════════════════════════════════════════════════
 
-# intent → domain 映射（用于 carry-over 跨域拦截）
-_INTENT_TO_DOMAIN = {
-    "ac_control": "climate", "window_control": "climate",
-    "light_control": "climate", "seat_control": "climate",
-    "start_navigation": "navigation",
-    "media_control": "media",
-    "search_poi": "search",
-    "query_vehicle_status": "vehicle", "activate_scene": "vehicle",
-    "chitchat": "chitchat",
-}
+from project1_cabin_agent.skills.registry import registry
+
+# ── Intent → Domain 映射（SSOT: 从 Registry 动态生成）──
+# 用于 Carry-Over 跨域拦截：如果 pending frame 是 climate，但输入含导航信号 → 不填槽
+def _build_intent_to_domain() -> dict:
+    """从 registry 动态构建 intent→domain 映射"""
+    mapping = {}
+    for domain, intents in registry.get_all_intents().items():
+        for intent in intents:
+            mapping[intent] = domain
+    mapping["chitchat"] = "chitchat"
+    return mapping
+
+_INTENT_TO_DOMAIN = _build_intent_to_domain()
 
 # 各 domain 的明确信号词：如果 pending frame 是 climate，但输入含 navigation 信号词 → 拦截
 _DOMAIN_SIGNALS = {

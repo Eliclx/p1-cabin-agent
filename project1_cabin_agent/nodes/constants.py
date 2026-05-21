@@ -31,11 +31,17 @@ INDEPENDENT_KEYWORDS = {
 # ── 歧义检测常量（原 intent_ambiguity.py） ──
 
 # 不含明确操作对象的极短输入，且 LLM 分配了具体工具意图 → 歧义
-AMBIGUOUS_SHORT_INTENTS = {
-    "ac_control", "media_control", "light_control", "window_control",
-    "seat_control", "search_poi", "start_navigation", "parking",
-    "query_vehicle_status", "activate_scene", "comfort_driving",
-}
+# SSOT: 从 registry 动态生成所有工具 intent，加 chitchat 不算歧义
+def _build_ambiguous_intents() -> set:
+    from project1_cabin_agent.skills.registry import registry
+    intents = set()
+    for domain_intent_list in registry.get_all_intents().values():
+        intents.update(domain_intent_list)
+    # chitchat/unknown/direct_answer/no_support 不算歧义
+    intents.discard("chitchat")
+    return intents
+
+AMBIGUOUS_SHORT_INTENTS = _build_ambiguous_intents()
 
 # 明确的操作对象关键词 → 即使短输入也不拦截
 CLEAR_OBJECT_WORDS = {
