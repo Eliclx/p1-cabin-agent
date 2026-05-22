@@ -35,6 +35,11 @@ PROVIDER_REGISTRY = {
         "base_url_env": "OLLAMA_BASE_URL",
         "base_url_default": "http://localhost:11434/v1",
     },
+    "deepseek": {
+        "api_key_env": "DEEPSEEK_API_KEY",
+        "base_url_env": "DEEPSEEK_BASE_URL",
+        "base_url_default": "https://api.deepseek.com/v1",
+    },
 }
 
 

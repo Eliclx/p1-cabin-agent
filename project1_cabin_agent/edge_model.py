@@ -28,6 +28,20 @@ from project1_cabin_agent.skills.registry import registry
 EDGE_ENABLED = os.getenv("EDGE_ENABLED", "false").lower() == "true"
 EDGE_BASE_URL = os.getenv("EDGE_BASE_URL", "http://localhost:8001/v1")
 EDGE_MODEL = os.getenv("EDGE_MODEL", "Qwen2.5-3B-Instruct-AWQ")
+# LMDeploy 用完整 snapshot 路径做 model id，启动时动态获取覆盖默认值
+def _resolve_edge_model():
+    """从 LMDeploy /v1/models 接口获取真实 model id"""
+    base = os.getenv("EDGE_BASE_URL", "http://localhost:8001/v1").rstrip("/")
+    try:
+        _resp = urllib.request.urlopen(f"{base}/models", timeout=2)
+        _models = json.loads(_resp.read()).get("data", [])
+        if _models:
+            return _models[0]["id"]
+    except Exception:
+        pass
+    return EDGE_MODEL  # fallback 到默认值
+
+EDGE_MODEL = _resolve_edge_model()
 EDGE_TIMEOUT = int(os.getenv("EDGE_TIMEOUT", "5"))
 EDGE_CONFIDENCE_THRESHOLD = float(os.getenv("EDGE_CONFIDENCE_THRESHOLD", "0.85"))
 
