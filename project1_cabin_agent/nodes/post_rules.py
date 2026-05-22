@@ -186,11 +186,10 @@ def _build_intent_to_domain() -> dict:
 
 _INTENT_TO_DOMAIN = _build_intent_to_domain()
 
-# 各 domain 的明确信号词：如果 pending frame 是 climate，但输入含 navigation 信号词 → 拦截
+# 各 domain 的明确信号词：如果 pending frame 是 climate，但输入含 map 信号词 → 拦截
 _DOMAIN_SIGNALS = {
-    "navigation": {"去", "导航", "回家", "回", "到"},
+    "map": {"去", "导航", "回家", "回", "到", "搜", "查", "附近", "有没有"},
     "media": {"听", "唱", "放歌", "播放", "暂停", "切歌"},
-    "search": {"搜", "查", "附近", "有没有"},
     "climate": {"冷", "热", "度", "空调", "开", "关", "窗", "灯", "座椅"},
     "vehicle": {"油量", "电量", "续航", "胎压", "模式"},
 }

@@ -1,15 +1,15 @@
 """
 project1_cabin_agent/tests/test_navigation_harness.py
-Navigation Harness 单测 — 纯函数，零 I/O，三行就能跑
+Navigation Harness 单测 — 已合并到 MapHarness，通过 _intent="navigate" 分发
 
 测试覆盖：
 - pre_validate: 必填检查、别名解析、origin 补全、安全检查
 - post_validate: API 失败、空结果、距离异常
-- format_response: navigate_to 格式化、search_nearby 格式化、失败格式化
+- format_response: navigate 格式化、search 格式化、失败格式化
 """
 import pytest
 
-from project1_cabin_agent.skills.navigation.harness import NavigationHarness
+from project1_cabin_agent.skills.map.harness import MapHarness
 from project1_cabin_agent.harness.context import AgentContext, VehicleSnapshot
 from project1_cabin_agent.harness.base import ContextDep
 
@@ -18,7 +18,7 @@ from project1_cabin_agent.harness.base import ContextDep
 
 @pytest.fixture
 def harness():
-    return NavigationHarness()
+    return MapHarness()
 
 
 @pytest.fixture
@@ -99,16 +99,16 @@ def ctx_with_l1_poi():
 
 class TestContextDeps:
     def test_deps_includes_vehicle(self):
-        assert ContextDep.VEHICLE in NavigationHarness.CONTEXT_DEPS
+        assert ContextDep.VEHICLE in MapHarness.CONTEXT_DEPS
 
     def test_deps_includes_l1(self):
-        assert ContextDep.L1 in NavigationHarness.CONTEXT_DEPS
+        assert ContextDep.L1 in MapHarness.CONTEXT_DEPS
 
     def test_deps_includes_l2(self):
-        assert ContextDep.L2 in NavigationHarness.CONTEXT_DEPS
+        assert ContextDep.L2 in MapHarness.CONTEXT_DEPS
 
     def test_deps_includes_l3(self):
-        assert ContextDep.L3 in NavigationHarness.CONTEXT_DEPS
+        assert ContextDep.L3 in MapHarness.CONTEXT_DEPS
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -123,7 +123,7 @@ class TestPreValidate:
     def test_normal_navigation(self, harness, ctx_with_vehicle):
         """正常导航：有 destination，自动补 origin"""
         result = harness.pre_validate(
-            slots={"destination": "天府广场"},
+            slots={"_intent": "navigate", "destination": "天府广场"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -134,7 +134,7 @@ class TestPreValidate:
     def test_with_route_type(self, harness, ctx_with_vehicle):
         """指定路线偏好"""
         result = harness.pre_validate(
-            slots={"destination": "天府广场", "route_type": "avoid_highway"},
+            slots={"_intent": "navigate", "destination": "天府广场", "route_type": "avoid_highway"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -143,7 +143,7 @@ class TestPreValidate:
     def test_origin_already_filled(self, harness, ctx_with_vehicle):
         """origin 已有值，不覆盖"""
         result = harness.pre_validate(
-            slots={"destination": "天府广场", "origin": "104.08,30.68"},
+            slots={"_intent": "navigate", "destination": "天府广场", "origin": "104.08,30.68"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -154,7 +154,7 @@ class TestPreValidate:
     def test_alias_home(self, harness, ctx_with_vehicle):
         """回家 → L3 地址"""
         result = harness.pre_validate(
-            slots={"destination": "家"},
+            slots={"_intent": "navigate", "destination": "家"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -162,9 +162,9 @@ class TestPreValidate:
 
     def test_alias_home_variants(self, harness, ctx_with_vehicle):
         """回家的多种说法"""
-        for alias in ["回家", "回家"]:
+        for alias in ["回家"]:
             result = harness.pre_validate(
-                slots={"destination": alias},
+                slots={"_intent": "navigate", "destination": alias},
                 ctx=ctx_with_vehicle,
             )
             assert result.valid is True
@@ -175,7 +175,7 @@ class TestPreValidate:
     def test_alias_company(self, harness, ctx_with_vehicle):
         """去公司 → L3 地址"""
         result = harness.pre_validate(
-            slots={"destination": "公司"},
+            slots={"_intent": "navigate", "destination": "公司"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -186,7 +186,7 @@ class TestPreValidate:
     def test_alias_last_destination(self, harness, ctx_with_vehicle):
         """上次去的 → L2 行程记忆"""
         result = harness.pre_validate(
-            slots={"destination": "上次去的"},
+            slots={"_intent": "navigate", "destination": "上次去的"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -197,7 +197,7 @@ class TestPreValidate:
     def test_missing_destination(self, harness, ctx_with_vehicle):
         """缺少 destination → 追问"""
         result = harness.pre_validate(
-            slots={},
+            slots={"_intent": "navigate"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is False
@@ -209,7 +209,7 @@ class TestPreValidate:
     def test_alias_home_no_l3(self, harness, ctx_no_l3):
         """回家但 L3 没配置 → 追问"""
         result = harness.pre_validate(
-            slots={"destination": "家"},
+            slots={"_intent": "navigate", "destination": "家"},
             ctx=ctx_no_l3,
         )
         assert result.valid is False
@@ -219,7 +219,7 @@ class TestPreValidate:
     def test_alias_company_no_l3(self, harness, ctx_no_l3):
         """去公司但 L3 没配置 → 追问"""
         result = harness.pre_validate(
-            slots={"destination": "公司"},
+            slots={"_intent": "navigate", "destination": "公司"},
             ctx=ctx_no_l3,
         )
         assert result.valid is False
@@ -228,7 +228,7 @@ class TestPreValidate:
     def test_alias_last_no_l2(self, harness, ctx_no_l2):
         """上次去的但 L2 没记录 → 追问"""
         result = harness.pre_validate(
-            slots={"destination": "上次去的"},
+            slots={"_intent": "navigate", "destination": "上次去的"},
             ctx=ctx_no_l2,
         )
         assert result.valid is False
@@ -240,7 +240,7 @@ class TestPreValidate:
     def test_no_vehicle_location(self, harness, ctx_no_location):
         """vehicle_state 无 location → 走云端兜底"""
         result = harness.pre_validate(
-            slots={"destination": "天府广场"},
+            slots={"_intent": "navigate", "destination": "天府广场"},
             ctx=ctx_no_location,
         )
         assert result.valid is False
@@ -251,7 +251,7 @@ class TestPreValidate:
     def test_high_speed_confirm(self, harness, ctx_high_speed):
         """高速行驶中改目的地 → 二次确认"""
         result = harness.pre_validate(
-            slots={"destination": "天府广场"},
+            slots={"_intent": "navigate", "destination": "天府广场"},
             ctx=ctx_high_speed,
         )
         assert result.valid is True
@@ -261,7 +261,7 @@ class TestPreValidate:
     def test_normal_speed_no_confirm(self, harness, ctx_with_vehicle):
         """正常速度不需要确认"""
         result = harness.pre_validate(
-            slots={"destination": "天府广场"},
+            slots={"_intent": "navigate", "destination": "天府广场"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is True
@@ -272,7 +272,7 @@ class TestPreValidate:
     def test_ordinal_first(self, harness, ctx_with_l1_poi):
         """去第一个 → L1 黑板第 0 个 POI"""
         result = harness.pre_validate(
-            slots={"destination": "第一个"},
+            slots={"_intent": "navigate", "destination": "第一个"},
             ctx=ctx_with_l1_poi,
         )
         assert result.valid is True
@@ -281,7 +281,7 @@ class TestPreValidate:
     def test_ordinal_second(self, harness, ctx_with_l1_poi):
         """去第二个 → L1 黑板第 1 个 POI"""
         result = harness.pre_validate(
-            slots={"destination": "第二个"},
+            slots={"_intent": "navigate", "destination": "第二个"},
             ctx=ctx_with_l1_poi,
         )
         assert result.valid is True
@@ -290,7 +290,7 @@ class TestPreValidate:
     def test_ordinal_nearest(self, harness, ctx_with_l1_poi):
         """去最近那个 → L1 黑板第 0 个 POI"""
         result = harness.pre_validate(
-            slots={"destination": "最近那个"},
+            slots={"_intent": "navigate", "destination": "最近那个"},
             ctx=ctx_with_l1_poi,
         )
         assert result.valid is True
@@ -299,7 +299,7 @@ class TestPreValidate:
     def test_ordinal_no_l1(self, harness, ctx_with_vehicle):
         """去第一个但 L1 黑板没有搜索结果 → 追问"""
         result = harness.pre_validate(
-            slots={"destination": "第一个"},
+            slots={"_intent": "navigate", "destination": "第一个"},
             ctx=ctx_with_vehicle,
         )
         assert result.valid is False
@@ -309,7 +309,7 @@ class TestPreValidate:
     def test_ordinal_out_of_range(self, harness, ctx_with_l1_poi):
         """去第五个但只有 3 个结果 → 追问"""
         result = harness.pre_validate(
-            slots={"destination": "第五个"},
+            slots={"_intent": "navigate", "destination": "第五个"},
             ctx=ctx_with_l1_poi,
         )
         assert result.valid is False
@@ -413,27 +413,27 @@ class TestFormatResponse:
         assert "无法解析目的地" in text
 
     def test_search_single_result(self, harness):
-        """搜索只有 1 个结果"""
+        """搜索只有 1 个结果（distance 单位：米）"""
         text = harness.format_response({
             "success": True,
             "data": {
-                "results": [{"name": "中石化加油站", "dist_km": 0.3, "address": "天府大道100号"}],
+                "results": [{"name": "中石化加油站", "distance": 300, "address": "天府大道100号"}],
                 "count": 1,
             },
         })
         assert "中石化加油站" in text
-        assert "0.3公里" in text
+        assert "300米" in text
 
     def test_search_multiple_results(self, harness):
-        """搜索多个结果，只播报前 3"""
+        """搜索多个结果，只播报前 3（distance 单位：米）"""
         text = harness.format_response({
             "success": True,
             "data": {
                 "results": [
-                    {"name": "中石化", "dist_km": 0.3},
-                    {"name": "中石油", "dist_km": 0.5},
-                    {"name": "壳牌", "dist_km": 1.0},
-                    {"name": "BP", "dist_km": 1.5},
+                    {"name": "中石化", "distance": 300},
+                    {"name": "中石油", "distance": 500},
+                    {"name": "壳牌", "distance": 1000},
+                    {"name": "BP", "distance": 1500},
                 ],
                 "count": 4,
             },

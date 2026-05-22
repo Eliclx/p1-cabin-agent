@@ -1,0 +1,235 @@
+# project1_cabin_agent/skills/map/examples.yaml
+# Map Skill Few-shot 示例
+#
+# 规则：
+# 1. 每个 intent 至少 4 条示例
+# 2. 覆盖 literal + implicit 标签
+# 3. tags 标注 case 类型，启动时校验覆盖度
+# 4. 启动时双向校验：格式合法性 + schema 覆盖度
+#
+# 注意：examples 里 slots 的 key 必须和 schema.py 的 Pydantic 字段名完全一致
+
+# ═══════════════════════════════════════════════════════
+# Intent: search_poi
+# Schema: SearchPoiSlots(keyword, category?, location?, radius?)
+# ═══════════════════════════════════════════════════════
+search_poi:
+  # ── 字面意图 ──
+  - input: "附近有没有加油站"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "加油站"
+    tags: ["literal"]
+
+  - input: "周边有什么好吃的"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "餐厅"
+        category: "餐饮"
+    tags: ["literal", "colloquial"]
+
+  - input: "帮我找下附近的医院"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "医院"
+    tags: ["literal"]
+
+  - input: "5公里内有没有停车场"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "停车场"
+        radius: 5000
+    tags: ["literal", "radius_specified"]
+
+  # ── 隐含推理 ──
+  - input: "我饿了"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "餐厅"
+    tags: ["implicit", "emotion_to_search"]
+
+  - input: "找个停车场停进去"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "停车场"
+    tags: ["implicit"]
+
+  - input: "附近有没有厕所，有的话过去"
+    output:
+      intent: "search_poi"
+      slots:
+        keyword: "厕所"
+    tags: ["literal", "compound_intent"]
+
+# ═══════════════════════════════════════════════════════
+# Intent: navigate
+# Schema: NavigateSlots(destination, origin?, route_type?)
+# ═══════════════════════════════════════════════════════
+navigate:
+  # ── 字面意图 ──
+  - input: "导航到天府广场"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "天府广场"
+    tags: ["literal"]
+
+  - input: "去春熙路怎么走"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "春熙路"
+    tags: ["literal"]
+
+  - input: "导航去机场，走最快路线"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "机场"
+        route_type: "fastest"
+    tags: ["literal", "route_preference"]
+
+  # ── 隐含推理 ──
+  - input: "回家"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "家"
+    tags: ["implicit", "alias"]
+
+  - input: "去公司，避开高速"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "公司"
+        route_type: "avoid_highway"
+    tags: ["implicit", "route_preference"]
+
+  - input: "去第一个"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "第一个"
+    tags: ["implicit", "ordinal_reference"]
+
+  - input: "去上次那个地方"
+    output:
+      intent: "navigate"
+      slots:
+        destination: "上次去的"
+    tags: ["implicit", "session_reference"]
+
+# ═══════════════════════════════════════════════════════
+# Intent: map_query
+# Schema: MapQuerySlots(query_type?, target?)
+# ═══════════════════════════════════════════════════════
+map_query:
+  # ── 字面意图 ──
+  - input: "现在在哪儿"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "location"
+    tags: ["literal"]
+
+  - input: "我在什么位置"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "location"
+    tags: ["literal"]
+
+  - input: "到天府广场还有多远"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "distance"
+        target: "天府广场"
+    tags: ["literal"]
+
+  - input: "前面堵不堵"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "traffic"
+    tags: ["literal"]
+
+  # ── 隐含推理 ──
+  - input: "还有多久到"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "eta"
+    tags: ["implicit"]
+
+  - input: "去机场的路上堵不堵"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "traffic"
+        target: "机场"
+    tags: ["implicit"]
+
+  - input: "离目的地还多远"
+    output:
+      intent: "map_query"
+      slots:
+        query_type: "distance"
+    tags: ["implicit"]
+
+# ═══════════════════════════════════════════════════════
+# Intent: weather
+# Schema: WeatherSlots(city?, date?)
+# ═══════════════════════════════════════════════════════
+weather:
+  # ── 字面意图 ──
+  - input: "今天天气怎么样"
+    output:
+      intent: "weather"
+      slots:
+        date: "今天"
+    tags: ["literal"]
+
+  - input: "成都明天天气怎么样"
+    output:
+      intent: "weather"
+      slots:
+        city: "成都"
+        date: "明天"
+    tags: ["literal"]
+
+  - input: "北京后天天气"
+    output:
+      intent: "weather"
+      slots:
+        city: "北京"
+        date: "后天"
+    tags: ["literal"]
+
+  # ── 隐含推理 ──
+  - input: "外面热不热"
+    output:
+      intent: "weather"
+      slots:
+        date: "今天"
+    tags: ["implicit", "colloquial"]
+
+  - input: "明天要不要带伞"
+    output:
+      intent: "weather"
+      slots:
+        date: "明天"
+    tags: ["implicit", "colloquial"]
+
+  - input: "那边天气怎么样"
+    output:
+      intent: "weather"
+      slots:
+        date: "今天"
+    tags: ["implicit"]

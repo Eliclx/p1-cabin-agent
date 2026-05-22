@@ -15,17 +15,13 @@ DOMAINS = {
         "label": "车内环境",
         "keywords": "空调 温度 车窗 座椅 热 冷 闷 风速 开空调 关空调 开窗 关窗 座椅加热 调高 调低 暖 冷 灯 灯光 开灯 关灯 暗 亮 副驾 加热档",
     },
-    "navigation": {
-        "label": "导航",
-        "keywords": "导航 去 怎么走 路线 出发 回家 公司 到 开往",
+    "map": {
+        "label": "地图与位置",
+        "keywords": "导航 去 怎么走 路线 出发 回家 公司 到 开往 附近 有没有 哪里 搜 找 加油站 餐厅 厕所 停车场 洗车 地图 天气 下雨 晴 多云 温度 多少度",
     },
     "media": {
         "label": "媒体",
         "keywords": "播放 放歌 来首 音乐 音量 下一首 切歌 暂停 继续 听歌 歌 声音",
-    },
-    "search": {
-        "label": "搜索",
-        "keywords": "附近 有没有 哪里 搜 找 加油站 餐厅 厕所 停车场 洗车",
     },
     "vehicle": {
         "label": "车况查询",
@@ -61,22 +57,24 @@ def _build_intent_schemas() -> dict:
     from project1_cabin_agent.skills.registry import registry
 
     # 需要 skip 的 (domain, intent) 组合：
-    # - navigation/search_poi 与 search/search_poi 重复，skip navigation 版本
-    _SKIP_INTENTS = {("navigation", "search_poi")}
+    # （原 navigation/search_poi 与 search/search_poi 重复已合并到 map，无需 skip）
+    _SKIP_INTENTS: set[tuple[str, str]] = set()
 
     # slot 名映射：registry 名 → edge_schemas 名（兼容旧格式）
+    # map 域的 navigate intent，旧 prompt 用 mode → 新 schema 用 route_type
     _SLOT_NAME_MAP = {
-        ("navigation", "start_navigation", "route_type"): "mode",
+        ("map", "navigate", "route_type"): "mode",
     }
 
     # intent 名映射：registry 名 → edge_schemas 名
     _INTENT_NAME_MAP = {
-        # 无需映射，intent 名一致
+        # 旧名 start_navigation → navigate（registry _INTENT_ALIASES 兼容）
     }
 
     # 额外 slot 需要 skip 的（不导出到 edge schema）
+    # map 域 navigate 的 origin 自动补全，不需要 LLM 填
     _SKIP_SLOTS = {
-        ("navigation", "start_navigation", "origin"),
+        ("map", "navigate", "origin"),
     }
 
     schemas: dict[str, dict] = {}

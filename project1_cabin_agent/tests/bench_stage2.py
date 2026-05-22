@@ -344,8 +344,8 @@ if __name__ == "__main__":
     print("\n  --- 各 domain 对比 ---")
     test_inputs = [
         ("climate", "关窗"),
-        ("search", "附近有没有加油站"),
-        ("navigation", "导航去天府广场"),
+        ("map", "附近有没有加油站"),
+        ("map", "导航去天府广场"),
         ("media", "播放周杰伦"),
         ("vehicle", "还有多少油"),
     ]

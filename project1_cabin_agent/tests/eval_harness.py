@@ -62,8 +62,8 @@ GOLDEN_SET = [
     # 核心高频 — 绝对不能退化
     ("调到26度","climate","ac_control"),("关空调","climate","ac_control"),
     ("开窗","climate","window_control"),("灯太暗了","climate","light_control"),
-    ("导航去公司","navigation","start_navigation"),("放首歌","media","media_control"),
-    ("附近有没有加油站","search","search_poi"),("测下胎压","vehicle","query_vehicle_status"),
+    ("导航去公司","map","navigate"),("放首歌","media","media_control"),
+    ("附近有没有加油站","map","search_poi"),("测下胎压","vehicle","query_vehicle_status"),
     ("早上好","chitchat",None),("打开音乐关闭空调","multi",None),
     ("最远的","needs_context",None),
 ]
@@ -77,15 +77,15 @@ EXTENDED_SET = [
     ("打开座椅加热","climate","seat_control"),("座椅加热关掉","climate","seat_control"),
     ("座椅通风","climate","seat_control"),("呃开一下空调","climate","ac_control"),
     ("麻烦帮我把空调关了","climate","ac_control"),("热得不行了","climate","ac_control"),
-    ("导航到天府广场","navigation","start_navigation"),("去春熙路","navigation","start_navigation"),
-    ("导航去最近的加油站","navigation","start_navigation"),
-    ("导航去成都春熙路太古里避开高速","navigation","start_navigation"),
+    ("导航到天府广场","map","navigate"),("去春熙路","map","navigate"),
+    ("导航去最近的加油站","map","navigate"),
+    ("导航去成都春熙路太古里避开高速","map","navigate"),
     ("播放周杰伦","media","media_control"),("下一首","media","media_control"),
     ("暂停","media","media_control"),("声音大一点","media","media_control"),
     ("音量调到80","media","media_control"),("来点音乐","media","media_control"),
     ("我想听周杰伦的歌","media","media_control"),("麻烦帮我放首歌呗","media","media_control"),
-    ("附近有没有川菜馆","search","search_poi"),("帮我找下附近的医院","search","search_poi"),
-    ("附近的火锅店","search","search_poi"),("还有多少油","vehicle","query_vehicle_status"),
+    ("附近有没有川菜馆","map","search_poi"),("帮我找下附近的医院","map","search_poi"),
+    ("附近的火锅店","map","search_poi"),("还有多少油","vehicle","query_vehicle_status"),
     ("电量还剩多少","vehicle","query_vehicle_status"),("舒适模式","vehicle","activate_scene"),
     ("休息模式","vehicle","activate_scene"),("出发前检查","vehicle","activate_scene"),
     ("空调多少度","vehicle","query_vehicle_status"),("该保养了吗","vehicle","query_vehicle_status"),
@@ -108,12 +108,12 @@ EXTENDED_SET = [
     ("开阅读灯","climate","light_control"),
     ("座椅加热调到3档","climate","seat_control"),
     ("关座椅通风","climate","seat_control"),
-    ("去最近的加油站","navigation","start_navigation"),
-    ("导航去成都避开高速","navigation","start_navigation"),
+    ("去最近的加油站","map","navigate"),
+    ("导航去成都避开高速","map","navigate"),
     ("音量调小点","media","media_control"),
     ("切歌","media","media_control"),
     ("我想听周杰伦","media","media_control"),
-    ("有没有附近的火锅店","search","search_poi"),
+    ("有没有附近的火锅店","map","search_poi"),
     ("胎压怎么样","vehicle","query_vehicle_status"),
     ("睡眠模式","vehicle","activate_scene"),
     # ── 新增：白名单边界（验证P2）──
@@ -122,15 +122,15 @@ EXTENDED_SET = [
     ("灯调亮点","climate","light_control"),
     ("座椅加热开","climate","seat_control"),
     ("放周杰伦","media","media_control"),
-    ("搜一下附近的加油站","search","search_poi"),
+    ("搜一下附近的加油站","map","search_poi"),
     ("车还有多少电","vehicle","query_vehicle_status"),
     ("运动模式","vehicle","activate_scene"),
     # ── 新增：ASR噪声/口误（验证端侧鲁棒性）──
     ("帮我把空挑关掉","climate","ac_control"),          # 空调→空挑
-    ("去到春熙路吧","navigation","start_navigation"),    # 去→去到
+    ("去到春熙路吧","map","navigate"),    # 去→去到
     ("我想停歌","media","media_control"),               # 听歌→停歌(ASR)
     ("把那啥温度调低一点","climate","ac_control"),      # 语气词+隐含
-    ("导一下航到天府广场","navigation","start_navigation"), # 口语拆分
+    ("导一下航到天府广场","map","navigate"), # 口语拆分
     ("太冷了 那个 调到26度","climate","ac_control"),     # 口吃/修正
     # ── 新增：极口语化（验证3B模型对口语的理解）──
     ("热成狗了","climate","ac_control"),
@@ -142,18 +142,18 @@ EXTENDED_SET = [
     ("吵死啦","media","media_control"),                  # → volume_down
     ("来点带劲的音乐","media","media_control"),
     ("这什么歌啊换掉","media","media_control"),
-    ("饿得不行了","search","search_poi"),               # → 搜餐厅
-    ("想喝奶茶","search","search_poi"),
-    ("困了找个地方睡觉","search","search_poi"),         # → 搜酒店
+    ("饿得不行了","map","search_poi"),               # → 搜餐厅
+    ("想喝奶茶","map","search_poi"),
+    ("困了找个地方睡觉","map","search_poi"),         # → 搜酒店
     # ── 新增：域边界模糊（验证Stage1区分能力）──
     ("打开暖风","climate","ac_control"),                # 暖风≠vehicle
     ("车里好暗","climate","light_control"),              # 暗→灯光,非chitchat
     ("后背好热","climate","seat_control"),              # 座椅通风,非ac
     ("挡风玻璃起雾了","climate","ac_control"),      # 除雾=空调制热/制冷
-    ("前面堵不堵","navigation","start_navigation"),     # 路况→导航域
-    ("换一条路","navigation","start_navigation"),       # 重规划→导航
-    ("现在在哪儿","navigation","start_navigation"),     # 位置查询→导航
-    ("离机场还有多远","navigation","start_navigation"), # 导航进度
+    ("前面堵不堵","map","navigate"),     # 路况→导航域
+    ("换一条路","map","navigate"),       # 重规划→导航
+    ("现在在哪儿","map","navigate"),     # 位置查询→导航
+    ("离机场还有多远","map","navigate"), # 导航进度
     ("油灯亮了","vehicle","query_vehicle_status"),      # 油灯=油量告警
     ("这个按钮干嘛的","chitchat",None),                 # 边界:不是车控
     ("你好小Q","chitchat",None),                        # 唤醒词风格
@@ -166,10 +166,10 @@ EXTENDED_SET = [
     ("后排说冷","climate","ac_control"),
     ("副驾太热","climate","ac_control"),
     ("孩子睡着了 小声点","media","media_control"),      # → volume_down
-    ("路上还有多久","navigation","start_navigation"),   # ETA查询
-    ("前方有摄像头吗","search","search_poi"),           # 电子眼→POI
-    ("帮我记一下这个位置","navigation","start_navigation"), # 收藏位置
-    ("还剩多少公里","navigation","start_navigation"),   # 剩余里程
+    ("路上还有多久","map","navigate"),   # ETA查询
+    ("前方有摄像头吗","map","search_poi"),           # 电子眼→POI
+    ("帮我记一下这个位置","map","navigate"), # 收藏位置
+    ("还剩多少公里","map","navigate"),   # 剩余里程
 ]
 
 BOUNDARY_SET = [
