@@ -34,9 +34,11 @@
 - eval 91.7% 零退化, 43s 完成
 - SSOT 再解决 V16 (search_poi 双重定义)
 
-## Phase 3: 编排层 (Layer 3 Plan-and-Execute) ⏳
+## ⏭️ 下一步：Phase 3 编排层 (Layer 3 Plan-and-Execute)
 
-> 覆盖复杂条件编排 ~5% 请求
+> 覆盖复杂条件编排 ~5% 请求（如"先找加油站再导航过去"、"附近有便利店吗帮我调低温度"）
+
+设计文档: /mnt/e/wiki/p1_skill_registry_地图域重构.md (第五节 Phase3)
 
 | 步骤 | 内容 | 改动文件 |
 |------|------|---------|
