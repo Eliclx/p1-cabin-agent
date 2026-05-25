@@ -165,8 +165,12 @@ STAGE2_SYSTEM_TEMPLATE = """你是车载语音助手的语义解析器。
 # ── SSOT: 从 registry 构建 few-shot / intents / schema ──
 
 
-def _build_domain_examples(max_per_intent: int = 2) -> dict:
-    """从 registry 构建 domain examples，保留双花括号转义格式用于 STAGE2_SYSTEM_TEMPLATE.format()"""
+def _build_domain_examples(max_per_intent: int = 3) -> dict:
+    """从 registry 构建 domain examples，保留双花括号转义格式用于 STAGE2_SYSTEM_TEMPLATE.format()
+    
+    max_per_intent=3: 确保每个 intent 的 literal + implicit examples 都能入选，
+    避免 ac_control 的"太热了"等隐式意图 example 被截断。
+    """
     result = {}
     for domain in registry.get_all_intents():
         registry._ensure_examples_loaded(domain)

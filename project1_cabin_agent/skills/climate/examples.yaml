@@ -86,3 +86,21 @@ cabin_query:
       slots:
         items: "cabin_temp"
     tags: ["literal"]
+  - input: "湿度怎么样"
+    output:
+      intent: "cabin_query"
+      slots:
+        items: "humidity"
+    tags: ["literal"]
+  - input: "空调风速几档"
+    output:
+      intent: "cabin_query"
+      slots:
+        items: "fan_level"
+    tags: ["literal"]
+  - input: "空调开的什么模式"
+    output:
+      intent: "cabin_query"
+      slots:
+        items: "ac_mode"
+    tags: ["literal"]
