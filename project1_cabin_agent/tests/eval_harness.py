@@ -90,7 +90,7 @@ EXTENDED_SET = [
     ("休息模式","vehicle","activate_scene"),("出发前检查","vehicle","activate_scene"),
     ("空调多少度","vehicle","query_vehicle_status"),("该保养了吗","vehicle","query_vehicle_status"),
     ("讲个笑话","chitchat",None),("今天星期几","chitchat",None),
-    ("今天天气怎么样","chitchat",None),("几点了","chitchat",None),
+    ("今天天气怎么样","map","weather"),("几点了","chitchat",None),
     ("开空调、关窗","multi",None),("打开空调 然后放歌","multi",None),
     ("第二个","needs_context",None),("还有多远","needs_context",None),
     ("最近的有多远","needs_context",None),
@@ -152,7 +152,7 @@ EXTENDED_SET = [
     ("挡风玻璃起雾了","climate","ac_control"),      # 除雾=空调制热/制冷
     ("前面堵不堵","map","navigate"),     # 路况→导航域
     ("换一条路","map","navigate"),       # 重规划→导航
-    ("现在在哪儿","map","navigate"),     # 位置查询→导航
+    ("现在在哪儿","map","map_query"),     # 位置查询→map_query
     ("离机场还有多远","map","navigate"), # 导航进度
     ("油灯亮了","vehicle","query_vehicle_status"),      # 油灯=油量告警
     ("这个按钮干嘛的","chitchat",None),                 # 边界:不是车控
@@ -169,7 +169,7 @@ EXTENDED_SET = [
     ("路上还有多久","map","navigate"),   # ETA查询
     ("前方有摄像头吗","map","search_poi"),           # 电子眼→POI
     ("帮我记一下这个位置","map","navigate"), # 收藏位置
-    ("还剩多少公里","map","navigate"),   # 剩余里程
+    ("还剩多少公里","map","map_query"),   # 距离查询→map_query
 ]
 
 BOUNDARY_SET = [

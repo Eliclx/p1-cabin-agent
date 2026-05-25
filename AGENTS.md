@@ -37,8 +37,10 @@ message_compressor → fast_rules → [条件路由]
                     │          ┌──────┴──────┐           │
                    END    [全闲聊]      [非闲聊]    Send × N 并发
                     │     chitchat_handler  wave_planner   │
-                    │          │               │     task_pipeline
-                    │         END         task_pipeline    │
+                    │          │               │     context_enrich
+                    │         END       context_enrich     │
+                    │                      │        task_pipeline
+                    │               task_pipeline          │
                     │                      │        session_update
                     │               session_update          │
                     │                      │        wave_aggregator
@@ -112,6 +114,7 @@ message_compressor → fast_rules → [条件路由]
 | `intent.py` | 意图识别调度入口，串联 Stage 0~4，含端侧门控 `_can_use_edge` |
 | `post_rules.py` | 后置守卫（漂移检测 + 歧义检测 + Carry-Over + 历史注入判断 + 行程提取校验） |
 | `pipeline.py` | task_pipeline 节点（槽位校验 → interrupt 追问 → 工具执行 → 高风险确认） |
+| `context_enrich.py` | ContextEnrichmentNode — 按 CONTEXT_DEPS 声明组装 AgentContext，在 task_pipeline 之前运行，为 harness 准备上下文数据 |
 | `response.py` | session_update（黑板写入）+ wave_aggregator（并发结果汇聚）+ response_gen（依赖链聚合）+ chitchat_handler |
 | `episodic_memory.py` | L1.5 行程记忆（SQLite 事件日志 + 时间回溯检索 + 上下文注入） |
 | `user_profile.py` | L2 用户偏好（SQLite kv 存储） |
@@ -125,7 +128,32 @@ message_compressor → fast_rules → [条件路由]
 
 | 文件 | 职责 |
 |------|------|
-| `cabin_tools.py` | 三层架构工具集：原子函数 → @tool 领域工具 → 场景联动。含 TOOL_REGISTRY / INTENT_TO_TOOL 映射 + 黑板声明（produces/consumes）+ mock 数据 |
+| `cabin_tools.py` | 三层架构工具集：原子函数 → @tool 领域工具 → 场景联动。含 TOOL_REGISTRY / INTENT_TO_TOOL 映射（未迁移到 Skill 的旧工具）+ 黑板声明（produces/consumes）+ mock 数据 |
+
+### skills/ 目录
+
+| 文件 | 职责 |
+|------|------|
+| `registry.py` | SkillRegistry 类 — 启动时扫描 skills/ 目录自动注册，提供 get_all_intents / get_intent_spec / get_skill_for_intent / get_tool / get_validator / get_schema_block 接口 |
+| `climate/schema.py` | climate 技能 Schema 定义（intent + slots + 工具声明） |
+| `climate/tools.py` | climate 领域 @tool 函数 |
+| `climate/harness.py` | climate harness — 槽位填充 → 工具编排 → 结果格式化 |
+| `climate/examples.yaml` | climate few-shot 示例 |
+| `climate/SKILL.md` | climate 技能说明文档 |
+| `map/schema.py` | map 技能 Schema 定义 |
+| `map/tools.py` | map 领域 @tool 函数 |
+| `map/harness.py` | map harness — 导航/搜索工具编排 |
+| `map/examples.yaml` | map few-shot 示例 |
+| `media/schema.py` | media 技能 Schema 定义 |
+| `media/tools.py` | media 领域 @tool 函数 |
+| `media/harness.py` | media harness — 音乐/视频工具编排 |
+| `media/examples.yaml` | media few-shot 示例 |
+| `media/SKILL.md` | media 技能说明文档 |
+| `vehicle/schema.py` | vehicle 技能 Schema 定义 |
+| `vehicle/tools.py` | vehicle 领域 @tool 函数 |
+| `vehicle/harness.py` | vehicle harness — 车辆控制工具编排 |
+| `vehicle/examples.yaml` | vehicle few-shot 示例 |
+| `vehicle/SKILL.md` | vehicle 技能说明文档 |
 
 ### 端侧模型
 
@@ -150,6 +178,13 @@ message_compressor → fast_rules → [条件路由]
 | `test_corner_cases.py` | 边界用例（模糊输入、歧义、指代等） |
 | `test_b1_direct_answer.py` | 直接回复场景（正向反馈不追问） |
 | `test_episodic_memory.py` | 行程记忆 CRUD + 时间检索 |
+| `test_clarify_interrupt.py` | 歧义追问 + 槽位中断 + 历史干扰压测 |
+| `test_climate_harness.py` | climate harness 单测 |
+| `test_media_harness.py` | media harness 单测 |
+| `test_navigation_harness.py` | navigation harness 单测 |
+| `test_search_harness.py` | search harness 单测（已合并到 map 但测试文件名保留） |
+| `test_vehicle_harness.py` | vehicle harness 单测 |
+| `bench_stage2.py` | 端侧 Stage2 三组对比 benchmark |
 | `eval_harness.py` | 评估框架 |
 | `error_collector.py` | 错误收集器 |
 | `data_pipeline.py` / `synth_data.py` / `expander.py` / `judge.py` | 合成数据+评估流水线 |
@@ -168,7 +203,8 @@ message_compressor → fast_rules → [条件路由]
 - 新增 state 字段必须在 `CabinAgentState` TypedDict 中声明，否则静默丢弃
 
 ### 工具注册
-- 新增工具在 `cabin_tools.py` 中注册到 `TOOL_REGISTRY` 和 `INTENT_TO_TOOL`
+- 已迁移到 Skill 架构的 intent 走 `skills/registry.py` 自动发现，无需手动注册
+- 未迁移的旧工具仍在 `cabin_tools.py` 中注册到 `TOOL_REGISTRY` 和 `INTENT_TO_TOOL`
 - 需要黑板交互的工具声明 `blackboard: {produces: "entity.xxx", consumes: [...]}`
 - 端侧意图映射在 `edge_model.py` 的 `DOMAIN_INTENTS` 中同步
 
@@ -177,7 +213,9 @@ message_compressor → fast_rules → [条件路由]
 - 行程记忆测试可用 `seed_event()` 注入数据，`clear_events()` 清理，`set_current_time_fn()` mock 时间
 
 ### 路由规则
-- 新增意图必须在以下位置同步：`constants.py`（SubTask）→ `schema.py`（DYNAMIC_SCHEMA）→ `pre_rules.py`（短路规则，可选）→ `edge_model.py`（DOMAIN_INTENTS）
+- 新增意图只需在 `skills/xxx/schema.py` 中定义，registry 自动发现
+- 仍需同步的位置：`pre_rules.py`（短路规则，可选）→ `edge_model.py`（DOMAIN_INTENTS）
+- `constants.py` 和顶层 `schema.py` 已被 Skill 架构取代，无需手动同步
 - 条件路由函数在 `graph.py` 中定义，返回字符串节点名
 
 ### 关键陷阱
@@ -191,6 +229,10 @@ message_compressor → fast_rules → [条件路由]
 
 - v6: 两阶段 System+User + 动态 few-shot + chitchat 单一 intent
 - v7: Stage1 domain 分类加入区分规则（车窗→climate 不是 vehicle 等）
+- P0: is_acceptable + required_slots 检查，修了 8/13 个 flaky edge test
+- P1: Stage2 prompt schema 注入 + few-shot 动态加载
+- P2: 白名单全空时统一降级云端
+- guided generation (json_schema) → 去掉（延迟降 57%）
 - 端侧门控 `_can_use_edge`：多意图/指代/追问/极短模糊 → 放行云端
 - 安全网：conf < 0.85 自动 fallback 云端
 

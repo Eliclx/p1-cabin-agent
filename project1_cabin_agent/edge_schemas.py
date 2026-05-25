@@ -31,6 +31,10 @@ DOMAINS = {
         "label": "闲聊",
         "keywords": "你好 嗨 笑话 聊天 谢谢 天气 无聊 几点 谁",
     },
+    "unknown": {
+        "label": "无法判断",
+        "keywords": "",
+    },
 }
 
 DOMAIN_NAMES = list(DOMAINS.keys())
@@ -112,6 +116,13 @@ def _build_intent_schemas() -> dict:
             schemas[domain][final_intent] = {
                 "desc": spec.description,
                 "slots": slots,
+            }
+
+    # ── 兜底：非 skill 域的 chitchat / unknown ──
+    for _domain in ("chitchat", "unknown"):
+        if _domain not in schemas:
+            schemas[_domain] = {
+                _domain: {"desc": "闲聊" if _domain == "chitchat" else "无法判断", "slots": {}}
             }
 
     return schemas

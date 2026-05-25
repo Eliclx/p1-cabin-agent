@@ -25,10 +25,18 @@ tests/
 │  评估系统
 ├── eval_harness.py            # 跑测试套件 + 基线对比 + 退化告警
 ├── eval_baseline.json         # 上次评估基线
+├── bench_stage2.py            # 端侧 Stage2 三组对比 benchmark
 │
 │  单元测试
-├── test_corner_cases.py       # 45个边界用例测试
-└── test_b1_direct_answer.py   # B1 直接回答测试
+├── test_corner_cases.py       # 边界用例（模糊输入、歧义、指代等）
+├── test_b1_direct_answer.py   # B1 直接回答测试
+├── test_clarify_interrupt.py  # 歧义追问 + 槽位中断 + 历史干扰压测
+├── test_episodic_memory.py    # 行程记忆 CRUD + 时间检索
+├── test_climate_harness.py    # climate harness 单测
+├── test_media_harness.py      # media harness 单测
+├── test_navigation_harness.py # navigation harness 单测
+├── test_search_harness.py     # search harness 单测 (已合并到 map)
+└── test_vehicle_harness.py    # vehicle harness 单测
 ```
 
 ---
@@ -60,9 +68,8 @@ python -m project1_cabin_agent.tests.synth_data --no-negatives
 | 领域 | 覆盖的 intent | 基础条数 |
 |------|-------------|---------|
 | climate | ac/window/seat/light | ~208 |
-| navigation | start_navigation | ~54 |
+| map | navigate/search_poi/map_query/weather | ~108 |
 | media | media_control | ~68 |
-| search | search_poi | ~54 |
 | vehicle | query_status/activate_scene | ~69 |
 | chitchat | — | ~12 |
 | hard_negatives | unknown/multi | ~13 |
@@ -102,7 +109,7 @@ eval_harness → errors.jsonl → data_pipeline → seeds.jsonl → expander →
 ### 3. 跑评估
 
 ```bash
-# 完整评估（64 条，含 GOLDEN + EXTENDED + BOUNDARY）
+# 完整评估（132 条，含 GOLDEN + EXTENDED + BOUNDARY）
 python project1_cabin_agent/tests/eval_harness.py
 
 # 快速评估（14 条，只跑核心用例）
@@ -155,7 +162,7 @@ pytest project1_cabin_agent/tests/ -v
 ### Stage1: domain 分类
 
 ```
-System: 你是车载语音助手领域分类模块。只输出一个领域名：climate, navigation, media, search, vehicle, chitchat, unknown。
+System: 你是车载语音助手领域分类模块。只输出一个领域名：climate, map, media, vehicle, chitchat, unknown。
 User: 空调调到26度
 Assistant: climate
 ```
