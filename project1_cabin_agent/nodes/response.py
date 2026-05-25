@@ -14,6 +14,73 @@ from shared.utils.metrics import track_node
 from project1_cabin_agent.nodes.message_utils import _ensure_str
 from project1_cabin_agent.nodes.pipeline import _chitchat_reply
 from project1_cabin_agent.nodes.episodic_memory import auto_log_from_task_results
+import re
+
+
+# ═══════════════════════════════════════════════════
+# Chitchat Harness：后置校验 + clarify 升级
+# ═══════════════════════════════════════════════════
+
+# Layer 2: 检测 chitchat 回复中的虚假操作确认
+# 匹配模式：LLM 在 chitchat 路径生成了暗示已执行操作的回复
+_FAKE_ACTION_PATTERNS = [
+    (r"已为您\w*(?:调整|调到|打开|关闭|开启|设置|切换|处理|连接|搞定|完成)", "adjust"),
+    (r"已(?:调到|打开|关闭|开启|设为|切换|连接|开始)", "adjust"),
+    (r"正在为您\w*(?:调整|调到|打开|关闭|开启|设置|切换)", "adjust"),
+    (r"舒适模式", "scene"),
+    (r"已为您规划(?:路线|导航)", "navigate"),
+    (r"温度.*(?:调到|设为|调为)\d+", "climate"),
+    # 设备+完成态变体（"开好了""关好了""搞定了"）
+    (r"(?:空调|窗户|灯光|音乐|导航|蓝牙|座椅|车窗|天窗).{0,4}(?:开好|关好|调好|连好|设好|完成)了", "adjust"),
+    (r"已经\w*(?:搞定|完成|弄好|处理好|帮您)", "adjust"),
+    (r"已经为您\w*", "adjust"),
+]
+
+# Layer 3: 虚假操作关键词 → clarify 候选意图
+_ACTION_HINTS = {
+    "adjust": [
+        ("ac_control", "调节空调温度/模式"),
+        ("window_control", "开窗通风"),
+        ("light_control", "调节灯光"),
+    ],
+    "scene": [
+        ("ac_control", "调节空调"),
+        ("window_control", "开窗通风"),
+    ],
+    "navigate": [
+        ("navigate", "导航到目的地"),
+    ],
+    "climate": [
+        ("ac_control", "调节空调温度"),
+    ],
+}
+
+# 安全降级回复
+_SAFE_FALLBACK = "抱歉，我不太确定您的意思，能说得更具体一些吗？"
+
+
+def _validate_chitchat_reply(reply: str) -> tuple[str, str | None]:
+    """chitchat 回复后置校验（Layer 2 harness）。
+
+    检测 LLM 在 chitchat 路径生成的虚假操作确认。
+    返回 (reply, action_hint)：
+      - 未检测到 → (原回复, None)
+      - 检测到 → (降级回复, action_hint 用于 Layer 3 clarify 升级)
+    """
+    for pat, hint in _FAKE_ACTION_PATTERNS:
+        if re.search(pat, reply):
+            logger.warning(f"[chitchat harness] 虚假操作确认检测: '{reply}' → pattern={pat}")
+            return _SAFE_FALLBACK, hint
+    return reply, None
+
+
+def _build_clarify_from_hint(action_hint: str) -> str:
+    """从虚假操作类型推断用户可能意图，生成追问（Layer 3 clarify 升级）。"""
+    candidates = _ACTION_HINTS.get(action_hint, [])
+    if not candidates:
+        return _SAFE_FALLBACK
+    options = "、".join(f"{label}" for _, label in candidates)
+    return f"您是想{options}吗？请告诉我具体需要什么帮助。"
 
 
 # ── 节点 3：L1 记忆写入 ──
@@ -208,6 +275,14 @@ def chitchat_handler(state: CabinAgentState | dict) -> dict:
         response = _chitchat_reply_with_context(user_input, messages, episodic_ctx["text"])
     else:
         response = _chitchat_reply(user_input, messages)
+
+    # ── Layer 2+3: chitchat harness 后置校验 ──
+    # 检测 LLM 是否生成了虚假操作确认（"已为您..."），如果是则升级为 clarify
+    response, action_hint = _validate_chitchat_reply(response)
+    if action_hint:
+        # Layer 3: 从虚假操作推断用户真实意图，生成追问
+        response = _build_clarify_from_hint(action_hint)
+        logger.info(f"[chitchat harness] clarify 升级: action_hint={action_hint} → '{response}'")
 
     return {
         "final_response": response,
