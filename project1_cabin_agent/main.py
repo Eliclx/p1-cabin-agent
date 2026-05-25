@@ -198,7 +198,7 @@ def update_vehicle_state(field, value):
 
 
 def create_demo():
-    with gr.Blocks(title="🚗 智能座舱 Agent Demo", theme=Soft()) as demo:
+    with gr.Blocks(title="🚗 智能座舱 Agent Demo") as demo:
         gr.Markdown("# 🚗 智能座舱 Agent\n基于 LangGraph + LangChain 构建")
 
         session_id = gr.State(lambda: str(uuid.uuid4()))
@@ -307,5 +307,5 @@ def create_demo():
 
 if __name__ == "__main__":
     demo = create_demo()
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False, theme=Soft())
      

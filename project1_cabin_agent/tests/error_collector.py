@@ -138,7 +138,7 @@ SEED_ERROR_CASES = [
     ("打开音乐关闭空调", "multi", None, {},
      "multi_missed", "无逗号/连接词, fast_rule和门控都漏", "stage1"),
     ("导航去最近的加油站", "map", "navigate", {"destination": "最近的加油站"},
-     "intent_confusion", "判为search/search_poi, 该是navigation/start_navigation", "stage2"),
+     "intent_confusion", "判为search/search_poi, 该是navigate", "stage2"),
     ("先开空调再导航", "multi", None, {},
      "multi_missed", "先X再Y模式, fast_rule拦截", "stage1"),
 ]

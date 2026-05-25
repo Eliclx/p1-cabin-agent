@@ -372,11 +372,11 @@ async def search_poi(keyword: str, category: str = None, radius: float = 5.0, li
 
 
 @tool
-async def start_navigation(destination: str, mode: str = None) -> dict:
+async def navigate(destination: str, route_type: str = None) -> dict:
     """
     开启导航到目的地。
     :param destination: 目的地名称或地址，如"故宫"、"王府井"、"全聚德"
-    :param mode: 路线偏好 fastest/shortest/avoid_highway/avoid_toll
+    :param route_type: 路线偏好 fastest/shortest/avoid_highway/avoid_toll
     :example: "导航去故宫" → destination=故宫
     :example: "去鸟巢" → destination=鸟巢
     :example: "去全聚德" → destination=全聚德
@@ -454,7 +454,7 @@ async def activate_scene(scene_name: str) -> dict:
 
 ALL_TOOLS = [
     ac_control, window_control, seat_control, media_control,
-    light_control, search_poi, start_navigation,
+    light_control, search_poi, navigate,
     query_vehicle_status, activate_scene,
 ]
 
@@ -468,7 +468,7 @@ BLACKBOARD_DECLS = {
         "produces": "entity.poi",   # 唯一标签，供后续工具查询使用
         "fields": ["name", "distance", "rating", "avg_price", "price", "ticket"],
     },
-    "start_navigation": {
+    "navigate": {
         "produces": "entity.route",
         "fields": ["destination", "eta", "distance", "traffic"],
         "consumes": "entity.poi",

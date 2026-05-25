@@ -88,7 +88,7 @@ def _extract_l2_session(state: CabinAgentState) -> dict:
     for frame in frames:
         intent = frame.get("intent", "")
         slots = frame.get("extracted_slots", {})
-        if intent in ("navigate_to", "start_navigation") and "destination" in slots:
+        if intent == "navigate" and "destination" in slots:
             session["last_destination"] = slots["destination"]
             break
 

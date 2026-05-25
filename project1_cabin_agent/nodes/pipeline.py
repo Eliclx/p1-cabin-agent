@@ -184,7 +184,7 @@ def _detect_redirect(user_input: str, current_intent: str) -> dict | None:
 def _quick_intent_map(text: str) -> dict | None:
     """规则层：从用户输入快速映射到意图。"""
     mappings = [
-        (["导航去", "导航到", "去"], "start_navigation"),
+        (["导航去", "导航到", "去"], "navigate"),
         (["搜索", "附近有", "找"], "search_poi"),
         (["空调", "调到", "有点冷", "太热"], "ac_control"),
         (["播放", "放音乐", "听"], "media_control"),
@@ -245,7 +245,7 @@ def _chitchat_reply(user_input: str, messages: list) -> str:
 INTENT_LABELS = {
     "open_window": "车窗", "ac_control": "空调", "media_control": "音乐/电台",
     "light_control": "灯光", "seat_control": "座椅", "window_control": "车窗/车门",
-    "search_poi": "搜索附近", "start_navigation": "导航", "query_vehicle_status": "车辆状态",
+    "search_poi": "搜索附近", "navigate": "导航", "query_vehicle_status": "车辆状态",
     "parking": "停车",  # activate_scene 已移至 Phase 3 编排层
 }
 

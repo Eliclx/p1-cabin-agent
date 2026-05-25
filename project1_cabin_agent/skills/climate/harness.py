@@ -182,6 +182,10 @@ class ClimateHarness(BaseHarness):
     def _format_ac(self, r: dict) -> str:
         action = r.get("action", "")
         temp = r.get("temperature")
+        _MODE_NAMES = {
+            "cool": "制冷", "heat": "制热", "auto": "自动",
+            "dehumidify": "除湿", "blow": "吹风",
+        }
         if action == "on":
             return f"好的，已打开空调" + (f"，{temp}度" if temp else "")
         elif action == "off":
@@ -189,7 +193,9 @@ class ClimateHarness(BaseHarness):
         elif action == "adjust":
             parts = []
             if r.get("temperature"): parts.append(f"温度调到{temp}度")
-            if r.get("mode"): parts.append(f"模式调为{r['mode']}")
+            if r.get("mode"):
+                mode_cn = _MODE_NAMES.get(r["mode"], r["mode"])
+                parts.append(f"模式调为{mode_cn}")
             if r.get("fan_level"): parts.append(f"风速调到{r['fan_level']}档")
             return f"好的，{'，'.join(parts) if parts else '已调整'}"
         return "好的"

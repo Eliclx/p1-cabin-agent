@@ -3,7 +3,7 @@ project1_cabin_agent/nodes/episodic_memory.py
 L1.5 行程记忆 — 跨 session 事件日志 + 时间检索 + 上下文注入。
 
 设计原则：
-- 工具执行后自动归档（白名单控制：start_navigation/search_poi/media_control）
+# - 工具执行后自动归档（白名单控制：navigate/search_poi/media_control）
 - 含时间回溯词时触发检索，结果注入 LLM context
 - 时间源可 mock（测试时注入固定时间，生产用系统时钟）
 - 守卫层零改动：走 needs_ctx=True 路径，漂移/歧义自动豁免
@@ -25,7 +25,7 @@ DB_PATH = os.path.join(
 
 # ── 白名单：哪些 intent 的执行结果值得记 ──
 
-EVENT_TYPES_TO_LOG = {"start_navigation", "search_poi", "media_control"}
+EVENT_TYPES_TO_LOG = {"navigate", "search_poi", "media_control"}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -141,7 +141,7 @@ def _extract_summary(intent: str, tool_result: dict) -> str | None:
     if not tool_result:
         return None
 
-    if intent == "start_navigation":
+    if intent == "navigate":
         dest = tool_result.get("destination", "")
         return f"导航去{dest}" if dest else None
 

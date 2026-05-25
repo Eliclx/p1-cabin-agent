@@ -147,7 +147,7 @@ class CabinAgentState(TypedDict):
     active_frames: List[dict]
         # 存"没完成的意图"——上一轮识别了意图但缺槽位，等用户下一轮补充
         # 格式: [
-        #   {"task_id": "task_0", "intent": "start_navigation", "status": "pending",
+        #   {"task_id": "task_0", "intent": "navigate", "status": "pending",
         #    "required_slots": ["destination"], "extracted_slots": {}},
         # ]
         # 两个使用入口（均在 intent_classifier 内）：

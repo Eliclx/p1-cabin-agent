@@ -74,7 +74,7 @@ def generate_dynamic_schema() -> dict:
         "required": [], "optional": [],
         "param_descriptions": {},
         "examples": ["第2个加油站是什么", "最远的是哪个", "第一个的评分多少"],
-        "anti_examples": ["帮我导航去第二个（这是操作指令，应识别为start_navigation）"],
+        "anti_examples": ["帮我导航去第二个（这是操作指令，应识别为navigate）"],
         "implicit_maps": [], "risk_level": "normal",
     }
     schema["no_support"] = {
@@ -82,7 +82,7 @@ def generate_dynamic_schema() -> dict:
         "required": [], "optional": [],
         "param_descriptions": {},
         "examples": ["帮我点个外卖", "打电话给张三", "买张机票"],
-        "anti_examples": ["帮我导航（这是支持的start_navigation）"],
+        "anti_examples": ["帮我导航（这是支持的navigate）"],
         "implicit_maps": [], "risk_level": "normal",
     }
 

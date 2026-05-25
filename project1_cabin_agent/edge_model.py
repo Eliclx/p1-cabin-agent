@@ -422,8 +422,39 @@ def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, 
 
 
 # ═══════════════════════════════════════════════════
-# 主入口
+# Confidence 计算（多信号，替代硬编码 0.85）
 # ═══════════════════════════════════════════════════
+
+def _compute_confidence(domain: str, intent: str, slots: dict, all_slots_filtered: bool) -> float:
+    """从结构化信号计算端侧置信度，而非硬编码常数。
+
+    信号来源（均为确定性，不依赖模型概率输出）：
+    1. 必填 slot 填充率 — 有 required slot 且至少一个非空 → 加分
+    2. 白名单通过 — 未被全过滤 → 加分
+    3. intent 在已知列表 — domain+intent 合法 → 加分
+
+    返回 0.0~1.0，和 EDGE_CONFIDENCE_THRESHOLD(0.85) 比较决定是否直出。
+    """
+    score = 0.0
+
+    # skip intent 直接返回 0（虽然 is_acceptable 也会拦截，但语义更清晰）
+    if not intent or intent in _SKIP_INTENTS:
+        return 0.0
+
+    # 信号1: intent 合法（走到这里说明 domain+intent 都通过）
+    score += 0.4
+
+    # 信号2: 白名单通过（没被全过滤）
+    if not all_slots_filtered:
+        score += 0.3
+
+    # 信号3: 有实际 slot 被提取出来（非空结果）
+    non_empty = [v for v in slots.values() if v is not None and v != ""]
+    if non_empty:
+        score += 0.3
+
+    return round(score, 2)
+
 
 def edge_model_infer(user_input: str) -> EdgeResult:
     """
@@ -440,7 +471,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
     if domain == "unknown":
         total_lat = (time.monotonic() - total_start) * 1000
         return EdgeResult(
-            intent="chitchat", confidence=0.85, slots={},
+            intent="chitchat", confidence=0.0, slots={},
             domain=domain, latency_ms=total_lat, error="domain_unknown",
             all_slots_filtered=False,
         )
@@ -451,7 +482,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
 
     if intent == "unknown":
         return EdgeResult(
-            intent="chitchat", confidence=0.85, slots={},
+            intent="chitchat", confidence=0.0, slots={},
             domain=domain, latency_ms=total_lat, error="intent_unknown",
             all_slots_filtered=False,
         )
@@ -475,7 +506,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
 
     return EdgeResult(
         intent=intent,
-        confidence=0.85,
+        confidence=_compute_confidence(domain, intent, clean_slots, all_slots_filtered),
         slots=clean_slots,
         domain=domain,
         latency_ms=total_lat,

@@ -24,7 +24,7 @@ INTENT_TO_L2_KEY = {
     "ac_control": {
         "temperature": "ac_temperature",
     },
-    "start_navigation": {
+    "navigate": {
         "destination": "last_destination",
     },
     "search_poi": {
