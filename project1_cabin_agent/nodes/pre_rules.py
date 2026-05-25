@@ -95,13 +95,14 @@ def _extract_window_target(user_input: str) -> dict:
 
 
 def _extract_scene(user_input: str) -> dict:
-    """提取场景名"""
-    if any(w in user_input for w in ("舒适", "开车模式", "驾驶模式")):
-        return {"scene_name": "comfortable_driving"}
-    if any(w in user_input for w in ("休息", "睡眠", "睡觉")):
-        return {"scene_name": "sleep_mode"}
-    if any(w in user_input for w in ("出发检查", "出发前", "检查车辆")):
-        return {"scene_name": "departure_check"}
+    # Phase 3: 场景联动移至编排层，scene FastRules 暂注释
+    # """提取场景名"""
+    # if any(w in user_input for w in ("舒适", "开车模式", "驾驶模式")):
+    #     return {"scene_name": "comfortable_driving"}
+    # if any(w in user_input for w in ("休息", "睡眠", "睡觉")):
+    #     return {"scene_name": "sleep_mode"}
+    # if any(w in user_input for w in ("出发检查", "出发前", "检查车辆")):
+    #     return {"scene_name": "departure_check"}
     return {}
 
 
@@ -250,19 +251,20 @@ SHORT_CIRCUIT_RULES = [
         "volume_down",
     ),
     # ── 导航/POI 搜索：确定性不高，交给 LLM + pipeline depends_on 处理 ──
-    # ── 场景联动 ──
-    (
-        lambda s: any(w in s for w in ("舒适驾驶", "舒适模式", "开车模式")),
-        "activate_scene",
-        _extract_scene,
-        "scene_comfort",
-    ),
-    (
-        lambda s: any(w in s for w in ("休息模式", "睡眠模式")),
-        "activate_scene",
-        _extract_scene,
-        "scene_sleep",
-    ),
+    # Phase 3: 场景联动移至编排层，scene FastRules 暂注释
+    # # ── 场景联动 ──
+    # (
+    #     lambda s: any(w in s for w in ("舒适驾驶", "舒适模式", "开车模式")),
+    #     "activate_scene",
+    #     _extract_scene,
+    #     "scene_comfort",
+    # ),
+    # (
+    #     lambda s: any(w in s for w in ("休息模式", "睡眠模式")),
+    #     "activate_scene",
+    #     _extract_scene,
+    #     "scene_sleep",
+    # ),
     # ── 座椅控制（短语精确匹配）──
     (
         lambda s: any(p in s for p in ("座椅加热", "座椅暖", "座位加热", "加热座椅"))

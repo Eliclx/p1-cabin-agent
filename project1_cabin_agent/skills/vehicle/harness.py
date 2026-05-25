@@ -8,12 +8,11 @@ from shared.utils.logger import logger
 
 
 class VehicleHarness(BaseHarness):
-    """车况域 harness。依赖 VEHICLE（车辆状态）。"""
+    """车况域 harness。依赖 VEHICLE（车辆状态）。只负责硬车况查询。"""
 
     CONTEXT_DEPS = ContextDep.VEHICLE
 
-    _VALID_ITEMS = {"fuel", "battery", "tire", "mileage", "temperature", "ac_temp", "speed"}
-    _VALID_SCENES = {"comfortable_driving", "sleep_mode", "departure_check"}
+    _VALID_ITEMS = {"fuel", "battery", "tire", "mileage", "speed"}
 
     # ── pre_validate ───────────────────────────────────────────────
 
@@ -22,8 +21,6 @@ class VehicleHarness(BaseHarness):
 
         if intent == "query_vehicle_status":
             return self._validate_query(slots)
-        elif intent == "activate_scene":
-            return self._validate_scene(slots)
 
         # 通用：至少要知道 intent
         return HarnessResult(
@@ -42,22 +39,6 @@ class VehicleHarness(BaseHarness):
                                  block_reason=f"illegal items: {items}")
         return HarnessResult(valid=True, slots=slots)
 
-    def _validate_scene(self, slots: dict) -> HarnessResult:
-        scene = slots.get("scene_name", "")
-        if not scene:
-            logger.info("[vehicle-harness] pre_validate: missing scene_name → clarify")
-            return HarnessResult(
-                valid=False, slots=slots,
-                need_clarify=True,
-                clarify_message="请问您想切换到哪个模式？舒适驾驶、休息还是出发前检查？",
-                block_reason="missing scene_name",
-            )
-        if scene not in self._VALID_SCENES:
-            logger.warning(f"[vehicle-harness] pre_validate: illegal scene={scene} → fallback")
-            return HarnessResult(valid=False, fallback=True,
-                                 block_reason=f"illegal scene: {scene}")
-        return HarnessResult(valid=True, slots=slots)
-
     # ── post_validate ──────────────────────────────────────────────
 
     def post_validate(self, tool_result: dict, ctx: AgentContext) -> HarnessResult:
@@ -70,7 +51,4 @@ class VehicleHarness(BaseHarness):
     # ── format_response ────────────────────────────────────────────
 
     def format_response(self, tool_result: dict) -> str:
-        scene = tool_result.get("scene", "")
-        if scene:
-            return f"好的，已激活{scene}模式"
         return tool_result.get("voice_reply", "好的")

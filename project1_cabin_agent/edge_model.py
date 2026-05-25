@@ -46,7 +46,7 @@ EDGE_TIMEOUT = int(os.getenv("EDGE_TIMEOUT", "5"))
 EDGE_CONFIDENCE_THRESHOLD = float(os.getenv("EDGE_CONFIDENCE_THRESHOLD", "0.85"))
 
 # 端侧不处理的意图（交给云端）
-_SKIP_INTENTS = {"clarify", "direct_answer", "multi_intent"}
+_SKIP_INTENTS = {"clarify", "direct_answer", "multi_intent", "chitchat"}
 
 # 置信度标签 → 数值映射（logprobs 不可用时兜底）
 _CONFIDENCE_MAP = {
@@ -87,7 +87,7 @@ STAGE1_SYSTEM = """你是车载语音助手的领域分类器。
 3. 时间、日期类问题属于闲聊(chitchat)
 4. 单字"暂停"是媒体操作(media)
 5. 音量调节属于媒体(media)
-6. 保养/维修/询问空调参数(温度、风速)属于车况(vehicle)
+6. 保养/维修属于车况(vehicle)；空调参数(温度、风速)属于车内环境(climate/cabin_query)
 
 只输出领域名称（一个英文单词），不要其他文字。"""
 

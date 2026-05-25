@@ -281,7 +281,7 @@ def guard_episodic_extraction(sub_tasks: list, episodic_raw: list) -> list:
     - 校验的值必须在 raw.full_text 中出现过，否则 → clarify
     """
     # 「提取型」slot — 值来自行程数据，需要校验
-    _EXTRACTION_SLOTS = {"destination", "keyword", "query", "artist", "scene_name"}
+    _EXTRACTION_SLOTS = {"destination", "keyword", "query", "artist"}  # scene_name removed (Phase 3)
 
     if not episodic_raw:
         return sub_tasks

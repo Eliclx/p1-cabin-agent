@@ -1,6 +1,6 @@
 """
 project1_cabin_agent/tests/test_vehicle_harness.py
-Vehicle Harness 单测
+Vehicle Harness 单测 — query_vehicle_status only
 """
 import pytest
 from project1_cabin_agent.skills.vehicle.harness import VehicleHarness
@@ -20,9 +20,29 @@ def ctx():
 # ── pre_validate: query_vehicle_status ───────────────────────────
 
 class TestPreValidateQuery:
-    def test_valid_items(self, harness, ctx):
+    def test_valid_items_fuel(self, harness, ctx):
         r = harness.pre_validate(
             {"_intent": "query_vehicle_status", "items": "fuel"}, ctx)
+        assert r.valid
+
+    def test_valid_items_battery(self, harness, ctx):
+        r = harness.pre_validate(
+            {"_intent": "query_vehicle_status", "items": "battery"}, ctx)
+        assert r.valid
+
+    def test_valid_items_tire(self, harness, ctx):
+        r = harness.pre_validate(
+            {"_intent": "query_vehicle_status", "items": "tire"}, ctx)
+        assert r.valid
+
+    def test_valid_items_mileage(self, harness, ctx):
+        r = harness.pre_validate(
+            {"_intent": "query_vehicle_status", "items": "mileage"}, ctx)
+        assert r.valid
+
+    def test_valid_items_speed(self, harness, ctx):
+        r = harness.pre_validate(
+            {"_intent": "query_vehicle_status", "items": "speed"}, ctx)
         assert r.valid
 
     def test_empty_items_passes(self, harness, ctx):
@@ -37,36 +57,30 @@ class TestPreValidateQuery:
         assert not r.valid
         assert r.fallback
 
-
-# ── pre_validate: activate_scene ──────────────────────────────────
-
-class TestPreValidateScene:
-    def test_comfortable(self, harness, ctx):
+    def test_ac_temp_not_in_vehicle(self, harness, ctx):
+        """ac_temp 已归 climate/cabin_query，vehicle 不再接受"""
         r = harness.pre_validate(
-            {"_intent": "activate_scene", "scene_name": "comfortable_driving"}, ctx)
-        assert r.valid
-
-    def test_sleep(self, harness, ctx):
-        r = harness.pre_validate(
-            {"_intent": "activate_scene", "scene_name": "sleep_mode"}, ctx)
-        assert r.valid
-
-    def test_departure(self, harness, ctx):
-        r = harness.pre_validate(
-            {"_intent": "activate_scene", "scene_name": "departure_check"}, ctx)
-        assert r.valid
-
-    def test_illegal_scene(self, harness, ctx):
-        r = harness.pre_validate(
-            {"_intent": "activate_scene", "scene_name": "sport_mode"}, ctx)
+            {"_intent": "query_vehicle_status", "items": "ac_temp"}, ctx)
         assert not r.valid
         assert r.fallback
 
-    def test_missing_scene_clarify(self, harness, ctx):
+    def test_temperature_not_in_vehicle(self, harness, ctx):
+        """temperature 已归 climate/cabin_query，vehicle 不再接受"""
         r = harness.pre_validate(
-            {"_intent": "activate_scene"}, ctx)
+            {"_intent": "query_vehicle_status", "items": "temperature"}, ctx)
         assert not r.valid
-        assert r.need_clarify
+        assert r.fallback
+
+
+# ── unknown intent ───────────────────────────────────────────────
+
+class TestUnknownIntent:
+    def test_activate_scene_unknown(self, harness, ctx):
+        """activate_scene 已移除，应返回 fallback"""
+        r = harness.pre_validate(
+            {"_intent": "activate_scene", "scene_name": "comfortable_driving"}, ctx)
+        assert not r.valid
+        assert r.fallback
 
 
 # ── post_validate ────────────────────────────────────────────────
@@ -85,10 +99,6 @@ class TestPostValidate:
 # ── format_response ──────────────────────────────────────────────
 
 class TestFormatResponse:
-    def test_scene(self, harness):
-        r = harness.format_response({"status": "success", "scene": "舒适驾驶"})
-        assert "舒适驾驶" in r
-
-    def test_voice_reply_fallback(self, harness):
-        r = harness.format_response({"status": "success", "voice_reply": "好的"})
-        assert "好的" == r
+    def test_voice_reply(self, harness):
+        r = harness.format_response({"status": "success", "voice_reply": "当前油量68%"})
+        assert "油量" in r

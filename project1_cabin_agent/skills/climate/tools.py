@@ -115,3 +115,25 @@ def seat_control(action: str, heat_level: int = None) -> dict:
         _set_seat_state(ventilate=False)
         return {"status": "success", "intent": "seat_control", "action": "ventilate_off"}
     return {"status": "success", "intent": "seat_control"}
+
+
+def cabin_query(items: str = None) -> dict:
+    """座舱状态查询 — 空调温度/车内温度/湿度等"""
+    status = vehicle_state.to_mock_status()
+    # 映射 cabin_query 的 items 到 vehicle_state 的 key
+    item_map = {
+        "ac_temp": "ac_temp",
+        "cabin_temp": "temperature",
+        "humidity": None,  # mock 暂不支持
+    }
+    key = item_map.get(items) if items else None
+    if key and key in status:
+        info = status[key]
+        return {"status": "success", "intent": "cabin_query", "items": items,
+                "value": info["value"], "voice_reply": info["voice"]}
+    if items:
+        return {"status": "success", "intent": "cabin_query", "items": items,
+                "value": "未知", "voice_reply": f"暂时无法获取{items}信息"}
+    # 无 items → 返回全部座舱状态
+    return {"status": "success", "intent": "cabin_query", "items": "all",
+            "voice_reply": "好的，座舱状态正常"}

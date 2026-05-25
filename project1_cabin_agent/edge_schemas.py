@@ -25,7 +25,7 @@ DOMAINS = {
     },
     "vehicle": {
         "label": "车况查询",
-        "keywords": "多少油 胎压 保养 故障 续航 油箱 剩余 空调几度 车速 舒适 休息 模式 场景",
+        "keywords": "多少油 胎压 保养 故障 续航 油箱 剩余 车速 里程 电量",
     },
     "chitchat": {
         "label": "闲聊",

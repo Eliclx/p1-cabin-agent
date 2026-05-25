@@ -72,3 +72,17 @@ seat_control:
       slots:
         action: "ventilate_off"
     tags: ["literal"]
+
+cabin_query:
+  - input: "空调多少度"
+    output:
+      intent: "cabin_query"
+      slots:
+        items: "ac_temp"
+    tags: ["literal"]
+  - input: "车内温度"
+    output:
+      intent: "cabin_query"
+      slots:
+        items: "cabin_temp"
+    tags: ["literal"]

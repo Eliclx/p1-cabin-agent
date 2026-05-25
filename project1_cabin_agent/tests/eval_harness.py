@@ -50,10 +50,7 @@ EXPECTED_SLOTS = {
     "帮我找下附近的医院": {"keyword": "医院"},
     "还有多少油": {"items": "fuel"},
     "胎压怎么样": {"items": "tire"},
-    "舒适模式": {"scene_name": "comfortable_driving"},
-    "睡眠模式": {"scene_name": "sleep_mode"},
     "空调多少度": {"items": "ac_temp"},
-    "出发前检查": {"scene_name": "departure_check"},
 }
 
 # ── 测试用例（分层管理）──
@@ -86,9 +83,10 @@ EXTENDED_SET = [
     ("我想听周杰伦的歌","media","media_control"),("麻烦帮我放首歌呗","media","media_control"),
     ("附近有没有川菜馆","map","search_poi"),("帮我找下附近的医院","map","search_poi"),
     ("附近的火锅店","map","search_poi"),("还有多少油","vehicle","query_vehicle_status"),
-    ("电量还剩多少","vehicle","query_vehicle_status"),("舒适模式","vehicle","activate_scene"),
-    ("休息模式","vehicle","activate_scene"),("出发前检查","vehicle","activate_scene"),
-    ("空调多少度","vehicle","query_vehicle_status"),("该保养了吗","vehicle","query_vehicle_status"),
+    ("电量还剩多少","vehicle","query_vehicle_status"),
+    # scene 相关 → 不再有 activate_scene intent，改为 multi 放行云端
+    ("舒适模式","multi",None),("休息模式","multi",None),("出发前检查","multi",None),
+    ("空调多少度","climate","cabin_query"),("该保养了吗","vehicle","query_vehicle_status"),
     ("讲个笑话","chitchat",None),("今天星期几","chitchat",None),
     ("今天天气怎么样","map","weather"),("几点了","chitchat",None),
     ("开空调、关窗","multi",None),("打开空调 然后放歌","multi",None),
@@ -115,7 +113,7 @@ EXTENDED_SET = [
     ("我想听周杰伦","media","media_control"),
     ("有没有附近的火锅店","map","search_poi"),
     ("胎压怎么样","vehicle","query_vehicle_status"),
-    ("睡眠模式","vehicle","activate_scene"),
+    ("睡眠模式","multi",None),
     # ── 新增：白名单边界（验证P2）──
     ("空调暖风","climate","ac_control"),
     ("车窗全开","climate","window_control"),
@@ -124,7 +122,7 @@ EXTENDED_SET = [
     ("放周杰伦","media","media_control"),
     ("搜一下附近的加油站","map","search_poi"),
     ("车还有多少电","vehicle","query_vehicle_status"),
-    ("运动模式","vehicle","activate_scene"),
+    ("运动模式","multi",None),
     # ── 新增：ASR噪声/口误（验证端侧鲁棒性）──
     ("帮我把空挑关掉","climate","ac_control"),          # 空调→空挑
     ("去到春熙路吧","map","navigate"),    # 去→去到
@@ -153,7 +151,7 @@ EXTENDED_SET = [
     ("前面堵不堵","map","navigate"),     # 路况→导航域
     ("换一条路","map","navigate"),       # 重规划→导航
     ("现在在哪儿","map","map_query"),     # 位置查询→map_query
-    ("离机场还有多远","map","navigate"), # 导航进度
+    ("离机场还有多远","map","map_query"), # 问距离,非导航指令
     ("油灯亮了","vehicle","query_vehicle_status"),      # 油灯=油量告警
     ("这个按钮干嘛的","chitchat",None),                 # 边界:不是车控
     ("你好小Q","chitchat",None),                        # 唤醒词风格

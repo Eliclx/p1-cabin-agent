@@ -28,6 +28,7 @@ class ClimateHarness(BaseHarness):
             "window_control": self._validate_window,
             "light_control": self._validate_light,
             "seat_control": self._validate_seat,
+            "cabin_query": self._validate_cabin_query,
         }
         handler = handlers.get(intent)
         if handler:
@@ -135,6 +136,22 @@ class ClimateHarness(BaseHarness):
 
         return HarnessResult(valid=True, slots=slots)
 
+    # ── cabin_query ──────────────────────────────────────────────
+
+    _VALID_CABIN_ITEMS = {"ac_temp", "cabin_temp", "humidity"}
+
+    def _validate_cabin_query(self, slots: dict, ctx: AgentContext) -> HarnessResult:
+        items = slots.get("items", "")
+        if not items:
+            logger.info("[climate-harness] cabin_query: missing items → fallback")
+            return HarnessResult(valid=False, fallback=True,
+                                 block_reason="cabin_query missing items")
+        if items not in self._VALID_CABIN_ITEMS:
+            logger.warning(f"[climate-harness] cabin_query: illegal items={items} → fallback")
+            return HarnessResult(valid=False, fallback=True,
+                                 block_reason=f"illegal cabin items: {items}")
+        return HarnessResult(valid=True, slots=slots)
+
     # ── post_validate ─────────────────────────────────────────────
 
     def post_validate(self, tool_result: dict, ctx: AgentContext) -> HarnessResult:
@@ -158,6 +175,8 @@ class ClimateHarness(BaseHarness):
             return self._format_light(tool_result)
         elif intent == "seat_control":
             return self._format_seat(tool_result)
+        elif intent == "cabin_query":
+            return self._format_cabin_query(tool_result)
         return "好的"
 
     def _format_ac(self, r: dict) -> str:
@@ -208,3 +227,12 @@ class ClimateHarness(BaseHarness):
         elif action == "ventilate_off":
             return "好的，已关闭座椅通风"
         return "好的"
+
+    def _format_cabin_query(self, r: dict) -> str:
+        """格式化座舱查询结果"""
+        voice = r.get("voice_reply", "")
+        if voice:
+            return voice
+        items = r.get("items", "")
+        value = r.get("value", "")
+        return f"好的，{items}当前为{value}"

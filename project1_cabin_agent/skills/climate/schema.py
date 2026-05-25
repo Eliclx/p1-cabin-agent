@@ -65,11 +65,20 @@ class SeatControlSlots(BaseModel):
     )
 
 
+class CabinQuerySlots(BaseModel):
+    """座舱状态查询 — 空调温度/车内温度/湿度等"""
+    items: Optional[str] = Field(
+        default=None,
+        description="查询项目: ac_temp(空调温度)/cabin_temp(车内温度)/humidity(湿度)"
+    )
+
+
 CLIMATE_INTENTS: dict[str, type[BaseModel]] = {
     "ac_control": AcControlSlots,
     "window_control": WindowControlSlots,
     "light_control": LightControlSlots,
     "seat_control": SeatControlSlots,
+    "cabin_query": CabinQuerySlots,
 }
 
 

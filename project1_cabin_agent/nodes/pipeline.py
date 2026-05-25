@@ -246,7 +246,7 @@ INTENT_LABELS = {
     "open_window": "车窗", "ac_control": "空调", "media_control": "音乐/电台",
     "light_control": "灯光", "seat_control": "座椅", "window_control": "车窗/车门",
     "search_poi": "搜索附近", "start_navigation": "导航", "query_vehicle_status": "车辆状态",
-    "parking": "停车", "activate_scene": "场景模式",
+    "parking": "停车",  # activate_scene 已移至 Phase 3 编排层
 }
 
 def _build_clarify_reply(candidates: list) -> str:
