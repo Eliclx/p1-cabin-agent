@@ -95,7 +95,7 @@ TEMPLATES = {
     ],
 
     # ── navigation ──
-    "start_navigation": [
+    "navigate": [
         "导航到{destination}",
         "去{destination}",
         "导航去{destination}",
@@ -103,8 +103,8 @@ TEMPLATES = {
         "帮我导航到{destination}",
         "到{destination}怎么走",
         "去{destination}的路线",
-        "{mode}去{destination}",
-        "导航去{destination}走{mode}",
+        "{route_type}去{destination}",
+        "导航去{destination}走{route_type}",
     ],
 
     # ── media ──
@@ -249,9 +249,9 @@ def _get_entities(intent: str) -> dict:
                 "action": ENTITIES["action_light"],
                 "state": ENTITIES["state_light"],
                 "brightness": ENTITIES["brightness"]}
-    elif intent == "start_navigation":
+    elif intent == "navigate":
         return {"destination": ENTITIES["destinations"],
-                "mode": ENTITIES["nav_modes"]}
+                "route_type": ENTITIES["nav_modes"]}
     elif intent == "media_control":
         return {"action": ENTITIES["action_media"],
                 "query": ENTITIES["queries"],

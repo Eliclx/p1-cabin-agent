@@ -154,6 +154,7 @@ def _extract_light_action(user_input: str) -> dict:
 # ═══════════════════════════════════════════════════════════════
 # 格式：(match_func, intent, slots_extractor, rule_name)
 # match_func: (user_input: str) -> bool
+# 注意：intent 字符串必须在 registry 中有对应注册，否则 _validate_rules() 会报警
 
 SHORT_CIRCUIT_RULES = [
     # ── 空调控制（短语精确匹配，不跨距离松散匹配）──
@@ -319,6 +320,33 @@ SHORT_CIRCUIT_RULES = [
         "query_tire",
     ),
 ]
+
+
+# ── V11 SSOT 校验：启动时检查 SHORT_CIRCUIT_RULES 中的 intent 是否在 registry 注册 ──
+def _validate_rules() -> None:
+    """启动时调用一次，校验短路规则的 intent 名是否和 registry 一致。
+    不通过时打 warning（不 crash），方便新增 skill 时快速发现问题。"""
+    try:
+        from project1_cabin_agent.skills.registry import registry
+        all_intents = registry.get_all_intents()  # {domain: [intent_names]}
+        known = set()
+        for intent_list in all_intents.values():
+            known.update(intent_list)
+        # chitchat 虽然不是 registry skill 但也合法（纯取消词短路用）
+        known.update({"chitchat", "no_support"})
+    except Exception:
+        logger.warning("[FastRules] SSOT校验: registry 加载失败，跳过规则校验")
+        return
+
+    for _match, intent, _extractor, rule_name in SHORT_CIRCUIT_RULES:
+        if intent not in known:
+            logger.warning(
+                f"[FastRules] SSOT违规: 规则 '{rule_name}' 的 intent='{intent}' "
+                f"不在 registry 中（已知: {sorted(known)}）"
+            )
+
+
+_validate_rules()
 
 
 # ═══════════════════════════════════════════════════════════════

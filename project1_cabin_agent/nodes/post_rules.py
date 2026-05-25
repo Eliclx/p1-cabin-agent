@@ -186,13 +186,32 @@ def _build_intent_to_domain() -> dict:
 
 _INTENT_TO_DOMAIN = _build_intent_to_domain()
 
-# 各 domain 的明确信号词：如果 pending frame 是 climate，但输入含 map 信号词 → 拦截
-_DOMAIN_SIGNALS = {
-    "map": {"去", "导航", "回家", "回", "到", "搜", "查", "附近", "有没有"},
-    "media": {"听", "唱", "放歌", "播放", "暂停", "切歌"},
-    "climate": {"冷", "热", "度", "空调", "开", "关", "窗", "灯", "座椅"},
-    "vehicle": {"油量", "电量", "续航", "胎压", "模式"},
+# V14 SSOT: 各 domain 的信号词从 edge_schemas.DOMAINS.keywords 动态派生，
+# 不再手动维护硬编码映射。补充词放 _SIGNAL_OVERRIDES（仅 registry 没有的额外信号）。
+_SIGNAL_OVERRIDES: dict[str, set[str]] = {
+    "map": {"回家", "回"},
+    "climate": {"开", "关"},
 }
+
+
+def _build_domain_signals() -> dict[str, set[str]]:
+    """从 edge_schemas.DOMAINS 的 keywords 字段构建信号词集合。
+    单字词（len<=1）太泛容易误匹配，跳过。"""
+    from project1_cabin_agent.edge_schemas import DOMAINS as _DOMAINS
+    signals: dict[str, set[str]] = {}
+    for domain_name, info in _DOMAINS.items():
+        if domain_name in ("chitchat", "unknown"):
+            continue
+        kws = info.get("keywords", "")
+        words = {w for w in kws.split() if len(w) > 1}
+        # 叠加补充词
+        words.update(_SIGNAL_OVERRIDES.get(domain_name, set()))
+        if words:
+            signals[domain_name] = words
+    return signals
+
+
+_DOMAIN_SIGNALS = _build_domain_signals()
 
 
 def _cross_domain_carry_over(frame: dict, user_input: str) -> bool:

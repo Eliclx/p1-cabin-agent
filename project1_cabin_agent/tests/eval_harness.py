@@ -39,7 +39,7 @@ EXPECTED_SLOTS = {
     "座椅加热调到3档": {"action": "heat_on", "heat_level": 3},
     "关座椅通风": {"action": "ventilate_off"},
     "导航到天府广场": {"destination": "天府广场"},
-    "导航去成都避开高速": {"destination": "成都", "mode": "avoid_highway"},
+    "导航去成都避开高速": {"destination": "成都", "route_type": "avoid_highway"},
     "导航去最近的加油站": {"destination": "最近的加油站"},
     "去最近的加油站": {"destination": "最近的加油站"},
     "播放周杰伦": {"action": "play", "query": "周杰伦"},
