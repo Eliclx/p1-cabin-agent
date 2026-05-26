@@ -22,9 +22,8 @@ from project1_cabin_agent.nodes import user_profile
 from project1_cabin_agent.nodes.schema import DYNAMIC_SCHEMA
 from project1_cabin_agent.nodes.message_utils import _ensure_str, _parse_json
 
-# v3 新路径
+# skill-based 路径（统一，legacy 已清理）
 from project1_cabin_agent.skills.registry import (
-    is_intent_migrated,
     get_domain_for_intent,
     get_harness,
     get_tool_function,
@@ -254,24 +253,6 @@ def _quick_intent_map(text: str) -> dict | None:
     return None
 
 
-def _execute_confirmed(intent: str, slots: dict, tool_result: dict = None) -> dict:
-    """确认后执行高风险工具：通过 registry 获取工具函数并重新执行。"""
-    domain = get_domain_for_intent(intent)
-    if domain:
-        tool_fn = get_tool_function(domain, intent)
-        if tool_fn and callable(tool_fn):
-            try:
-                if hasattr(tool_fn, "invoke"):
-                    result = tool_fn.invoke(slots)
-                else:
-                    result = tool_fn(**slots)
-                if isinstance(result, dict):
-                    return result
-            except Exception as e:
-                logger.warning(f"[confirmed_execute] 工具调用失败: {e}")
-    return {"status": "success", "voice_reply": "好的，已执行"}
-
-
 # ── 闲聊回复（pipeline 内 chitchat 分支复用） ──
 
 
@@ -393,9 +374,9 @@ async def _handle_skill_task(
     state: CabinAgentState, task_id: str, task: dict, intent: str, slots: dict
 ) -> dict | Command:
     """
-    v3 新路径：harness → context_enrich → tool → format_response。
-    已迁移的 domain（目前只有 navigation）走这条路径。
-    未迁移的 domain 走旧路径 _handle_tool_task。
+    skill-based 路径: infer_slots → pre_validate → tool → post_validate → format_response。
+
+    所有工具意图统一走此路径，legacy _handle_tool_task 已删除（E1 清理）。
 
     流程：
       1. registry 路由（domain → harness + tool_fn）
@@ -413,15 +394,29 @@ async def _handle_skill_task(
     domain = get_domain_for_intent(intent)
     if not domain:
         # 不应该走到这里（task_pipeline 已经过滤），安全兜底
-        logger.error(f"[skill_task] intent={intent} 不在已迁移 domain 中，回退旧路径")
-        return await _handle_tool_task(state, task_id, task, intent, slots)
+        logger.error(f"[skill_task] intent={intent} 不在 registry 中")
+        return _make_result(
+            task_id,
+            intent,
+            f"抱歉，未知意图{intent}",
+            task,
+            status="error",
+            error=f"未知意图: {intent}",
+        )
 
     harness = get_harness(domain)
     tool_fn = get_tool_function(domain, intent)
 
     if not harness:
-        logger.error(f"[skill_task] {domain} harness 加载失败，回退旧路径")
-        return await _handle_tool_task(state, task_id, task, intent, slots)
+        logger.error(f"[skill_task] {domain} harness 加载失败")
+        return _make_result(
+            task_id,
+            intent,
+            "抱歉，该功能暂时不可用",
+            task,
+            status="error",
+            error=f"harness not found: {domain}",
+        )
 
     if not tool_fn:
         return _make_result(
@@ -738,262 +733,6 @@ def _resolve_ref(value: str, upstream_result: dict) -> str:
     return value
 
 
-async def _handle_tool_task(
-    state: CabinAgentState, task_id: str, task: dict, intent: str, slots: dict
-) -> dict | Command:
-    """
-    工具任务分支：槽位检查 → interrupt → 工具执行 → 高风险确认 → interrupt。
-    包含两个 interrupt 点，恢复后统一走 _handle_resume。
-    """
-    msgs: list = []
-
-    # ── 1. 槽位缺失检查 → interrupt ──
-    schema = DYNAMIC_SCHEMA.get(intent, {})
-    required = schema.get("required", [])
-    missing = [s for s in required if s not in slots or not slots[s]]
-
-    # L2 长期记忆填充：泛化指令用 slot→L2 映射补全偏好
-    l2_mapping = user_profile.INTENT_TO_L2_KEY.get(intent, {})
-    for slot_key, l2_key in l2_mapping.items():
-        if slot_key in slots and not slots.get(slot_key):
-            pref = user_profile.get_preference(l2_key)
-            if pref:
-                slots[slot_key] = pref
-                logger.info(f"[L2记忆] -> {slot_key} ← {l2_key} = {pref}")
-
-    # depends_on 参数提取：从上游已完成任务/黑板中解析引用表达式
-    depends_on = task.get("depends_on", [])
-    if depends_on:
-        logger.info(f"[依赖提取] task={task_id} depends_on={depends_on}, slots={slots}")
-        ctx = state.get("dialogue_context", {})
-        for dep_id in depends_on:
-            upstream_result = {}
-            # 1) 从 task_results 找
-            task_results = state.get("task_results", [])
-            upstream = next(
-                (
-                    r
-                    for r in task_results
-                    if r.get("task_id") == dep_id and r.get("status") == "done"
-                ),
-                None,
-            )
-            if upstream:
-                upstream_result = upstream.get("tool_result", {})
-                logger.info(f"[依赖提取] 从 task_results 找到 {dep_id}")
-            # 2) 从 dialogue_context 找
-            if not upstream_result:
-                for entity_tag, entity_data in ctx.items():
-                    if (
-                        isinstance(entity_data, dict)
-                        and entity_data.get("task_id") == dep_id
-                    ):
-                        upstream_result = entity_data.get("data", {})
-                        logger.info(
-                            f"[依赖提取] 从 dialogue_context.{entity_tag} 找到 {dep_id}"
-                        )
-                        break
-            # 3) 还没找到
-            if not upstream_result:
-                logger.warning(
-                    f"[依赖提取] 未找到上游 {dep_id}, ctx keys={list(ctx.keys())}"
-                )
-                continue
-            # 解析引用表达式如 results[0].name
-            for k, v in list(slots.items()):
-                if isinstance(v, str) and "results[" in v:
-                    resolved = _resolve_ref(v, upstream_result)
-                    if resolved != v:
-                        slots[k] = resolved
-                        logger.info(f"[依赖提取] {k}: '{v}' → '{resolved}'")
-                    else:
-                        logger.warning(f"[依赖提取] _resolve_ref 未解析: {v}")
-            # 补全缺失的 required slot：从上游 results[0] 取第一个结果
-            upstream_results = upstream_result.get("results", [])
-            if upstream_results:
-                for req in required:
-                    if req not in slots or not slots[req]:
-                        # 尝试 results[0].<req>，如 destination → results[0].name
-                        candidate_fields = {
-                            "destination": "name",
-                            "location": "address",
-                        }
-                        field = candidate_fields.get(req, req)
-                        if field in upstream_results[0]:
-                            slots[req] = str(upstream_results[0][field])
-                            logger.info(
-                                f"[依赖提取] 自动补全: {req} = {slots[req]} (from results[0].{field})"
-                            )
-
-    if missing and state.get("clarify_count", 0) < 3:
-        slot_names = "、".join(missing)
-        question = f"请告诉我您想{slot_names}是？"
-
-        user_answer = interrupt(
-            {
-                "question": question,
-                "missing_slots": missing,
-                "task_id": task_id,
-                "intent": intent,
-            }
-        )
-        msgs = [
-            {"role": "assistant", "content": question},
-            {"role": "user", "content": user_answer},
-        ]
-        logger.info(f"[追问恢复] 用户回答: {user_answer}，尝试提取 {missing}")
-
-        # 取消/重定向
-        cancelled = _handle_resume(question, user_answer, intent, task, task_id, msgs)
-        if cancelled:
-            return cancelled
-
-        # 提取 slot 并更新
-        new_slots = _extract_slots_from_reply(
-            missing, user_answer, intent, current_slots=slots
-        )
-        slots.update(new_slots)
-        task["extracted_slots"] = slots
-
-        still_missing = [s for s in required if s not in slots or not slots[s]]
-        if still_missing and state.get("clarify_count", 0) < 2:
-            slot_names2 = "、".join(still_missing)
-            clarify2 = f"还需要您告诉我{slot_names2}"
-            return {
-                **_make_result(
-                    task_id,
-                    intent,
-                    clarify2,
-                    task,
-                    msgs + [{"role": "assistant", "content": clarify2}],
-                    status="need_clarify",
-                    missing_slots=still_missing,
-                    completed_ids=[],
-                ),
-                "clarify_count": state.get("clarify_count", 0) + 1,
-            }
-        elif still_missing:
-            logger.warning(f"[追问] 超过上限，强制执行，缺失={still_missing}")
-
-    elif missing:
-        logger.warning(f"[追问] 超过上限，强制执行，缺失={missing}")
-
-    # ── 2. 工具路由（通过 registry） ──
-    domain = get_domain_for_intent(intent)
-    if not domain:
-        return _make_result(
-            task_id,
-            intent,
-            f"抱歉，未知意图{intent}",
-            task,
-            msgs,
-            status="error",
-            error=f"未知意图: {intent}",
-        )
-    tool_fn = get_tool_function(domain, intent)
-    if not tool_fn:
-        return _make_result(
-            task_id,
-            intent,
-            f"抱歉，未知工具{intent}",
-            task,
-            msgs,
-            status="error",
-            error=f"未知工具: {intent}",
-        )
-
-    # ── 3. 工具执行 ──
-    try:
-        if hasattr(tool_fn, "ainvoke"):
-            result = await asyncio.wait_for(tool_fn.ainvoke(slots), timeout=8)
-        else:
-            result = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(
-                    None, lambda: tool_fn(**slots)
-                ),
-                timeout=8,
-            )
-    except asyncio.TimeoutError:
-        logger.error(f"[工具执行] 超时: {intent} 超过 8s")
-        decs = DYNAMIC_SCHEMA.get(intent, {}).get("description", "")
-        return _make_result(
-            task_id,
-            intent,
-            f"{decs}操作超时，请稍后再试",
-            task,
-            msgs,
-            status="error",
-            error="timeout",
-        )
-    except Exception as e:
-        logger.error(f"[工具执行] 失败: {e}")
-        decs = DYNAMIC_SCHEMA.get(intent, {}).get("description", "")
-        return _make_result(
-            task_id,
-            intent,
-            f"执行{decs}过程中发生错误",
-            task,
-            msgs,
-            status="error",
-            error=str(e),
-        )
-
-    # ── 4. 高风险确认 → interrupt ──
-    if isinstance(result, dict) and result.get("status") == "need_confirm":
-        confirm_question = result.get("voice_reply", "请确认")
-        user_answer = interrupt(
-            {
-                "question": confirm_question,
-                "task_id": task_id,
-                "intent": intent,
-                "is_confirm": True,
-            }
-        )
-        msgs += [
-            {"role": "assistant", "content": confirm_question},
-            {"role": "user", "content": user_answer},
-        ]
-        logger.info(f"[确认恢复] 用户回答: {user_answer}")
-
-        # 取消/重定向
-        cancelled = _handle_resume(
-            confirm_question, user_answer, intent, task, task_id, msgs
-        )
-        if cancelled:
-            return cancelled
-
-        # 确认执行
-        if _is_confirm_positive(user_answer):
-            confirmed_result = _execute_confirmed(intent, slots, result)
-            voice_reply = confirmed_result.get("voice_reply", "好的，已执行")
-            logger.info(f"[确认执行] {intent} 结果: {voice_reply}")
-            return _make_result(
-                task_id, intent, voice_reply, task, msgs, tool_result=confirmed_result
-            )
-
-        # 模糊回答 → 默认取消
-        logger.info(f"[确认恢复] 用户回答模糊，默认取消: {user_answer}")
-        return _make_result(
-            task_id,
-            intent,
-            "好的，已取消。如需操作请重新告诉我",
-            task,
-            msgs,
-            tool_result={},
-        )
-
-    # ── 5. 正常返回 ──
-    voice_reply = result.get("voice_reply", "") if isinstance(result, dict) else ""
-
-    # L2 长期记忆：从工具结果自动写入用户画像
-    user_profile.save_from_tool_result(intent, slots)
-
-    logger.info(
-        f"[子任务{task_id}] [工具调用]-[{intent}] [处理结果]-[{result}] [回复]-[{voice_reply}]"
-    )
-    return _make_result(task_id, intent, voice_reply, task, msgs, tool_result=result)
-
-
 # ═══════════════════════════════════════════════
 # 主入口：task_pipeline 节点
 # ═══════════════════════════════════════════════
@@ -1001,7 +740,10 @@ async def _handle_tool_task(
 
 @track_node("task_pipeline")
 async def task_pipeline(state: CabinAgentState) -> dict | Command:
-    """单任务完整流水线：按意图路由到对应子处理器。"""
+    """单任务完整流水线：按意图路由到对应子处理器。
+
+    所有工具意图统一走 _handle_skill_task（infer_slots → pre_validate → tool → post_validate）。
+    legacy _handle_tool_task 已删除（E1 清理）。"""
     task = state.get("current_task")
     if not task:
         return {"task_results": [], "completed_task_ids": []}
@@ -1010,7 +752,7 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
     slots = task.get("extracted_slots", {})
     task_id = task.get("task_id", "task_0")
 
-    # ── 路由 ──
+    # ── 特殊意图路由 ──
     if intent == "chitchat":
         return _handle_chitchat(state, task_id, task)
 
@@ -1024,7 +766,7 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
         reply = slots.get("answer", "抱歉，目前不支持此功能")
         return _make_result(task_id, intent, reply, task)
 
-    # 自动 OOS 兜底：意图不在已知列表中 → chitchat 降级（而非直接拒绝）
+    # ── OOS 兜底：未知意图降级 chitchat ──
     KNOWN_INTENTS = {"chitchat", "clarify", "direct_answer", "no_support"} | set(
         DYNAMIC_SCHEMA.keys()
     )
@@ -1032,10 +774,5 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
         logger.warning(f"[OOS兜底] 未知意图: {intent}，降级 chitchat")
         return _handle_chitchat(state, task_id, task)
 
-    # 所有工具意图
-    # v3 新路径：已迁移的 domain 走 skill-based handler
-    if is_intent_migrated(intent):
-        return await _handle_skill_task(state, task_id, task, intent, slots)
-
-    # 旧路径：未迁移的 intent 走 registry 工具查表
-    return await _handle_tool_task(state, task_id, task, intent, slots)
+    # ── 所有工具意图：统一走 skill-based handler ──
+    return await _handle_skill_task(state, task_id, task, intent, slots)
