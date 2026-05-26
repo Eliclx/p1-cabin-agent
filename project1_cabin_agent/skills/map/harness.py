@@ -13,6 +13,7 @@ Map Skill Harness — 确定性校验+补全+兜底
 - search/harness.py → search_poi 的部分逻辑
 - 新增 → map_query, weather 的校验逻辑
 """
+
 from __future__ import annotations
 
 from project1_cabin_agent.harness.base import BaseHarness, ContextDep, HarnessResult
@@ -40,24 +41,143 @@ class MapHarness(BaseHarness):
 
     # ── 序号指代消解 ──
     _ORDINALS = {
-        "第一个": 0, "第二个": 1, "第三个": 2, "第四个": 3, "第五个": 4,
-        "第1个": 0, "第2个": 1, "第3个": 2, "第4个": 3, "第5个": 4,
-        "最近那个": 0, "最近的那家": 0, "最近的": 0,
+        "第一个": 0,
+        "第二个": 1,
+        "第三个": 2,
+        "第四个": 3,
+        "第五个": 4,
+        "第1个": 0,
+        "第2个": 1,
+        "第3个": 2,
+        "第4个": 3,
+        "第5个": 4,
+        "最近那个": 0,
+        "最近的那家": 0,
+        "最近的": 0,
     }
 
     # ═══════════════════════════════════════════════════════════
-    # pre_validate — 按 intent 分发
+    # infer_slots — 基于上下文的语义槽位推断
+    # ═══════════════════════════════════════════════════════════
+
+    def infer_slots(self, slots: dict, ctx: AgentContext, user_input: str) -> dict:
+        """地图域语义推断：别名解析、origin补全、默认值推断。
+
+        职责（只补缺，不校验）：
+        - destination 别名: "家"→L3, "公司"→L3, "上次去的"→L2, "第一个"→L1
+        - origin 自动补全: 从 vehicle_state 取当前位置
+        - location 自动补全: search_poi/weather/map_query 的位置
+        - 默认值: weather.date→"今天", map_query.query_type→"location"
+        - 归一化: mode→route_type
+        """
+        result = {**slots}
+        intent = slots.get("_intent", "")
+
+        if intent == "navigate":
+            result = self._infer_navigate(result, ctx)
+        elif intent == "search_poi":
+            result = self._infer_search_poi(result, ctx)
+        elif intent == "map_query":
+            result = self._infer_map_query(result, ctx)
+        elif intent == "weather":
+            result = self._infer_weather(result, ctx)
+
+        return result
+
+    def _infer_navigate(self, slots: dict, ctx: AgentContext) -> dict:
+        """navigate 推断: 别名解析 + origin补全 + mode归一化"""
+        result = {**slots}
+        destination = result.get("destination", "")
+
+        # ── 1. 别名解析: 家 → L3 ──
+        if destination in self._ALIAS_HOME:
+            user = ctx.get_user()
+            home = user.get("home_address", "")
+            if home:
+                result["destination"] = home
+                logger.info(f"[slot_infer] navigate: '家' → '{home}'")
+
+        # ── 2. 别名解析: 公司 → L3 ──
+        elif destination in self._ALIAS_COMPANY:
+            user = ctx.get_user()
+            company = user.get("company_address", "")
+            if company:
+                result["destination"] = company
+                logger.info(f"[slot_infer] navigate: '公司' → '{company}'")
+
+        # ── 3. 别名解析: 上次去的 → L2 ──
+        elif destination in self._ALIAS_LAST:
+            last_dest = ctx.session.get("last_destination", "")
+            if last_dest:
+                result["destination"] = last_dest
+                logger.info(f"[slot_infer] navigate: '上次去的' → '{last_dest}'")
+
+        # ── 4. 序号指代消解: "第一个" → L1 黑板 ──
+        elif destination in self._ORDINALS:
+            resolved = self._resolve_ordinal(destination, ctx.dialogue)
+            if resolved:
+                result["destination"] = resolved
+                logger.info(f"[slot_infer] navigate: '{destination}' → '{resolved}'")
+
+        # ── 5. origin 自动补全 ──
+        if not result.get("origin"):
+            loc = ctx.vehicle.location
+            if loc:
+                result["origin"] = loc
+                logger.info(f"[slot_infer] navigate: origin 补全 → '{loc}'")
+
+        # ── 6. mode → route_type 归一化 ──
+        if "mode" in result and "route_type" not in result:
+            result["route_type"] = result["mode"]
+
+        return result
+
+    def _infer_search_poi(self, slots: dict, ctx: AgentContext) -> dict:
+        """search_poi 推断: location 自动补全"""
+        result = {**slots}
+        if not result.get("location"):
+            loc = ctx.vehicle.location
+            if loc:
+                result["location"] = loc
+                logger.info(f"[slot_infer] search_poi: location 补全 → '{loc}'")
+        return result
+
+    def _infer_map_query(self, slots: dict, ctx: AgentContext) -> dict:
+        """map_query 推断: query_type 默认 + location 补全"""
+        result = {**slots}
+        if not result.get("query_type"):
+            result["query_type"] = "location"
+            logger.info("[slot_infer] map_query: query_type 默认 → 'location'")
+        if not result.get("location"):
+            loc = ctx.vehicle.location
+            if loc:
+                result["location"] = loc
+                logger.info(f"[slot_infer] map_query: location 补全 → '{loc}'")
+        return result
+
+    def _infer_weather(self, slots: dict, ctx: AgentContext) -> dict:
+        """weather 推断: date 默认 + city/location 补全"""
+        result = {**slots}
+        if not result.get("date"):
+            result["date"] = "今天"
+            logger.info("[slot_infer] weather: date 默认 → '今天'")
+        if not result.get("city") and not result.get("location"):
+            loc = ctx.vehicle.location
+            if loc:
+                result["location"] = loc
+                logger.info(f"[slot_infer] weather: location 补全 → '{loc}'")
+        return result
+
+    # ═══════════════════════════════════════════════════════════
+    # pre_validate — 按 intent 分发（纯校验，不含推断）
     # ═══════════════════════════════════════════════════════════
 
     def pre_validate(self, slots: dict, ctx: AgentContext) -> HarnessResult:
         """
-        LLM 输出后、调 tool 前的校验+补全。
+        LLM 输出后、调 tool 前的纯校验。
 
-        按 intent 分发到对应的校验方法：
-        - search_poi: keyword 必填 + location 自动补全
-        - navigate: destination 必填 + 别名解析 + origin 补全 + 安全检查
-        - map_query: query_type 默认补 location
-        - weather: 基本通过
+        注意：别名解析、origin补全、默认值等推断逻辑已迁至 infer_slots，
+        pre_validate 只负责必填检查 + 格式校验 + 安全检查。
         """
         intent = slots.get("_intent", "")
 
@@ -76,25 +196,29 @@ class MapHarness(BaseHarness):
     # ── search_poi 校验 ──
 
     def _validate_search_poi(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """search_poi: keyword 必填 + location 自动补全"""
+        """search_poi: keyword 必填 + location 兜底补全"""
         keyword = slots.get("keyword", "")
         if not keyword:
             return HarnessResult(
-                valid=False, slots=slots,
+                valid=False,
+                slots=slots,
                 need_clarify=True,
                 clarify_message="请问您想搜索什么？",
                 block_reason="缺少 keyword",
             )
 
-        # location 自动补全
+        # location 兜底补全（infer_slots 已尝试，这里做最后兜底）
         if not slots.get("location"):
             loc = ctx.vehicle.location
-            if not loc:
+            if loc:
+                slots = {**slots, "location": loc}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots, fallback=True,
+                    valid=False,
+                    slots=slots,
+                    fallback=True,
                     block_reason="vehicle_state 无 location",
                 )
-            slots = {**slots, "location": loc}
 
         # radius 范围约束（100~50000 米）
         radius = slots.get("radius")
@@ -109,86 +233,95 @@ class MapHarness(BaseHarness):
     # ── navigate 校验 ──
 
     def _validate_navigate(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """navigate: destination 必填 + 别名解析 + 序号指代消解 + origin 补全 + 安全检查"""
+        """navigate: destination 必填 + 别名兜底解析 + origin 兜底补全 + 安全检查
+
+        推断逻辑主要在 infer_slots，这里做兜底：
+        - 别名如果还在（未经 infer_slots），尝试从 ctx 解析
+        - origin 如果还缺，尝试从 ctx 补全
+        - 解析/补全失败才报错
+        """
         destination = slots.get("destination", "")
 
         # ── 1. 必填检查 ──
         if not destination:
             return HarnessResult(
-                valid=False, slots=slots,
+                valid=False,
+                slots=slots,
                 need_clarify=True,
                 clarify_message="请问您要导航到哪里？",
                 block_reason="缺少 destination",
             )
 
-        # ── 2. 语义别名解析：家 → L3 ──
+        # ── 2. 别名兜底解析（infer_slots 已尝试，这里做最后兜底）──
         if destination in self._ALIAS_HOME:
             user = ctx.get_user()
             home = user.get("home_address", "")
-            if not home:
+            if home:
+                slots = {**slots, "destination": home}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots,
+                    valid=False,
+                    slots=slots,
                     need_clarify=True,
                     clarify_message="您还没有设置家的地址，请先在设置中添加",
                     block_reason=f"别名'{destination}'解析失败：L3 无 home_address",
                 )
-            slots = {**slots, "destination": home}
-
-        # ── 3. 语义别名解析：公司 → L3 ──
         elif destination in self._ALIAS_COMPANY:
             user = ctx.get_user()
             company = user.get("company_address", "")
-            if not company:
+            if company:
+                slots = {**slots, "destination": company}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots,
+                    valid=False,
+                    slots=slots,
                     need_clarify=True,
                     clarify_message="您还没有设置公司地址，请先在设置中添加",
                     block_reason=f"别名'{destination}'解析失败：L3 无 company_address",
                 )
-            slots = {**slots, "destination": company}
-
-        # ── 4. 语义别名解析：上次去的 → L2 ──
         elif destination in self._ALIAS_LAST:
             last_dest = ctx.session.get("last_destination", "")
-            if not last_dest:
+            if last_dest:
+                slots = {**slots, "destination": last_dest}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots,
+                    valid=False,
+                    slots=slots,
                     need_clarify=True,
                     clarify_message="本次行程没有导航记录",
                     block_reason=f"别名'{destination}'解析失败：L2 无 last_destination",
                 )
-            slots = {**slots, "destination": last_dest}
-
-        # ── 4.5 序号指代消解：\"第一个\"/\"最近那个\" → L1 黑板 ──
         elif destination in self._ORDINALS:
             resolved = self._resolve_ordinal(destination, ctx.dialogue)
-            if not resolved:
+            if resolved:
+                slots = {**slots, "destination": resolved}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots,
+                    valid=False,
+                    slots=slots,
                     need_clarify=True,
                     clarify_message="没有找到之前的搜索结果，请告诉我具体目的地",
                     block_reason=f"序号指代'{destination}'解析失败：L1 黑板无 entity.poi",
                 )
-            slots = {**slots, "destination": resolved}
 
-        # ── 5. origin 补全：从 vehicle_state 取当前位置 ──
+        # ── 3. origin 兜底补全 ──
         if not slots.get("origin"):
-            current_location = ctx.vehicle.location
-            if not current_location:
+            loc = ctx.vehicle.location
+            if loc:
+                slots = {**slots, "origin": loc}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots, fallback=True,
+                    valid=False,
+                    slots=slots,
+                    fallback=True,
                     block_reason="vehicle_state 无 location，无法补全 origin",
                 )
-            slots = {**slots, "origin": current_location}
 
-        # ── 5.5 槽位名归一化：旧 prompt 用 mode，新 schema 用 route_type ──
-        if "mode" in slots and "route_type" not in slots:
-            slots = {**slots, "route_type": slots["mode"]}
-
-        # ── 6. 安全检查：高速行驶中改目的地 ──
+        # ── 4. 安全检查：高速行驶中改目的地 ──
         if ctx.vehicle.speed > 100:
             return HarnessResult(
-                valid=True, slots=slots,
+                valid=True,
+                slots=slots,
                 need_confirm=True,
                 confirm_message=f"当前车速{int(ctx.vehicle.speed)}km/h，确定要导航到{slots['destination']}吗？",
             )
@@ -198,38 +331,26 @@ class MapHarness(BaseHarness):
     # ── map_query 校验 ──
 
     def _validate_map_query(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """map_query: query_type 默认补 location，location 自动补全"""
-        # query_type 默认补 location
-        if not slots.get("query_type"):
-            slots = {**slots, "query_type": "location"}
-
-        # location 自动补全（给 tools 传递当前位置）
+        """map_query: location 兜底补全"""
+        # location 兜底补全（infer_slots 已尝试，这里做最后兜底）
         if not slots.get("location"):
             loc = ctx.vehicle.location
-            if not loc:
+            if loc:
+                slots = {**slots, "location": loc}
+            else:
                 return HarnessResult(
-                    valid=False, slots=slots, fallback=True,
+                    valid=False,
+                    slots=slots,
+                    fallback=True,
                     block_reason="vehicle_state 无 location",
                 )
-            slots = {**slots, "location": loc}
 
         return HarnessResult(valid=True, slots=slots)
 
     # ── weather 校验 ──
 
     def _validate_weather(self, slots: dict, ctx: AgentContext) -> HarnessResult:
-        """weather: 基本通过，缺 city 时从当前位置推断（传 location 给 tools）"""
-        # date 默认补"今天"
-        if not slots.get("date"):
-            slots = {**slots, "date": "今天"}
-
-        # 如果没有 city，补当前位置让 tools 推断
-        if not slots.get("city"):
-            loc = ctx.vehicle.location
-            if loc:
-                slots = {**slots, "location": loc}
-            # 即使没 location 也放行，tools 会返回错误让用户补充
-
+        """weather: 基本通过（date/location 已在 infer_slots 补全）"""
         return HarnessResult(valid=True, slots=slots)
 
     # ═══════════════════════════════════════════════════════════
@@ -249,7 +370,8 @@ class MapHarness(BaseHarness):
         if not tool_result.get("success"):
             error = tool_result.get("error", "未知错误")
             return HarnessResult(
-                valid=False, slots={},
+                valid=False,
+                slots={},
                 fallback=True,
                 block_reason=f"API 失败: {error}",
             )
@@ -261,7 +383,8 @@ class MapHarness(BaseHarness):
             count = data.get("count", 0)
             if count == 0:
                 return HarnessResult(
-                    valid=True, slots={},
+                    valid=True,
+                    slots={},
                     block_reason="搜索无结果",
                 )
 
@@ -269,7 +392,8 @@ class MapHarness(BaseHarness):
         distance = data.get("distance")
         if distance is not None and distance > 5000:
             return HarnessResult(
-                valid=True, slots={},
+                valid=True,
+                slots={},
                 need_confirm=True,
                 confirm_message=f"目的地距离{distance}公里，确定要导航吗？",
             )
@@ -330,12 +454,16 @@ class MapHarness(BaseHarness):
             dist = r.get("distance", 0)
             # 距离格式化
             dist_str = f"{dist}米" if dist < 1000 else f"{round(dist / 1000, 1)}公里"
-            return f"找到一家{r['name']}，距离{dist_str}，地址是{r.get('address', '')}。"
+            return (
+                f"找到一家{r['name']}，距离{dist_str}，地址是{r.get('address', '')}。"
+            )
         else:
             items = []
             for i, r in enumerate(top, 1):
                 dist = r.get("distance", 0)
-                dist_str = f"{dist}米" if dist < 1000 else f"{round(dist / 1000, 1)}公里"
+                dist_str = (
+                    f"{dist}米" if dist < 1000 else f"{round(dist / 1000, 1)}公里"
+                )
                 items.append(f"第{i}，{r['name']}，{dist_str}")
             text = f"为您找到{count}个结果：{'；'.join(items)}"
             if remaining > 0:
@@ -376,7 +504,9 @@ class MapHarness(BaseHarness):
             jammed = [t for t in traffic_info if t.get("status") in ("拥堵", "缓行")]
             if jammed:
                 roads = "、".join(t["road"] for t in jammed[:3])
-                return f"到{target}的路上，{roads}路段有拥堵，预计需要{duration_min}分钟。"
+                return (
+                    f"到{target}的路上，{roads}路段有拥堵，预计需要{duration_min}分钟。"
+                )
             return f"到{target}的路况比较畅通，预计需要{duration_min}分钟。"
 
         if query_type == "eta":
@@ -430,7 +560,9 @@ class MapHarness(BaseHarness):
         if idx < len(results):
             resolved = results[idx].get("name", "")
             if resolved:
-                logger.info(f"[序号指代] '{ordinal}' → entity.poi[{idx}] = '{resolved}'")
+                logger.info(
+                    f"[序号指代] '{ordinal}' → entity.poi[{idx}] = '{resolved}'"
+                )
             return resolved
 
         return ""

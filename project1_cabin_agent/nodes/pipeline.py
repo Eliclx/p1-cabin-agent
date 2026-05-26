@@ -3,6 +3,7 @@ project1_cabin_agent/nodes/pipeline.py
 节点 2：单任务流水线（槽位校验 → 安全校验 → 工具直调）。
 由 Send 并发注入 current_task。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,7 +20,6 @@ from shared.utils.metrics import track_node
 from project1_cabin_agent.nodes import user_profile
 
 from project1_cabin_agent.nodes.schema import DYNAMIC_SCHEMA
-from project1_cabin_agent.nodes.intent import _validate_slots
 from project1_cabin_agent.nodes.message_utils import _ensure_str, _parse_json
 
 # v3 新路径
@@ -53,7 +53,9 @@ SLOT_EXTRACT_PROMPT = """从用户回答中提取缺失槽位的值。只返回�
 示例输出：{{"action": "adjust_volume"}}"""
 
 
-def _extract_slots_from_reply(missing_slots: list, user_reply: str, intent: str, current_slots: dict | None = None) -> dict:
+def _extract_slots_from_reply(
+    missing_slots: list, user_reply: str, intent: str, current_slots: dict | None = None
+) -> dict:
     """用 LLM 从用户回答中提取缺失的槽位值。解析失败时重试一次。"""
     llm = get_llm("fast", temperature=0)
     known = json.dumps(current_slots or {}, ensure_ascii=False)
@@ -81,15 +83,42 @@ def _extract_slots_from_reply(missing_slots: list, user_reply: str, intent: str,
 
 # ── 确认相关 ──
 
+
 def _is_confirm_positive(answer: str) -> bool:
     a = answer.strip().lower()
-    return any(w in a for w in ("确认", "是的", "好", "可以", "确定", "打开", "开", "执行", "要", "是"))
+    return any(
+        w in a
+        for w in (
+            "确认",
+            "是的",
+            "好",
+            "可以",
+            "确定",
+            "打开",
+            "开",
+            "执行",
+            "要",
+            "是",
+        )
+    )
 
 
 # 取消关键词：短输入快速路径
 _CANCEL_KEYWORDS = (
-    "算了", "不用了", "取消", "不要了", "不开了", "别开", "别了",
-    "算了算了", "不用", "不要", "不了", "放弃", "停下", "算了吧",
+    "算了",
+    "不用了",
+    "取消",
+    "不要了",
+    "不开了",
+    "别开",
+    "别了",
+    "算了算了",
+    "不用",
+    "不要",
+    "不了",
+    "放弃",
+    "停下",
+    "算了吧",
 )
 
 
@@ -108,8 +137,8 @@ def _is_cancel_answer(answer: str) -> bool:
     try:
         llm = get_llm("fast", temperature=0)
         prompt = (
-            f"用户被系统追问确认，用户回答：\"{answer}\"\n"
-            f"用户是想取消操作，还是想继续？只回答一个字：\"取\"或\"续\""
+            f'用户被系统追问确认，用户回答："{answer}"\n'
+            f'用户是想取消操作，还是想继续？只回答一个字："取"或"续"'
         )
         resp = llm.invoke([HumanMessage(content=prompt)])
         result = _ensure_str(resp.content).strip()
@@ -123,10 +152,27 @@ def _is_cancel_answer(answer: str) -> bool:
 
 # 规则层：包含这些关键词的输入大概率是新意图，不是在回答追问
 _NEW_INTENT_KEYWORDS = (
-    "导航去", "导航到", "搜索", "附近有", "找一", "帮我查",
-    "播放", "开启", "关闭", "打开", "帮我开", "帮我关",
-    "关灯", "开灯", "关窗", "开窗", "调到",
-    "查一下", "多少油", "多少电", "胎压",
+    "导航去",
+    "导航到",
+    "搜索",
+    "附近有",
+    "找一",
+    "帮我查",
+    "播放",
+    "开启",
+    "关闭",
+    "打开",
+    "帮我开",
+    "帮我关",
+    "关灯",
+    "开灯",
+    "关窗",
+    "开窗",
+    "调到",
+    "查一下",
+    "多少油",
+    "多少电",
+    "胎压",
 )
 
 
@@ -134,7 +180,7 @@ def _detect_redirect(user_input: str, current_intent: str) -> dict | None:
     """
     检测用户回答是否包含新意图（两层漏斗）。
     返回新意图的 sub_task dict，或 None（表示没有新意图）。
-    
+
     场景：系统问"确认要打开车窗吗？"，用户回答"算了帮我开灯"
     → 取消开窗 + 新意图"开灯"
     """
@@ -148,17 +194,19 @@ def _detect_redirect(user_input: str, current_intent: str) -> dict | None:
             # 找到匹配的 intent（简单映射，不需要 LLM）
             redirect = _quick_intent_map(a)
             if redirect and redirect.get("intent") != current_intent:
-                logger.info(f"[新意图检测] 规则命中 '{kw}'，重定向到 {redirect['intent']}")
+                logger.info(
+                    f"[新意图检测] 规则命中 '{kw}'，重定向到 {redirect['intent']}"
+                )
                 return redirect
 
     # ── 第二层：LLM 兜底 ──
     try:
         llm = get_llm("fast", temperature=0)
         prompt = (
-            f"系统在追问用户关于「{current_intent}」的信息，用户回答：\"{a}\"\n"
+            f'系统在追问用户关于「{current_intent}」的信息，用户回答："{a}"\n'
             f"用户是在回答追问，还是提出了一个全新的请求？\n"
-            f"如果是全新请求，识别意图和参数，返回JSON：{{\"intent\": \"xxx\", \"extracted_slots\": {{...}}}}\n"
-            f"如果是在回答追问，返回：{{\"intent\": null}}\n"
+            f'如果是全新请求，识别意图和参数，返回JSON：{{"intent": "xxx", "extracted_slots": {{...}}}}\n'
+            f'如果是在回答追问，返回：{{"intent": null}}\n'
             f"只返回JSON，不要解释。"
         )
         resp = llm.invoke([HumanMessage(content=prompt)])
@@ -226,9 +274,11 @@ def _execute_confirmed(intent: str, slots: dict, tool_result: dict = None) -> di
 
 # ── 闲聊回复（pipeline 内 chitchat 分支复用） ──
 
+
 def _chitchat_reply(user_input: str, messages: list) -> str:
     """统一的闲聊回复逻辑。"""
     from project1_cabin_agent.nodes.message_utils import _format_history
+
     try:
         llm = get_llm("fast", temperature=0.7)
         history = _format_history(messages)
@@ -243,11 +293,18 @@ def _chitchat_reply(user_input: str, messages: list) -> str:
 
 # intent 名 → 中文标签（面试可讲：来自工具定义，LLM 不编造）
 INTENT_LABELS = {
-    "open_window": "车窗", "ac_control": "空调", "media_control": "音乐/电台",
-    "light_control": "灯光", "seat_control": "座椅", "window_control": "车窗/车门",
-    "search_poi": "搜索附近", "navigate": "导航", "query_vehicle_status": "车辆状态",
+    "open_window": "车窗",
+    "ac_control": "空调",
+    "media_control": "音乐/电台",
+    "light_control": "灯光",
+    "seat_control": "座椅",
+    "window_control": "车窗/车门",
+    "search_poi": "搜索附近",
+    "navigate": "导航",
+    "query_vehicle_status": "车辆状态",
     "parking": "停车",  # activate_scene 已移至 Phase 3 编排层
 }
+
 
 def _build_clarify_reply(candidates: list) -> str:
     """根据候选意图列表，模板拼装追问文本（0ms，不调 LLM）。"""
@@ -262,8 +319,10 @@ def _build_clarify_reply(candidates: list) -> str:
 # result 工厂函数
 # ═══════════════════════════════════════════════
 
-def _make_result(task_id: str, intent: str, voice_reply: str,
-                 task: dict, msgs: list = None, **extra) -> dict:
+
+def _make_result(
+    task_id: str, intent: str, voice_reply: str, task: dict, msgs: list = None, **extra
+) -> dict:
     """统一拼装 task_pipeline 的返回 dict。"""
     result_item = {
         "task_id": task_id,
@@ -292,8 +351,10 @@ def _make_result(task_id: str, intent: str, voice_reply: str,
 # interrupt 恢复处理（两个 interrupt 点共用）
 # ═══════════════════════════════════════════════
 
-def _handle_resume(question: str, user_answer: str, intent: str,
-                   task: dict, task_id: str, msgs: list) -> dict | Command | None:
+
+def _handle_resume(
+    question: str, user_answer: str, intent: str, task: dict, task_id: str, msgs: list
+) -> dict | Command | None:
     """
     interrupt 恢复后的统一分支处理：取消→重定向 / 取消 / 继续放行。
     返回 dict/Command 表示终结，返回 None 表示继续往下执行工具。
@@ -306,8 +367,9 @@ def _handle_resume(question: str, user_answer: str, intent: str,
             logger.info(f"[interrupt恢复] 取消 + 重定向到 {redirect['intent']}")
             return Command(
                 update={
-                    **_make_result(task_id, intent, "好的，已取消操作", task, msgs,
-                                   tool_result={}),
+                    **_make_result(
+                        task_id, intent, "好的，已取消操作", task, msgs, tool_result={}
+                    ),
                     "sub_tasks": [redirect],
                     "is_complex": False,
                     "intent": redirect["intent"],
@@ -315,8 +377,9 @@ def _handle_resume(question: str, user_answer: str, intent: str,
                 goto="wave_planner",
             )
         # 纯取消
-        return _make_result(task_id, intent, "好的，已取消操作", task, msgs,
-                            tool_result={})
+        return _make_result(
+            task_id, intent, "好的，已取消操作", task, msgs, tool_result={}
+        )
 
     return None  # 非取消，交由调用方继续处理
 
@@ -325,8 +388,10 @@ def _handle_resume(question: str, user_answer: str, intent: str,
 # v3 新路径：skill-based task handler
 # ═══════════════════════════════════════════════
 
-async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
-                              intent: str, slots: dict) -> dict | Command:
+
+async def _handle_skill_task(
+    state: CabinAgentState, task_id: str, task: dict, intent: str, slots: dict
+) -> dict | Command:
     """
     v3 新路径：harness → context_enrich → tool → format_response。
     已迁移的 domain（目前只有 navigation）走这条路径。
@@ -335,7 +400,8 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
     流程：
       1. registry 路由（domain → harness + tool_fn）
       2. context_enrich（按 CONTEXT_DEPS 组装 AgentContext）
-      3. harness.pre_validate（必填检查 + 别名解析 + 默认值补全）
+      2.5. harness.infer_slots（基于上下文的语义槽位推断）
+      3. harness.pre_validate（必填检查 + 格式校验 + 安全检查）
       4. 工具执行
       5. harness.post_validate（API 失败兜底 + 异常值拦截）
       6. 高风险确认（复用 interrupt）
@@ -358,19 +424,31 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
         return await _handle_tool_task(state, task_id, task, intent, slots)
 
     if not tool_fn:
-        return _make_result(task_id, intent, "抱歉，该功能暂时不可用", task,
-                            status="error", error=f"tool_fn not found: {domain}.{intent}")
+        return _make_result(
+            task_id,
+            intent,
+            "抱歉，该功能暂时不可用",
+            task,
+            status="error",
+            error=f"tool_fn not found: {domain}.{intent}",
+        )
 
     # ── 2. context_enrich ──
     ctx = enrich_context_for_task(state, task)
     if ctx is None:
-        logger.warning(f"[skill_task] context_enrich 返回 None，使用空 AgentContext")
+        logger.warning("[skill_task] context_enrich 返回 None，使用空 AgentContext")
         from project1_cabin_agent.harness.context import AgentContext
+
         ctx = AgentContext()
 
-    # ── 3. harness.pre_validate ──
-    # 注入 _intent，供 harness 按意图分发子校验器（climate 域需要区分 ac/window/light/seat）
+    # ── 2.5. harness.infer_slots ──
+    # 注入 _intent，供 harness 按意图分发（climate 域需要区分 ac/window/light/seat）
     slots = {**slots, "_intent": intent}
+    user_input = state.get("user_input", "")
+    slots = harness.infer_slots(slots, ctx, user_input)
+    logger.info(f"[skill_task] infer_slots 完成, slots={slots}")
+
+    # ── 3. harness.pre_validate ──
     pre_result = harness.pre_validate(slots, ctx)
 
     # 3a. 追问（缺必填槽位）
@@ -379,12 +457,16 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
         clarify_count = state.get("clarify_count", 0)
 
         if clarify_count < 3:
-            user_answer = interrupt({
-                "question": clarify_msg,
-                "missing_slots": [k for k in pre_result.slots if not pre_result.slots.get(k)],
-                "task_id": task_id,
-                "intent": intent,
-            })
+            user_answer = interrupt(
+                {
+                    "question": clarify_msg,
+                    "missing_slots": [
+                        k for k in pre_result.slots if not pre_result.slots.get(k)
+                    ],
+                    "task_id": task_id,
+                    "intent": intent,
+                }
+            )
             msgs = [
                 {"role": "assistant", "content": clarify_msg},
                 {"role": "user", "content": user_answer},
@@ -392,14 +474,18 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
             logger.info(f"[skill追问] 用户回答: {user_answer}")
 
             # 取消/重定向
-            cancelled = _handle_resume(clarify_msg, user_answer, intent, task, task_id, msgs)
+            cancelled = _handle_resume(
+                clarify_msg, user_answer, intent, task, task_id, msgs
+            )
             if cancelled:
                 return cancelled
 
             # 从回答中提取 slot 并重新校验
             missing = [k for k in pre_result.slots if not pre_result.slots.get(k)]
             if missing:
-                new_slots = _extract_slots_from_reply(missing, user_answer, intent, current_slots=slots)
+                new_slots = _extract_slots_from_reply(
+                    missing, user_answer, intent, current_slots=slots
+                )
                 slots.update(new_slots)
 
             # 二次 pre_validate
@@ -409,21 +495,35 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
                 # 仍然缺槽位
                 still_missing_msg = pre_result.clarify_message or "还需要更多信息"
                 return {
-                    **_make_result(task_id, intent, still_missing_msg, task, msgs,
-                                   status="need_clarify",
-                                   missing_slots=list(pre_result.slots.keys()),
-                                   completed_ids=[]),
+                    **_make_result(
+                        task_id,
+                        intent,
+                        still_missing_msg,
+                        task,
+                        msgs,
+                        status="need_clarify",
+                        missing_slots=list(pre_result.slots.keys()),
+                        completed_ids=[],
+                    ),
                     "clarify_count": clarify_count + 1,
                 }
         else:
-            logger.warning(f"[skill追问] 超过上限({clarify_count})，用现有 slots 强制执行")
+            logger.warning(
+                f"[skill追问] 超过上限({clarify_count})，用现有 slots 强制执行"
+            )
 
     # 3b. pre_validate 失败（非追问，如 fallback）
     if not pre_result.valid and not pre_result.need_clarify:
         fallback_msg = pre_result.block_reason or "输入校验失败"
         logger.warning(f"[skill_task] pre_validate 失败: {fallback_msg}")
-        return _make_result(task_id, intent, "抱歉，无法处理您的请求，请换个方式说试试",
-                            task, status="error", error=fallback_msg)
+        return _make_result(
+            task_id,
+            intent,
+            "抱歉，无法处理您的请求，请换个方式说试试",
+            task,
+            status="error",
+            error=fallback_msg,
+        )
 
     # pre_validate 通过，使用修正后的 slots
     slots = pre_result.slots
@@ -437,23 +537,46 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
             result = await asyncio.wait_for(tool_fn.ainvoke(exec_slots), timeout=8)
         else:
             result = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, lambda: tool_fn(**exec_slots)),
+                asyncio.get_event_loop().run_in_executor(
+                    None, lambda: tool_fn(**exec_slots)
+                ),
                 timeout=8,
             )
     except asyncio.TimeoutError:
         logger.error(f"[skill_task] 工具超时: {domain}.{intent}")
-        return _make_result(task_id, intent, "操作超时，请稍后再试", task, msgs,
-                            status="error", error="timeout")
+        return _make_result(
+            task_id,
+            intent,
+            "操作超时，请稍后再试",
+            task,
+            msgs,
+            status="error",
+            error="timeout",
+        )
     except Exception as e:
         logger.error(f"[skill_task] 工具执行失败: {e}")
         # 走 harness.post_validate 的失败兜底
         post_result = harness.post_validate({"status": "error", "error": str(e)}, ctx)
         if not post_result.valid:
             fallback_reply = harness.format_response({"status": "error"})
-            return _make_result(task_id, intent, fallback_reply, task, msgs,
-                                status="error", error=str(e))
-        return _make_result(task_id, intent, "操作过程中发生错误", task, msgs,
-                            status="error", error=str(e))
+            return _make_result(
+                task_id,
+                intent,
+                fallback_reply,
+                task,
+                msgs,
+                status="error",
+                error=str(e),
+            )
+        return _make_result(
+            task_id,
+            intent,
+            "操作过程中发生错误",
+            task,
+            msgs,
+            status="error",
+            error=str(e),
+        )
 
     # ── 5. harness.post_validate ──
     tool_result = result if isinstance(result, dict) else {"raw": result}
@@ -464,54 +587,68 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
         if post_result.need_confirm:
             # 异常值需要确认（如距离太远）
             confirm_question = post_result.confirm_message or "请确认"
-            user_answer = interrupt({
-                "question": confirm_question,
-                "task_id": task_id,
-                "intent": intent,
-                "is_confirm": True,
-            })
+            user_answer = interrupt(
+                {
+                    "question": confirm_question,
+                    "task_id": task_id,
+                    "intent": intent,
+                    "is_confirm": True,
+                }
+            )
             msgs += [
                 {"role": "assistant", "content": confirm_question},
                 {"role": "user", "content": user_answer},
             ]
-            cancelled = _handle_resume(confirm_question, user_answer, intent, task, task_id, msgs)
+            cancelled = _handle_resume(
+                confirm_question, user_answer, intent, task, task_id, msgs
+            )
             if cancelled:
                 return cancelled
             if not _is_confirm_positive(user_answer):
-                return _make_result(task_id, intent, "好的，已取消", task, msgs, tool_result={})
+                return _make_result(
+                    task_id, intent, "好的，已取消", task, msgs, tool_result={}
+                )
 
         elif post_result.need_clarify:
             # post_validate 发现问题需要追问
             clarify_msg = post_result.clarify_message or "请提供更多信息"
-            return _make_result(task_id, intent, clarify_msg, task, msgs,
-                                status="need_clarify")
+            return _make_result(
+                task_id, intent, clarify_msg, task, msgs, status="need_clarify"
+            )
         else:
             # 直接兜底回复
             fallback_reply = harness.format_response(tool_result)
-            return _make_result(task_id, intent, fallback_reply, task, msgs,
-                                tool_result=tool_result)
+            return _make_result(
+                task_id, intent, fallback_reply, task, msgs, tool_result=tool_result
+            )
 
     # ── 6. 高风险确认（tool 返回 need_confirm） ──
     if isinstance(tool_result, dict) and tool_result.get("status") == "need_confirm":
         confirm_question = tool_result.get("voice_reply", "请确认")
-        user_answer = interrupt({
-            "question": confirm_question,
-            "task_id": task_id,
-            "intent": intent,
-            "is_confirm": True,
-        })
+        user_answer = interrupt(
+            {
+                "question": confirm_question,
+                "task_id": task_id,
+                "intent": intent,
+                "is_confirm": True,
+            }
+        )
         msgs += [
             {"role": "assistant", "content": confirm_question},
             {"role": "user", "content": user_answer},
         ]
         logger.info(f"[skill确认] 用户回答: {user_answer}")
 
-        cancelled = _handle_resume(confirm_question, user_answer, intent, task, task_id, msgs)
+        cancelled = _handle_resume(
+            confirm_question, user_answer, intent, task, task_id, msgs
+        )
         if cancelled:
             return cancelled
 
         if not _is_confirm_positive(user_answer):
-            return _make_result(task_id, intent, "好的，已取消", task, msgs, tool_result={})
+            return _make_result(
+                task_id, intent, "好的，已取消", task, msgs, tool_result={}
+            )
 
     # ── 7. harness.format_response ──
     voice_reply = harness.format_response(tool_result)
@@ -520,13 +657,15 @@ async def _handle_skill_task(state: CabinAgentState, task_id: str, task: dict,
     user_profile.save_from_tool_result(intent, slots)
 
     logger.info(f"[skill_task] {domain}.{intent} 完成, reply={voice_reply}")
-    return _make_result(task_id, intent, voice_reply, task, msgs,
-                        tool_result=tool_result)
+    return _make_result(
+        task_id, intent, voice_reply, task, msgs, tool_result=tool_result
+    )
 
 
 # ═══════════════════════════════════════════════
 # task_pipeline 子处理器（旧路径）
 # ═══════════════════════════════════════════════
+
 
 def _handle_chitchat(state: CabinAgentState, task_id: str, task: dict) -> dict:
     """闲聊分支：调 LLM 生成简短回复。"""
@@ -534,14 +673,20 @@ def _handle_chitchat(state: CabinAgentState, task_id: str, task: dict) -> dict:
     return _make_result(task_id, "chitchat", reply, task)
 
 
-def _handle_clarify(state: CabinAgentState, task_id: str, task: dict,
-                     slots: dict) -> dict:
+def _handle_clarify(
+    state: CabinAgentState, task_id: str, task: dict, slots: dict
+) -> dict:
     """歧义追问分支：LLM 给的追问优先，否则模板拼装，0ms。"""
     clarify_count = state.get("clarify_count", 0) + 1
     if clarify_count > 2:
         logger.warning(f"[歧义追问] 连续追问 {clarify_count} 次，降级 chitchat")
-        return _make_result(task_id, "chitchat", "抱歉没太明白，您可以换个方式说试试",
-                            task, clarify_count=0)
+        return _make_result(
+            task_id,
+            "chitchat",
+            "抱歉没太明白，您可以换个方式说试试",
+            task,
+            clarify_count=0,
+        )
     # LLM 给的追问优先
     clarify_message = slots.get("clarify_message", "")
     if clarify_message:
@@ -549,12 +694,15 @@ def _handle_clarify(state: CabinAgentState, task_id: str, task: dict,
     else:
         candidates = slots.get("candidates", [])
         reply = _build_clarify_reply(candidates)
-    logger.info(f"[歧义追问] clarify_message={clarify_message!r}, candidates={slots.get('candidates', [])}, reply={reply}, count={clarify_count}")
+    logger.info(
+        f"[歧义追问] clarify_message={clarify_message!r}, candidates={slots.get('candidates', [])}, reply={reply}, count={clarify_count}"
+    )
     return _make_result(task_id, "clarify", reply, task, clarify_count=clarify_count)
 
 
-def _handle_direct_answer(state: CabinAgentState, task_id: str, task: dict,
-                           slots: dict) -> dict:
+def _handle_direct_answer(
+    state: CabinAgentState, task_id: str, task: dict, slots: dict
+) -> dict:
     """直接回答分支：调 LLM 根据 dialogue_context + user_input 生成回复。"""
     ctx = state.get("dialogue_context", {})
     ctx_text = json.dumps(ctx, ensure_ascii=False, indent=2) if ctx else "（无）"
@@ -579,6 +727,7 @@ def _handle_direct_answer(state: CabinAgentState, task_id: str, task: dict,
 def _resolve_ref(value: str, upstream_result: dict) -> str:
     """解析 LLM 引用表达式如 results[0].name → 实际值"""
     import re
+
     m = re.match(r"results\[(\d+)\]\.(\w+)", value)
     if not m:
         return value
@@ -589,8 +738,9 @@ def _resolve_ref(value: str, upstream_result: dict) -> str:
     return value
 
 
-async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
-                             intent: str, slots: dict) -> dict | Command:
+async def _handle_tool_task(
+    state: CabinAgentState, task_id: str, task: dict, intent: str, slots: dict
+) -> dict | Command:
     """
     工具任务分支：槽位检查 → interrupt → 工具执行 → 高风险确认 → interrupt。
     包含两个 interrupt 点，恢复后统一走 _handle_resume。
@@ -620,20 +770,34 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
             upstream_result = {}
             # 1) 从 task_results 找
             task_results = state.get("task_results", [])
-            upstream = next((r for r in task_results if r.get("task_id") == dep_id and r.get("status") == "done"), None)
+            upstream = next(
+                (
+                    r
+                    for r in task_results
+                    if r.get("task_id") == dep_id and r.get("status") == "done"
+                ),
+                None,
+            )
             if upstream:
                 upstream_result = upstream.get("tool_result", {})
                 logger.info(f"[依赖提取] 从 task_results 找到 {dep_id}")
             # 2) 从 dialogue_context 找
             if not upstream_result:
                 for entity_tag, entity_data in ctx.items():
-                    if isinstance(entity_data, dict) and entity_data.get("task_id") == dep_id:
+                    if (
+                        isinstance(entity_data, dict)
+                        and entity_data.get("task_id") == dep_id
+                    ):
                         upstream_result = entity_data.get("data", {})
-                        logger.info(f"[依赖提取] 从 dialogue_context.{entity_tag} 找到 {dep_id}")
+                        logger.info(
+                            f"[依赖提取] 从 dialogue_context.{entity_tag} 找到 {dep_id}"
+                        )
                         break
             # 3) 还没找到
             if not upstream_result:
-                logger.warning(f"[依赖提取] 未找到上游 {dep_id}, ctx keys={list(ctx.keys())}")
+                logger.warning(
+                    f"[依赖提取] 未找到上游 {dep_id}, ctx keys={list(ctx.keys())}"
+                )
                 continue
             # 解析引用表达式如 results[0].name
             for k, v in list(slots.items()):
@@ -657,18 +821,22 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
                         field = candidate_fields.get(req, req)
                         if field in upstream_results[0]:
                             slots[req] = str(upstream_results[0][field])
-                            logger.info(f"[依赖提取] 自动补全: {req} = {slots[req]} (from results[0].{field})")
+                            logger.info(
+                                f"[依赖提取] 自动补全: {req} = {slots[req]} (from results[0].{field})"
+                            )
 
     if missing and state.get("clarify_count", 0) < 3:
         slot_names = "、".join(missing)
         question = f"请告诉我您想{slot_names}是？"
 
-        user_answer = interrupt({
-            "question": question,
-            "missing_slots": missing,
-            "task_id": task_id,
-            "intent": intent,
-        })
+        user_answer = interrupt(
+            {
+                "question": question,
+                "missing_slots": missing,
+                "task_id": task_id,
+                "intent": intent,
+            }
+        )
         msgs = [
             {"role": "assistant", "content": question},
             {"role": "user", "content": user_answer},
@@ -681,7 +849,9 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
             return cancelled
 
         # 提取 slot 并更新
-        new_slots = _extract_slots_from_reply(missing, user_answer, intent, current_slots=slots)
+        new_slots = _extract_slots_from_reply(
+            missing, user_answer, intent, current_slots=slots
+        )
         slots.update(new_slots)
         task["extracted_slots"] = slots
 
@@ -690,10 +860,16 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
             slot_names2 = "、".join(still_missing)
             clarify2 = f"还需要您告诉我{slot_names2}"
             return {
-                **_make_result(task_id, intent, clarify2, task,
-                               msgs + [{"role": "assistant", "content": clarify2}],
-                               status="need_clarify", missing_slots=still_missing,
-                               completed_ids=[]),
+                **_make_result(
+                    task_id,
+                    intent,
+                    clarify2,
+                    task,
+                    msgs + [{"role": "assistant", "content": clarify2}],
+                    status="need_clarify",
+                    missing_slots=still_missing,
+                    completed_ids=[],
+                ),
                 "clarify_count": state.get("clarify_count", 0) + 1,
             }
         elif still_missing:
@@ -705,12 +881,26 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
     # ── 2. 工具路由（通过 registry） ──
     domain = get_domain_for_intent(intent)
     if not domain:
-        return _make_result(task_id, intent, f"抱歉，未知意图{intent}", task, msgs,
-                            status="error", error=f"未知意图: {intent}")
+        return _make_result(
+            task_id,
+            intent,
+            f"抱歉，未知意图{intent}",
+            task,
+            msgs,
+            status="error",
+            error=f"未知意图: {intent}",
+        )
     tool_fn = get_tool_function(domain, intent)
     if not tool_fn:
-        return _make_result(task_id, intent, f"抱歉，未知工具{intent}", task, msgs,
-                            status="error", error=f"未知工具: {intent}")
+        return _make_result(
+            task_id,
+            intent,
+            f"抱歉，未知工具{intent}",
+            task,
+            msgs,
+            status="error",
+            error=f"未知工具: {intent}",
+        )
 
     # ── 3. 工具执行 ──
     try:
@@ -718,29 +908,47 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
             result = await asyncio.wait_for(tool_fn.ainvoke(slots), timeout=8)
         else:
             result = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, lambda: tool_fn(**slots)),
+                asyncio.get_event_loop().run_in_executor(
+                    None, lambda: tool_fn(**slots)
+                ),
                 timeout=8,
             )
     except asyncio.TimeoutError:
         logger.error(f"[工具执行] 超时: {intent} 超过 8s")
         decs = DYNAMIC_SCHEMA.get(intent, {}).get("description", "")
-        return _make_result(task_id, intent, f"{decs}操作超时，请稍后再试", task, msgs,
-                            status="error", error="timeout")
+        return _make_result(
+            task_id,
+            intent,
+            f"{decs}操作超时，请稍后再试",
+            task,
+            msgs,
+            status="error",
+            error="timeout",
+        )
     except Exception as e:
         logger.error(f"[工具执行] 失败: {e}")
         decs = DYNAMIC_SCHEMA.get(intent, {}).get("description", "")
-        return _make_result(task_id, intent, f"执行{decs}过程中发生错误", task, msgs,
-                            status="error", error=str(e))
+        return _make_result(
+            task_id,
+            intent,
+            f"执行{decs}过程中发生错误",
+            task,
+            msgs,
+            status="error",
+            error=str(e),
+        )
 
     # ── 4. 高风险确认 → interrupt ──
     if isinstance(result, dict) and result.get("status") == "need_confirm":
         confirm_question = result.get("voice_reply", "请确认")
-        user_answer = interrupt({
-            "question": confirm_question,
-            "task_id": task_id,
-            "intent": intent,
-            "is_confirm": True,
-        })
+        user_answer = interrupt(
+            {
+                "question": confirm_question,
+                "task_id": task_id,
+                "intent": intent,
+                "is_confirm": True,
+            }
+        )
         msgs += [
             {"role": "assistant", "content": confirm_question},
             {"role": "user", "content": user_answer},
@@ -748,7 +956,9 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
         logger.info(f"[确认恢复] 用户回答: {user_answer}")
 
         # 取消/重定向
-        cancelled = _handle_resume(confirm_question, user_answer, intent, task, task_id, msgs)
+        cancelled = _handle_resume(
+            confirm_question, user_answer, intent, task, task_id, msgs
+        )
         if cancelled:
             return cancelled
 
@@ -757,13 +967,20 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
             confirmed_result = _execute_confirmed(intent, slots, result)
             voice_reply = confirmed_result.get("voice_reply", "好的，已执行")
             logger.info(f"[确认执行] {intent} 结果: {voice_reply}")
-            return _make_result(task_id, intent, voice_reply, task, msgs,
-                                tool_result=confirmed_result)
+            return _make_result(
+                task_id, intent, voice_reply, task, msgs, tool_result=confirmed_result
+            )
 
         # 模糊回答 → 默认取消
         logger.info(f"[确认恢复] 用户回答模糊，默认取消: {user_answer}")
-        return _make_result(task_id, intent, "好的，已取消。如需操作请重新告诉我",
-                            task, msgs, tool_result={})
+        return _make_result(
+            task_id,
+            intent,
+            "好的，已取消。如需操作请重新告诉我",
+            task,
+            msgs,
+            tool_result={},
+        )
 
     # ── 5. 正常返回 ──
     voice_reply = result.get("voice_reply", "") if isinstance(result, dict) else ""
@@ -771,14 +988,16 @@ async def _handle_tool_task(state: CabinAgentState, task_id: str, task: dict,
     # L2 长期记忆：从工具结果自动写入用户画像
     user_profile.save_from_tool_result(intent, slots)
 
-    logger.info(f"[子任务{task_id}] [工具调用]-[{intent}] [处理结果]-[{result}] [回复]-[{voice_reply}]")
-    return _make_result(task_id, intent, voice_reply, task, msgs,
-                        tool_result=result)
+    logger.info(
+        f"[子任务{task_id}] [工具调用]-[{intent}] [处理结果]-[{result}] [回复]-[{voice_reply}]"
+    )
+    return _make_result(task_id, intent, voice_reply, task, msgs, tool_result=result)
 
 
 # ═══════════════════════════════════════════════
 # 主入口：task_pipeline 节点
 # ═══════════════════════════════════════════════
+
 
 @track_node("task_pipeline")
 async def task_pipeline(state: CabinAgentState) -> dict | Command:
@@ -806,7 +1025,9 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
         return _make_result(task_id, intent, reply, task)
 
     # 自动 OOS 兜底：意图不在已知列表中 → chitchat 降级（而非直接拒绝）
-    KNOWN_INTENTS = {"chitchat", "clarify", "direct_answer", "no_support"} | set(DYNAMIC_SCHEMA.keys())
+    KNOWN_INTENTS = {"chitchat", "clarify", "direct_answer", "no_support"} | set(
+        DYNAMIC_SCHEMA.keys()
+    )
     if intent not in KNOWN_INTENTS:
         logger.warning(f"[OOS兜底] 未知意图: {intent}，降级 chitchat")
         return _handle_chitchat(state, task_id, task)

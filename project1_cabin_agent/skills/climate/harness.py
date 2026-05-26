@@ -2,6 +2,7 @@
 project1_cabin_agent/skills/climate/harness.py
 Climate Skill Harness — 确定性校验+高风控+格式化
 """
+
 from project1_cabin_agent.harness.base import BaseHarness, ContextDep, HarnessResult
 from project1_cabin_agent.harness.context import AgentContext
 from shared.utils.logger import logger
@@ -16,12 +17,83 @@ class ClimateHarness(BaseHarness):
     _TEMP_LO, _TEMP_HI = 16, 32
     _FAN_LO, _FAN_HI = 1, 5
 
+    # ═══════════════════════════════════════════════════════════
+    # infer_slots — 基于上下文的语义槽位推断
+    # ═══════════════════════════════════════════════════════════
+
+    def infer_slots(self, slots: dict, ctx: AgentContext, user_input: str) -> dict:
+        """气候域语义推断：基于 vehicle_state 和用户语义词补全缺失槽位。
+
+        职责（只补缺，不校验，不覆盖已有值）：
+        - ac_control: "热"→当前-2, "冷"→当前+2, "调高"→+2, "调低"→-2
+        - ac_control: fan_level 语义推断
+        - window_control: target/action 默认推断
+        """
+        result = {**slots}
+        intent = slots.get("_intent", "")
+        current_temp = ctx.vehicle.ac_temp
+        current_fan = ctx.vehicle.ac_fan_level
+
+        if intent == "ac_control":
+            # temperature 推断（LLM 没提取到时）
+            if not result.get("temperature"):
+                if any(w in user_input for w in ("热", "烫", "闷")):
+                    result["temperature"] = current_temp - 2
+                    logger.info(
+                        f"[slot_infer] ac: '热' → temperature={current_temp}-2={result['temperature']}"
+                    )
+                elif any(w in user_input for w in ("冷", "冻", "凉")):
+                    result["temperature"] = current_temp + 2
+                    logger.info(
+                        f"[slot_infer] ac: '冷' → temperature={current_temp}+2={result['temperature']}"
+                    )
+                elif "调高" in user_input:
+                    result["temperature"] = current_temp + 2
+                    logger.info(
+                        f"[slot_infer] ac: '调高' → temperature={result['temperature']}"
+                    )
+                elif "调低" in user_input:
+                    result["temperature"] = current_temp - 2
+                    logger.info(
+                        f"[slot_infer] ac: '调低' → temperature={result['temperature']}"
+                    )
+
+            # fan_level 推断
+            if not result.get("fan_level"):
+                if any(w in user_input for w in ("风太大", "太吵")):
+                    result["fan_level"] = max(1, current_fan - 1)
+                    logger.info(
+                        f"[slot_infer] ac: '风太大' → fan_level={result['fan_level']}"
+                    )
+                elif "风太小" in user_input:
+                    result["fan_level"] = min(5, current_fan + 1)
+                    logger.info(
+                        f"[slot_infer] ac: '风太小' → fan_level={result['fan_level']}"
+                    )
+
+        elif intent == "window_control":
+            # target 默认推断
+            if not result.get("target"):
+                if "天窗" in user_input:
+                    result["target"] = "sunroof"
+                else:
+                    result["target"] = "window"
+            # action 默认推断
+            if not result.get("action"):
+                if any(w in user_input for w in ("开", "透气")):
+                    result["action"] = "open"
+                elif "关" in user_input:
+                    result["action"] = "close"
+
+        return result
+
     def pre_validate(self, slots: dict, ctx: AgentContext) -> HarnessResult:
         """按 intent 分发校验"""
         intent = slots.get("_intent", "")
         if not intent:
-            return HarnessResult(valid=False, fallback=True,
-                                 block_reason="no _intent in climate")
+            return HarnessResult(
+                valid=False, fallback=True, block_reason="no _intent in climate"
+            )
 
         handlers = {
             "ac_control": self._validate_ac,
@@ -33,8 +105,9 @@ class ClimateHarness(BaseHarness):
         handler = handlers.get(intent)
         if handler:
             return handler(slots, ctx)
-        return HarnessResult(valid=False, fallback=True,
-                             block_reason=f"unknown climate intent: {intent}")
+        return HarnessResult(
+            valid=False, fallback=True, block_reason=f"unknown climate intent: {intent}"
+        )
 
     # ── ac_control ────────────────────────────────────────────────
 
@@ -42,20 +115,36 @@ class ClimateHarness(BaseHarness):
         action = slots.get("action", "")
         if not action:
             logger.info("[climate-harness] ac: missing action → clarify")
-            return HarnessResult(valid=False, slots=slots, need_clarify=True,
-                clarify_message="请问您要怎么调节空调？", block_reason="missing action")
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                need_clarify=True,
+                clarify_message="请问您要怎么调节空调？",
+                block_reason="missing action",
+            )
         if action not in ("on", "off", "adjust"):
             logger.warning(f"[climate-harness] ac: illegal action={action} → fallback")
-            return HarnessResult(valid=False, slots=slots, fallback=True,
-                block_reason=f"illegal action: {action}")
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                fallback=True,
+                block_reason=f"illegal action: {action}",
+            )
 
         # adjust 必须有调节目标（温度/模式/风速至少一个）
         if action == "adjust":
-            has_target = any(slots.get(k) is not None for k in ("temperature", "mode", "fan_level"))
+            has_target = any(
+                slots.get(k) is not None for k in ("temperature", "mode", "fan_level")
+            )
             if not has_target:
                 logger.info("[climate-harness] ac: adjust without target → clarify")
-                return HarnessResult(valid=False, slots=slots, need_clarify=True,
-                    clarify_message="请问要调到多少度？", block_reason="adjust without target")
+                return HarnessResult(
+                    valid=False,
+                    slots=slots,
+                    need_clarify=True,
+                    clarify_message="请问要调到多少度？",
+                    block_reason="adjust without target",
+                )
 
         # 温度范围 clamp
         temp = slots.get("temperature")
@@ -85,22 +174,36 @@ class ClimateHarness(BaseHarness):
 
         if not action or not target:
             logger.info("[climate-harness] window: missing action/target → clarify")
-            return HarnessResult(valid=False, slots=slots, need_clarify=True,
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                need_clarify=True,
                 clarify_message="请问您要操作车窗、天窗还是车门？",
-                block_reason="missing target/action")
+                block_reason="missing target/action",
+            )
 
         # 行车中开门 → 拦截
         if target == "door" and action == "open" and ctx.vehicle.speed > 0:
-            logger.warning(f"[climate-harness] window: door open at {ctx.vehicle.speed}km/h → blocked")
-            return HarnessResult(valid=False, slots=slots, fallback=True,
-                block_reason=f"行驶中({ctx.vehicle.speed}km/h)禁止开门")
+            logger.warning(
+                f"[climate-harness] window: door open at {ctx.vehicle.speed}km/h → blocked"
+            )
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                fallback=True,
+                block_reason=f"行驶中({ctx.vehicle.speed}km/h)禁止开门",
+            )
 
         # open 动作需要确认（除关窗外）
         if action in ("open", "adjust") and target in ("window", "sunroof"):
             pct = slots.get("percent", 100 if action == "open" else None)
             target_name = {"window": "车窗", "sunroof": "天窗"}.get(target, target)
-            return HarnessResult(valid=True, slots=slots, need_confirm=True,
-                confirm_message=f"确认要打开{target_name}吗？")
+            return HarnessResult(
+                valid=True,
+                slots=slots,
+                need_confirm=True,
+                confirm_message=f"确认要打开{target_name}吗？",
+            )
 
         return HarnessResult(valid=True, slots=slots)
 
@@ -109,11 +212,20 @@ class ClimateHarness(BaseHarness):
     def _validate_light(self, slots: dict, ctx: AgentContext) -> HarnessResult:
         action = slots.get("action", "")
         if not action:
-            return HarnessResult(valid=False, slots=slots, need_clarify=True,
-                clarify_message="请问您要怎么调节灯光？", block_reason="missing action")
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                need_clarify=True,
+                clarify_message="请问您要怎么调节灯光？",
+                block_reason="missing action",
+            )
         if action not in ("on", "off", "adjust"):
-            return HarnessResult(valid=False, slots=slots, fallback=True,
-                block_reason=f"illegal light action: {action}")
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                fallback=True,
+                block_reason=f"illegal light action: {action}",
+            )
         return HarnessResult(valid=True, slots=slots)
 
     # ── seat_control ──────────────────────────────────────────────
@@ -121,17 +233,28 @@ class ClimateHarness(BaseHarness):
     def _validate_seat(self, slots: dict, ctx: AgentContext) -> HarnessResult:
         action = slots.get("action", "")
         if not action:
-            return HarnessResult(valid=False, slots=slots, need_clarify=True,
-                clarify_message="请问您要怎么调节座椅？", block_reason="missing action")
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                need_clarify=True,
+                clarify_message="请问您要怎么调节座椅？",
+                block_reason="missing action",
+            )
         if action not in ("heat_on", "heat_off", "ventilate_on", "ventilate_off"):
-            return HarnessResult(valid=False, slots=slots, fallback=True,
-                block_reason=f"illegal seat action: {action}")
+            return HarnessResult(
+                valid=False,
+                slots=slots,
+                fallback=True,
+                block_reason=f"illegal seat action: {action}",
+            )
 
         # heat_level 范围 clamp
         level = slots.get("heat_level")
         if level is not None and (level < 1 or level > 3):
             clamped = max(1, min(3, level))
-            logger.info(f"[climate-harness] seat: heat_level {level} clamped → {clamped}")
+            logger.info(
+                f"[climate-harness] seat: heat_level {level} clamped → {clamped}"
+            )
             slots = {**slots, "heat_level": clamped}
 
         return HarnessResult(valid=True, slots=slots)
@@ -144,21 +267,28 @@ class ClimateHarness(BaseHarness):
         items = slots.get("items", "")
         if not items:
             logger.info("[climate-harness] cabin_query: missing items → fallback")
-            return HarnessResult(valid=False, fallback=True,
-                                 block_reason="cabin_query missing items")
+            return HarnessResult(
+                valid=False, fallback=True, block_reason="cabin_query missing items"
+            )
         if items not in self._VALID_CABIN_ITEMS:
-            logger.warning(f"[climate-harness] cabin_query: illegal items={items} → fallback")
-            return HarnessResult(valid=False, fallback=True,
-                                 block_reason=f"illegal cabin items: {items}")
+            logger.warning(
+                f"[climate-harness] cabin_query: illegal items={items} → fallback"
+            )
+            return HarnessResult(
+                valid=False, fallback=True, block_reason=f"illegal cabin items: {items}"
+            )
         return HarnessResult(valid=True, slots=slots)
 
     # ── post_validate ─────────────────────────────────────────────
 
     def post_validate(self, tool_result: dict, ctx: AgentContext) -> HarnessResult:
         if not tool_result.get("status") == "success":
-            logger.warning(f"[climate-harness] post_validate: tool failed → fallback")
-            return HarnessResult(valid=False, fallback=True,
-                block_reason=f"tool status: {tool_result.get('status')}")
+            logger.warning("[climate-harness] post_validate: tool failed → fallback")
+            return HarnessResult(
+                valid=False,
+                fallback=True,
+                block_reason=f"tool status: {tool_result.get('status')}",
+            )
         return HarnessResult(valid=True)
 
     # ── format_response ───────────────────────────────────────────
@@ -183,20 +313,25 @@ class ClimateHarness(BaseHarness):
         action = r.get("action", "")
         temp = r.get("temperature")
         _MODE_NAMES = {
-            "cool": "制冷", "heat": "制热", "auto": "自动",
-            "dehumidify": "除湿", "blow": "吹风",
+            "cool": "制冷",
+            "heat": "制热",
+            "auto": "自动",
+            "dehumidify": "除湿",
+            "blow": "吹风",
         }
         if action == "on":
-            return f"好的，已打开空调" + (f"，{temp}度" if temp else "")
+            return "好的，已打开空调" + (f"，{temp}度" if temp else "")
         elif action == "off":
             return "好的，已关闭空调"
         elif action == "adjust":
             parts = []
-            if r.get("temperature"): parts.append(f"温度调到{temp}度")
+            if r.get("temperature"):
+                parts.append(f"温度调到{temp}度")
             if r.get("mode"):
                 mode_cn = _MODE_NAMES.get(r["mode"], r["mode"])
                 parts.append(f"模式调为{mode_cn}")
-            if r.get("fan_level"): parts.append(f"风速调到{r['fan_level']}档")
+            if r.get("fan_level"):
+                parts.append(f"风速调到{r['fan_level']}档")
             return f"好的，{'，'.join(parts) if parts else '已调整'}"
         return "好的"
 
