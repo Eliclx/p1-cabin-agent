@@ -6,11 +6,10 @@ Layer 1: 原子函数（不暴露给 LLM，直接操作 vehicle_state）
 Layer 2: 领域工具（暴露给 LLM，@tool 注册，带反射元信息 docstring）
 Layer 3: 场景联动（内部编排 Layer 1 原子函数）
 """
-from typing import Optional
+
 from pathlib import Path
 import yaml
 from langchain_core.tools import tool
-from shared.utils.logger import logger
 from project1_cabin_agent.vehicle_state import vehicle_state
 
 # ── mock 数据加载 ──
@@ -22,27 +21,52 @@ if _MOCK_DATA_PATH.exists():
 
 # 类别 → YAML section 映射
 _CATEGORY_MAP = {
-    "餐饮": "restaurants", "餐厅": "restaurants", "小吃": "restaurants",
-    "美食": "restaurants", "饭店": "restaurants", "火锅": "restaurants",
-    "酒店": "hotels", "住宿": "hotels", "宾馆": "hotels", "旅馆": "hotels",
-    "景点": "attractions", "旅游": "attractions", "公园": "attractions",
-    "名胜": "attractions", "景区": "attractions",
-    "加油站": "gas_stations", "加油": "gas_stations", "加油站的": "gas_stations",
-    "医院": "hospitals", "诊所": "hospitals",
-    "停车场": "parking", "停车": "parking", "车位": "parking",
+    "餐饮": "restaurants",
+    "餐厅": "restaurants",
+    "小吃": "restaurants",
+    "美食": "restaurants",
+    "饭店": "restaurants",
+    "火锅": "restaurants",
+    "酒店": "hotels",
+    "住宿": "hotels",
+    "宾馆": "hotels",
+    "旅馆": "hotels",
+    "景点": "attractions",
+    "旅游": "attractions",
+    "公园": "attractions",
+    "名胜": "attractions",
+    "景区": "attractions",
+    "加油站": "gas_stations",
+    "加油": "gas_stations",
+    "加油站的": "gas_stations",
+    "医院": "hospitals",
+    "诊所": "hospitals",
+    "停车场": "parking",
+    "停车": "parking",
+    "车位": "parking",
 }
 
 # keyword → category 推断
 _KEYWORD_CATEGORY = {
-    "餐厅": "restaurants", "饭店": "restaurants", "美食": "restaurants",
-    "小吃": "restaurants", "火锅": "restaurants", "烤鸭": "restaurants",
-    "酒店": "hotels", "宾馆": "hotels", "住宿": "hotels",
-    "景点": "attractions", "公园": "attractions", "景区": "attractions",
-    "加油站": "gas_stations", "加油": "gas_stations",
-    "医院": "hospitals", "急诊": "hospitals",
-    "停车场": "parking", "停车": "parking",
+    "餐厅": "restaurants",
+    "饭店": "restaurants",
+    "美食": "restaurants",
+    "小吃": "restaurants",
+    "火锅": "restaurants",
+    "烤鸭": "restaurants",
+    "酒店": "hotels",
+    "宾馆": "hotels",
+    "住宿": "hotels",
+    "景点": "attractions",
+    "公园": "attractions",
+    "景区": "attractions",
+    "加油站": "gas_stations",
+    "加油": "gas_stations",
+    "医院": "hospitals",
+    "急诊": "hospitals",
+    "停车场": "parking",
+    "停车": "parking",
 }
-
 
 
 def _search_mock_pois(keyword: str, category: str = None, limit: int = 3) -> list:
@@ -50,7 +74,14 @@ def _search_mock_pois(keyword: str, category: str = None, limit: int = 3) -> lis
     results = []
 
     # 搜索范围：所有 POI 类别的 section
-    _all_sections = ["restaurants", "hotels", "attractions", "gas_stations", "hospitals", "parking"]
+    _all_sections = [
+        "restaurants",
+        "hotels",
+        "attractions",
+        "gas_stations",
+        "hospitals",
+        "parking",
+    ]
 
     # 1. keyword 直接匹配 name/address
     for section in _all_sections:
@@ -75,10 +106,19 @@ def _search_mock_pois(keyword: str, category: str = None, limit: int = 3) -> lis
 
 def _find_route(destination: str) -> dict | None:
     """从 YAML mock 数据匹配目的地，返回 route 信息"""
-    _all_sections = ["restaurants", "hotels", "attractions", "gas_stations", "hospitals", "parking"]
+    _all_sections = [
+        "restaurants",
+        "hotels",
+        "attractions",
+        "gas_stations",
+        "hospitals",
+        "parking",
+    ]
     for section in _all_sections:
         for poi in _mock_data.get(section, []):
-            if destination in poi.get("name", "") or destination in poi.get("address", ""):
+            if destination in poi.get("name", "") or destination in poi.get(
+                "address", ""
+            ):
                 return {
                     "name": poi["name"],
                     "eta": f"{poi.get('eta_minutes', '?')}分钟",
@@ -93,12 +133,17 @@ def _find_route(destination: str) -> dict | None:
 # Layer 1: 原子函数
 # ═══════════════════════════════════════════════════════════════
 
+
 def _set_ac_state(on=None, temp=None, mode=None, fan_level=None):
     updates = {}
-    if on is not None: updates["ac_on"] = on
-    if temp is not None: updates["ac_temp"] = max(16, min(32, temp))
-    if mode is not None: updates["ac_mode"] = mode
-    if fan_level is not None: updates["ac_fan_level"] = max(1, min(5, fan_level))
+    if on is not None:
+        updates["ac_on"] = on
+    if temp is not None:
+        updates["ac_temp"] = max(16, min(32, temp))
+    if mode is not None:
+        updates["ac_mode"] = mode
+    if fan_level is not None:
+        updates["ac_fan_level"] = max(1, min(5, fan_level))
     vehicle_state.update(updates)
 
 
@@ -127,16 +172,21 @@ def _window_control_execute(slots: dict, tool_result: dict) -> dict:
 
 def _set_seat_state(heat_level=None, ventilate=None):
     updates = {}
-    if heat_level is not None: updates["seat_heat_level"] = max(0, min(3, heat_level))
-    if ventilate is not None: updates["seat_ventilate"] = ventilate
+    if heat_level is not None:
+        updates["seat_heat_level"] = max(0, min(3, heat_level))
+    if ventilate is not None:
+        updates["seat_ventilate"] = ventilate
     vehicle_state.update(updates)
 
 
 def _set_media_state(playing=None, track=None, source=None):
     updates = {}
-    if playing is not None: updates["music_playing"] = playing
-    if track is not None: updates["music_track"] = track
-    if source is not None: updates["music_source"] = source
+    if playing is not None:
+        updates["music_playing"] = playing
+    if track is not None:
+        updates["music_track"] = track
+    if source is not None:
+        updates["music_source"] = source
     vehicle_state.update(updates)
 
 
@@ -146,8 +196,10 @@ def _set_volume(level):
 
 def _set_light_state(on=None, brightness=None):
     updates = {}
-    if on is not None: updates["light_on"] = on
-    if brightness is not None: updates["light_brightness"] = max(0, min(100, brightness))
+    if on is not None:
+        updates["light_on"] = on
+    if brightness is not None:
+        updates["light_brightness"] = max(0, min(100, brightness))
     vehicle_state.update(updates)
 
 
@@ -155,8 +207,11 @@ def _set_light_state(on=None, brightness=None):
 # Layer 2: 领域工具（9个）
 # ═══════════════════════════════════════════════════════════════
 
+
 @tool
-async def ac_control(action: str, temperature: float = None, mode: str = None, fan_level: int = None) -> dict:
+async def ac_control(
+    action: str, temperature: float = None, mode: str = None, fan_level: int = None
+) -> dict:
     """
     空调控制，调节车内温度、模式和风速。
     :param action: on/off/adjust
@@ -182,10 +237,16 @@ async def ac_control(action: str, temperature: float = None, mode: str = None, f
     elif action == "adjust":
         _set_ac_state(temp=temperature, mode=mode, fan_level=fan_level)
         parts = []
-        if temperature: parts.append(f"温度调到{temperature}度")
-        if mode: parts.append(f"模式调为{mode}")
-        if fan_level: parts.append(f"风速调到{fan_level}档")
-        return {"status": "success", "voice_reply": f"好的，{'，'.join(parts) if parts else '已调整'}"}
+        if temperature:
+            parts.append(f"温度调到{temperature}度")
+        if mode:
+            parts.append(f"模式调为{mode}")
+        if fan_level:
+            parts.append(f"风速调到{fan_level}档")
+        return {
+            "status": "success",
+            "voice_reply": f"好的，{'，'.join(parts) if parts else '已调整'}",
+        }
     return {"status": "success", "voice_reply": "好的"}
 
 
@@ -210,7 +271,10 @@ async def window_control(target: str, action: str, percent: int = None) -> dict:
 
     if target == "door":
         if vehicle_state.speed > 0:
-            return {"status": "blocked", "voice_reply": f"行驶中无法操作{name}，请停车后操作"}
+            return {
+                "status": "blocked",
+                "voice_reply": f"行驶中无法操作{name}，请停车后操作",
+            }
         if action == "open":
             return {"status": "need_confirm", "voice_reply": f"确认要打开{name}吗？"}
         _set_door_state(False)
@@ -218,7 +282,11 @@ async def window_control(target: str, action: str, percent: int = None) -> dict:
 
     if action == "open":
         p = percent if percent is not None else 100
-        return {"status": "need_confirm", "voice_reply": f"确认要打开{name}吗？", "percent": p}
+        return {
+            "status": "need_confirm",
+            "voice_reply": f"确认要打开{name}吗？",
+            "percent": p,
+        }
     elif action == "close":
         _set_window_state(target, 0)
         return {"status": "success", "voice_reply": f"好的，已关闭{name}"}
@@ -256,7 +324,9 @@ async def seat_control(action: str, heat_level: int = None) -> dict:
 
 
 @tool
-async def media_control(action: str, query: str = None, source: str = None, volume: int = None) -> dict:
+async def media_control(
+    action: str, query: str = None, source: str = None, volume: int = None
+) -> dict:
     """
     媒体与音量控制，播放/暂停/切歌/搜索/音量调节。
     :param action: play/pause/next/previous/search/volume_up/volume_down/set_volume
@@ -300,7 +370,9 @@ async def media_control(action: str, query: str = None, source: str = None, volu
 
 
 @tool
-async def light_control(action: str, target: str = None, brightness: int = None) -> dict:
+async def light_control(
+    action: str, target: str = None, brightness: int = None
+) -> dict:
     """
     车内灯光控制。
     :param action: on/off/adjust
@@ -327,7 +399,9 @@ async def light_control(action: str, target: str = None, brightness: int = None)
 
 
 @tool
-async def search_poi(keyword: str, category: str = None, radius: float = 5.0, limit: int = 3) -> dict:
+async def search_poi(
+    keyword: str, category: str = None, radius: float = 5.0, limit: int = 3
+) -> dict:
     """
     搜索周边兴趣点。
     :param keyword: 搜索关键词，如"餐厅"、"酒店"、"故宫"、"加油站"
@@ -363,12 +437,21 @@ async def search_poi(keyword: str, category: str = None, radius: float = 5.0, li
         reply = f"找到{len(pois)}个结果，最近的是{first['name']}，距您{dist}"
         if "rating" in first:
             reply += f"，评分{first['rating']}"
-        return {"status": "success", "keyword": keyword, "results": formatted, "voice_reply": reply}
+        return {
+            "status": "success",
+            "keyword": keyword,
+            "results": formatted,
+            "voice_reply": reply,
+        }
 
     # fallback：mock 数据中没有的
     fallback = [{"name": f"宏扬{keyword}（模拟数据）", "distance": "1.0km"}]
-    return {"status": "success", "keyword": keyword, "results": fallback,
-            "voice_reply": f"找到1个{keyword}，距您1.0km"}
+    return {
+        "status": "success",
+        "keyword": keyword,
+        "results": fallback,
+        "voice_reply": f"找到1个{keyword}，距您1.0km",
+    }
 
 
 @tool
@@ -388,8 +471,12 @@ async def navigate(destination: str, route_type: str = None) -> dict:
         return {
             "status": "success",
             "destination": route["name"],
-            "route": {"eta": route["eta"], "distance": route["distance"], "traffic": route["traffic"],
-                      "address": route.get("address", "")},
+            "route": {
+                "eta": route["eta"],
+                "distance": route["distance"],
+                "traffic": route["traffic"],
+                "address": route.get("address", ""),
+            },
             "voice_reply": f"已规划路线，前往{route['name']}，预计{route['eta']}，全程{route['distance']}，路况{route['traffic']}",
         }
 
@@ -416,7 +503,12 @@ async def query_vehicle_status(items: str) -> dict:
     """
     status = vehicle_state.to_mock_status()
     info = status.get(items, {"value": "未知", "voice": f"暂时无法获取{items}信息"})
-    return {"status": "success", "system": items, "value": info["value"], "voice_reply": info["voice"]}
+    return {
+        "status": "success",
+        "system": items,
+        "value": info["value"],
+        "voice_reply": info["voice"],
+    }
 
 
 @tool
@@ -442,10 +534,16 @@ async def activate_scene(scene_name: str) -> dict:
         actions = ["空调25度低风", "关闭车灯", "暂停音乐"]
     elif scene_name == "departure_check":
         status = vehicle_state.to_mock_status()
-        actions = [status.get(i, {}).get("voice", i) for i in ["fuel", "battery", "tire"]]
+        actions = [
+            status.get(i, {}).get("voice", i) for i in ["fuel", "battery", "tire"]
+        ]
     else:
         return {"status": "success", "voice_reply": f"未知场景: {scene_name}"}
-    return {"status": "success", "scene": scene_name, "voice_reply": f"已激活{scene_name}：{'；'.join(actions)}"}
+    return {
+        "status": "success",
+        "scene": scene_name,
+        "voice_reply": f"已激活{scene_name}：{'；'.join(actions)}",
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -453,9 +551,15 @@ async def activate_scene(scene_name: str) -> dict:
 # ═══════════════════════════════════════════════════════════════
 
 ALL_TOOLS = [
-    ac_control, window_control, seat_control, media_control,
-    light_control, search_poi, navigate,
-    query_vehicle_status, activate_scene,
+    ac_control,
+    window_control,
+    seat_control,
+    media_control,
+    light_control,
+    search_poi,
+    navigate,
+    query_vehicle_status,
+    activate_scene,
 ]
 
 # ── 黑板实体声明 ──
@@ -465,7 +569,7 @@ ALL_TOOLS = [
 # slots:   消费者的哪个参数 ← 取实体的哪个字段  {slot_name: field_name}
 BLACKBOARD_DECLS = {
     "search_poi": {
-        "produces": "entity.poi",   # 唯一标签，供后续工具查询使用
+        "produces": "entity.poi",  # 唯一标签，供后续工具查询使用
         "fields": ["name", "distance", "rating", "avg_price", "price", "ticket"],
     },
     "navigate": {
@@ -473,6 +577,10 @@ BLACKBOARD_DECLS = {
         "fields": ["destination", "eta", "distance", "traffic"],
         "consumes": "entity.poi",
         "slots": {"destination": "name"},
+    },
+    "weather": {
+        "produces": "entity.weather",
+        "fields": ["city", "weather", "temperature"],
     },
 }
 
@@ -482,11 +590,11 @@ TOOL_REGISTRY = {
         "function": t,
         "description": t.__doc__.strip() if t.__doc__ else "",
         "blackboard": BLACKBOARD_DECLS.get(t.name),
-    } for t in ALL_TOOLS
+    }
+    for t in ALL_TOOLS
 }
 # 高风险工具：注册确认后执行函数。新增高风险工具只加这一行。
 TOOL_REGISTRY["window_control"]["confirmed_execute"] = _window_control_execute
-
 
 
 INTENT_TO_TOOL = {t.name: t.name for t in ALL_TOOLS}

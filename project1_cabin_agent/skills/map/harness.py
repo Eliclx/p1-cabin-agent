@@ -156,12 +156,20 @@ class MapHarness(BaseHarness):
         return result
 
     def _infer_weather(self, slots: dict, ctx: AgentContext) -> dict:
-        """weather 推断: date 默认 + city/location 补全"""
+        """weather 推断: date 默认 + city/location 补全（含幻觉 city 清洗）"""
         result = {**slots}
         if not result.get("date"):
             result["date"] = "今天"
             logger.info("[slot_infer] weather: date 默认 → '今天'")
-        if not result.get("city") and not result.get("location"):
+        # 幻觉清洗: 端侧模型可能填 "默认从当前位置所在城市获取" 这种指令文字
+        city = result.get("city", "")
+        if city and len(city) > 6:
+            logger.warning(
+                f"[slot_infer] weather: city 幻觉值 '{city}'，清除并补 location"
+            )
+            del result["city"]
+            city = ""
+        if not city and not result.get("location"):
             loc = ctx.vehicle.location
             if loc:
                 result["location"] = loc

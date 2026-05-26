@@ -19,13 +19,12 @@ from shared.utils.logger import logger
 # ── 数据库路径（和 user_profile.db 同目录） ──
 
 DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data", "events.db"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "events.db"
 )
 
 # ── 白名单：哪些 intent 的执行结果值得记 ──
 
-EVENT_TYPES_TO_LOG = {"navigate", "search_poi", "media_control"}
+EVENT_TYPES_TO_LOG = {"navigate", "search_poi", "media_control", "weather"}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -85,15 +84,17 @@ def _get_db() -> sqlite3.Connection:
 def _retry_on_lock(fn):
     """SQLite 写冲突重试：WAL 模式下偶尔仍有 transient lock"""
     import time as _time
+
     def wrapper(*args, **kwargs):
         for i in range(3):
             try:
                 return fn(*args, **kwargs)
             except sqlite3.OperationalError as e:
                 if "locked" in str(e) and i < 2:
-                    _time.sleep(0.05 * (2 ** i))
+                    _time.sleep(0.05 * (2**i))
                     continue
                 raise
+
     return wrapper
 
 
@@ -101,21 +102,27 @@ def _retry_on_lock(fn):
 # 写入
 # ═══════════════════════════════════════════════════════════════
 
+
 @_retry_on_lock
-def log_event(event_type: str, summary: str, details: dict | None = None,
-              timestamp: str | None = None) -> None:
+def log_event(
+    event_type: str,
+    summary: str,
+    details: dict | None = None,
+    timestamp: str | None = None,
+) -> None:
     """写入一条事件日志。非白名单类型静默跳过。"""
     if event_type not in EVENT_TYPES_TO_LOG:
         return
 
     import json
+
     ts = timestamp or _get_current_time().isoformat()
     details_json = json.dumps(details or {}, ensure_ascii=False)
 
     conn = _get_db()
     conn.execute(
         "INSERT INTO events (timestamp, event_type, summary, details) VALUES (?, ?, ?, ?)",
-        (ts, event_type, summary, details_json)
+        (ts, event_type, summary, details_json),
     )
     conn.commit()
     conn.close()
@@ -165,6 +172,15 @@ def _extract_summary(intent: str, tool_result: dict) -> str | None:
             return f"播放了{artist}的歌"
         if action in ("play", "pause", "next", "previous"):
             return f"媒体操作: {action}"
+        return None
+
+    if intent == "weather":
+        city = tool_result.get("city", "")
+        weather_desc = tool_result.get("weather", "")
+        if city and weather_desc:
+            return f"查询了{city}天气: {weather_desc}"
+        if city:
+            return f"查询了{city}天气"
         return None
 
     return None
@@ -280,7 +296,7 @@ def retrieve_episodic_context(user_input: str, limit: int = 10) -> dict | None:
     rows = conn.execute(
         "SELECT timestamp, event_type, summary, details FROM events "
         "WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC LIMIT ?",
-        (start_ts, end_ts, limit)
+        (start_ts, end_ts, limit),
     ).fetchall()
     conn.close()
 
@@ -289,6 +305,7 @@ def retrieve_episodic_context(user_input: str, limit: int = 10) -> dict | None:
         return None
 
     import json
+
     text_lines = ["[可用行程数据 - 以下为可提取的真实数据]"]
     raw_data = []
 
@@ -308,29 +325,35 @@ def retrieve_episodic_context(user_input: str, limit: int = 10) -> dict | None:
             details = json.loads(details_json) if details_json else {}
         except (json.JSONDecodeError, TypeError):
             pass
-        full_text = f"{time_str} {etype} {summary} {json.dumps(details, ensure_ascii=False)}"
-        raw_data.append({
-            "timestamp": ts,
-            "event_type": etype,
-            "summary": summary,
-            "details": details,
-            "full_text": full_text,
-        })
+        full_text = (
+            f"{time_str} {etype} {summary} {json.dumps(details, ensure_ascii=False)}"
+        )
+        raw_data.append(
+            {
+                "timestamp": ts,
+                "event_type": etype,
+                "summary": summary,
+                "details": details,
+                "full_text": full_text,
+            }
+        )
 
     context_text = "\n".join(text_lines)
     logger.info(f"[L1.5行程记忆] 检索到 {len(rows)} 条事件，注入 LLM context")
     return {"text": context_text, "raw": raw_data}
 
 
-def seed_event(timestamp: str, event_type: str, summary: str,
-               details: dict | None = None) -> None:
+def seed_event(
+    timestamp: str, event_type: str, summary: str, details: dict | None = None
+) -> None:
     """手动写入事件（测试用）。绕过白名单限制。"""
     import json
+
     details_json = json.dumps(details or {}, ensure_ascii=False)
     conn = _get_db()
     conn.execute(
         "INSERT INTO events (timestamp, event_type, summary, details) VALUES (?, ?, ?, ?)",
-        (timestamp, event_type, summary, details_json)
+        (timestamp, event_type, summary, details_json),
     )
     conn.commit()
     conn.close()
