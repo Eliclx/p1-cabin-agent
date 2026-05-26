@@ -86,18 +86,38 @@
 - eval 91.7% 零退化, 43s 完成
 - SSOT 再解决 V16 (search_poi 双重定义)
 
-## ⏭️ 下一步：Phase 3 编排层 (Layer 3 Plan-and-Execute)
+## Phase E: Legacy 清理 + 端侧优化 ✅
 
-> 覆盖复杂条件编排 ~5% 请求（如"先找加油站再导航过去"、"附近有便利店吗帮我调低温度"）
+> 提交范围: e6a3c20 → 018b6cb → a8775d1 → 06cbb67
 
-设计文档: /mnt/e/wiki/p1_skill_registry_地图域重构.md (第五节 Phase3)
+|| 子步骤 | 内容 | 提交 |
+|--------|------|------|------|
+| E0 | 新增 infer_slots 语义槽位推断层（5文件 +836/-273） | e6a3c20 |
+| E0.1 | 删除 _handle_tool_task legacy 路径（-293行） | 018b6cb |
+| E0.2 | 天气修复：歧义检测误杀 + 黑板/行程记忆 + 端侧幻觉清洗 | a8775d1 |
+| E0.3 | 天气三级优先级链 + POI→导航精确坐标 + 多轮端到端测试 | 06cbb67 |
 
-|| 步骤 | 内容 | 改动文件 |
-|------|------|---------|
-| 3.1 | orchestrator/planner.py 执行计划数据结构 | 新建 |
-| 3.2 | orchestrator/executor.py 逐步执行+条件判断 | 新建 |
-| 3.3 | pipeline.py 加入 Layer 3 路由 | 1 文件 |
-| 3.4 | eval 加条件编排测试用例 | 1 文件 |
+**E0.2 详细改动：**
+- `constants.py`: CLEAR_OBJECT_WORDS 加天气关键词
+- `cabin_tools.py`: BLACKBOARD_DECLS 加 weather produces=entity.weather
+- `episodic_memory.py`: EVENT_TYPES_TO_LOG 加 weather + 摘要格式
+- `map/harness.py`: 幻觉清洗（端侧模型填的假城市名会被清除）
+
+**E0.3 详细改动：**
+- `graph.py`: Send 传递 dialogue_context 给 task_pipeline（修复黑板数据断裂）
+- `map/harness.py`: 天气 city 三级优先级链 + `_is_hallucinated_city` 幻觉检测 + `_find_poi_coordinates` 精确坐标替换
+- `map/schema.py`: weather city 描述改为“用户未指定时留空”（从源头减少端侧幻觉）
+- `edge_model.py`: Stage2 规则第4条加强反幻觉
+- `slot_transfer.py`: 支持 `_coordinates` 特殊映射（POI→导航坐标直传）
+- `cabin_tools.py`: BLACKBOARD_DECLS navigate.slots 改为 `_coordinates`
+- `tests/test_multi_turn.py`: 新增5个多轮端到端测试
+
+**关键设计决策：**
+- 天气 city 三级优先级：①用户指定 → ②黑板复用 → ③坐标兜底
+- POI→导航精确坐标：从黑板 POI 的 lng/lat 拼坐标字符串，避免文字名重新地理编码导致路线偏差
+- 幻觉检测纵深防御：prompt优化（源头）→ _is_hallucinated_city（harness层）→ 黑板兜底（数据层）
+
+**测试结果：192/197 通过（97.5%），5个失败均为预先存在，零退化**
 
 ## 当前状态总览
 
@@ -110,6 +130,33 @@
 | 纯逻辑测试 | 74 passed |
 | 端侧 e2e | 122 passed, 2 failed (多意图) |
 | SSOT 已解决 | 12/16，剩余 4 处 |
+
+## ⏭️ 下一步：Phase E 剩余 → Phase F → Phase 3
+
+|| 步骤 | 内容 | 状态 |
+|--------|------|------|
+| E2 | DYNAMIC_SCHEMA 从 registry 动态生成 | 待做 |
+| E3 | BLACKBOARD_DECLS 迁移至各 skill schema | 待做 |
+| E4 | _DOMAIN_SIGNALS 动态化 | 待做 |
+| E5 | cabin_tools.py 清理/删除 | 待做 |
+| F | 端侧 confidence 分布分析（132 eval cases） | 待做 |
+| 3.1 | orchestrator/planner.py 执行计划数据结构 | 待做 |
+| 3.2 | orchestrator/executor.py 逐步执行+条件判断 | 待做 |
+| 3.3 | pipeline.py 加入 Layer 3 路由 | 待做 |
+| 3.4 | eval 加条件编排测试用例 | 待做 |
+
+## 当前状态总览
+
+| 指标 | 数值 |
+|------|------|
+| skill 域 | 4 (climate, map, media, vehicle) |
+| intent 总数 | 14 |
+| harness 单测 | 104/104 全绿 |
+| 多轮端到端 | 5/5 全绿（新增） |
+| 全量测试 | 192/197 (97.5%)，5个预先存在失败 |
+| eval 132条 | 91.7% 零退化 |
+| SSOT 已解决 | 12/16，剩余 4 处 |
+| pipeline.py | ~770行（从 ~1040行缩减） |
 
 ## SSOT 审计进度 (16处违规)
 
