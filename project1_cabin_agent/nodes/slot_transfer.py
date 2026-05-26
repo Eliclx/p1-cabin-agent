@@ -7,6 +7,7 @@ project1_cabin_agent/nodes/slot_transfer.py
 - sort_by/pick 是 extracted_slots 里的元数据，不传给工具函数
 - 每步可选：无 sort_by 跳过排序，无 pick 跳过选取
 """
+
 from shared.utils.logger import logger
 
 
@@ -46,7 +47,7 @@ def fill_slots_from_blackboard(
         return extracted_slots
 
     entity_tag = blackboard_decl["consumes"]
-    slot_mapping = blackboard_decl.get("slots", {})   # {"destination": "name"}
+    slot_mapping = blackboard_decl.get("slots", {})  # {"destination": "name"}
 
     # ── ① 检查是否有空槽需要回填 ──
     empty_slots = [s for s in slot_mapping if not extracted_slots.get(s)]
@@ -67,7 +68,7 @@ def fill_slots_from_blackboard(
 
     # ── ③ 排序（可选） ──
     sort_by = extracted_slots.get("sort_by")
-    items = _get_items(data)   # 可能是列表或单个对象
+    items = _get_items(data)  # 可能是列表或单个对象
     if sort_by and isinstance(items, list) and len(items) > 1:
         items = _sort_items(items, sort_by, extracted_slots.get("sort_order", "asc"))
 
@@ -87,12 +88,32 @@ def fill_slots_from_blackboard(
 
     for slot_name, field_name in slot_mapping.items():
         if not result.get(slot_name) and isinstance(target, dict):
-            value = target.get(field_name, "")
-            if value:
-                result[slot_name] = str(value)
-                logger.info(
-                    f"[slot_transfer] -> {slot_name} ← {entity_tag}.{field_name} = {value}"
-                )
+            # 特殊映射: _coordinates → 从 lng/lat 字段拼成 "lng,lat" 坐标字符串
+            # 用于 POI→导航场景: 避免地名重新地理编码导致路线偏差
+            if field_name == "_coordinates":
+                lng = target.get("lng")
+                lat = target.get("lat")
+                if lng is not None and lat is not None:
+                    value = f"{lng},{lat}"
+                    result[slot_name] = value
+                    logger.info(
+                        f"[slot_transfer] -> {slot_name} ← {entity_tag}._coordinates = {value}"
+                    )
+                else:
+                    # 没有坐标，降级用 name
+                    name = target.get("name", "")
+                    if name:
+                        result[slot_name] = str(name)
+                        logger.info(
+                            f"[slot_transfer] -> {slot_name} ← {entity_tag}.name(fallback) = {name}"
+                        )
+            else:
+                value = target.get(field_name, "")
+                if value:
+                    result[slot_name] = str(value)
+                    logger.info(
+                        f"[slot_transfer] -> {slot_name} ← {entity_tag}.{field_name} = {value}"
+                    )
 
     # ── ⑥ 清理元数据（sort_by/pick 不传给工具） ──
     result.pop("sort_by", None)
@@ -130,6 +151,7 @@ def _sort_items(items: list, field: str, order: str = "asc") -> list:
         # 尝试提取数值（如 "1.2km" → 1.2）
         if isinstance(val, str):
             import re
+
             m = re.match(r"([\d.]+)", val)
             return float(m.group(1)) if m else 0
         return val if isinstance(val, (int, float)) else 0

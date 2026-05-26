@@ -57,6 +57,41 @@ class MapHarness(BaseHarness):
     }
 
     # ═══════════════════════════════════════════════════════════
+
+    def _find_poi_coordinates(
+        self, destination_name: str, dialogue: dict
+    ) -> str | None:
+        """从黑板 entity.poi 中查找与 destination_name 匹配的 POI 精确坐标
+
+        用于解决"同名不同店"问题：POI 搜索返回精确坐标，
+        但 LLM 填的 destination 是文字名，地理编码可能匹配到另一个分店。
+        """
+        poi_data = dialogue.get("entity.poi", {})
+        if not poi_data:
+            return None
+
+        # context_enrich 展开后是嵌套结构: {"success": true, "data": {"results": [...]}}
+        inner = poi_data.get("data", poi_data)
+        results = inner.get("results", [])
+        if not results:
+            return None
+
+        # 模糊匹配 POI 名称（destination 可能是 LLM 简化的版本）
+        for poi in results:
+            name = poi.get("name", "")
+            if (
+                name == destination_name
+                or destination_name in name
+                or name in destination_name
+            ):
+                lng = poi.get("lng")
+                lat = poi.get("lat")
+                if lng is not None and lat is not None:
+                    return f"{lng},{lat}"
+
+        return None
+
+    # ═══════════════════════════════════════════════════════════
     # infer_slots — 基于上下文的语义槽位推断
     # ═══════════════════════════════════════════════════════════
 
@@ -80,7 +115,7 @@ class MapHarness(BaseHarness):
         elif intent == "map_query":
             result = self._infer_map_query(result, ctx)
         elif intent == "weather":
-            result = self._infer_weather(result, ctx)
+            result = self._infer_weather(result, ctx, user_input)
 
         return result
 
@@ -130,6 +165,15 @@ class MapHarness(BaseHarness):
         if "mode" in result and "route_type" not in result:
             result["route_type"] = result["mode"]
 
+        # ── 7. 精确坐标替换: 如果黑板有 POI 坐标，用坐标替换文字 destination ──
+        # 避免地名重新地理编码导致路线偏差（同名不同店问题）
+        dest = result.get("destination", "")
+        if dest:
+            coord = self._find_poi_coordinates(dest, ctx.dialogue)
+            if coord:
+                result["destination"] = coord
+                logger.info(f"[slot_infer] navigate: 精确坐标替换 '{dest}' → '{coord}'")
+
         return result
 
     def _infer_search_poi(self, slots: dict, ctx: AgentContext) -> dict:
@@ -155,25 +199,88 @@ class MapHarness(BaseHarness):
                 logger.info(f"[slot_infer] map_query: location 补全 → '{loc}'")
         return result
 
-    def _infer_weather(self, slots: dict, ctx: AgentContext) -> dict:
-        """weather 推断: date 默认 + city/location 补全（含幻觉 city 清洗）"""
+    # 幻觉词黑名单 — 这些词永远不会出现在真实城市名里
+    _HALLUCINATION_WORDS = frozenset(
+        {
+            "默认",
+            "获取",
+            "根据",
+            "系统",
+            "自动",
+            "所在",
+            "当前",
+            "位置",
+            "用户",
+            "填充",
+            "推断",
+            "以下",
+        }
+    )
+
+    def _is_hallucinated_city(self, city: str, user_input: str) -> bool:
+        """判断端侧模型填的 city 是否是幻觉"""
+        # 检查1: 包含指令性词汇 → 100% 幻觉
+        if any(w in city for w in self._HALLUCINATION_WORDS):
+            return True
+        # 检查2: 城市名核心部分是否出现在用户输入里
+        core = city.rstrip("市省区县特别行政区")
+        if core and core in user_input:
+            return False  # 用户提到了，真实值
+        # 检查3: 用户没说城市 → 可能是幻觉，保守丢弃
+        return True
+
+    def _infer_weather(
+        self, slots: dict, ctx: AgentContext, user_input: str = ""
+    ) -> dict:
+        """weather 推断: city 三级优先级 + date 默认
+
+        优先级1: 用户明确说了城市 → LLM 提取的 city 通过幻觉检测 → 信任
+        优先级2: 黑板上轮 entity.weather 的 city → 复用（"明天呢" 场景）
+        优先级3: vehicle_state.location → 坐标兜底
+        """
         result = {**slots}
+
+        # ── date 默认 ──
         if not result.get("date"):
             result["date"] = "今天"
             logger.info("[slot_infer] weather: date 默认 → '今天'")
-        # 幻觉清洗: 端侧模型可能填 "默认从当前位置所在城市获取" 这种指令文字
+
+        # ── city 三级优先级 ──
         city = result.get("city", "")
-        if city and len(city) > 6:
-            logger.warning(
-                f"[slot_infer] weather: city 幻觉值 '{city}'，清除并补 location"
-            )
-            del result["city"]
-            city = ""
+
+        # 优先级1: LLM/端侧提取的 city → 幻觉检测
+        if city and not self._is_hallucinated_city(city, user_input):
+            pass  # 合法城市，保留
+            logger.info(f"[slot_infer] weather: city 优先级1(用户指定) → '{city}'")
+        else:
+            if city:
+                logger.warning(f"[slot_infer] weather: city='{city}' 疑似幻觉，清除")
+                del result["city"]
+                city = ""
+
+        # 优先级2: 黑板上轮 entity.weather → 复用 city
+        if not city:
+            weather_entry = ctx.dialogue.get("entity.weather", {})
+            if isinstance(weather_entry, dict):
+                # data 嵌套结构: {"success": true, "data": {"city": "成都市", ...}}
+                inner = weather_entry.get("data", weather_entry)
+                prev_city = inner.get("city", "")
+                if prev_city:
+                    result["city"] = prev_city
+                    logger.info(
+                        f"[slot_infer] weather: city 优先级2(黑板复用) → '{prev_city}'"
+                    )
+                    city = prev_city
+
+        # 优先级3: vehicle_state location 坐标兜底
         if not city and not result.get("location"):
             loc = ctx.vehicle.location
             if loc:
                 result["location"] = loc
-                logger.info(f"[slot_infer] weather: location 补全 → '{loc}'")
+                logger.info(
+                    f"[slot_infer] weather: city 优先级3(location兜底) → '{loc}'"
+                )
+
         return result
 
     # ═══════════════════════════════════════════════════════════

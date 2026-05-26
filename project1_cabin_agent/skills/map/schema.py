@@ -15,6 +15,7 @@ Map Skill Schema — Pydantic SSOT（单一真相源）
     ├→ harness 校验规则
     └→ tools.py 参数过滤
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -25,22 +26,21 @@ from typing import Optional, Literal
 # Intent 1: search_poi — 搜索周边设施
 # ═══════════════════════════════════════════════════════════════
 
+
 class SearchPoiSlots(BaseModel):
     """
     搜索周边设施（加油站、餐厅、停车场等）。
     合并自原 navigation/search_poi + search/search_poi。
     统一使用米作为距离单位。
     """
-    keyword: str = Field(
-        description="搜索关键词。如：加油站、餐厅、停车场、厕所、银行"
-    )
+
+    keyword: str = Field(description="搜索关键词。如：加油站、餐厅、停车场、厕所、银行")
     category: Optional[str] = Field(
-        default=None,
-        description="类别过滤: 餐饮/酒店/景点/加油站"
+        default=None, description="类别过滤: 餐饮/酒店/景点/加油站"
     )
     location: Optional[str] = Field(
         default=None,
-        description="搜索中心位置坐标(lng,lat)。默认从 vehicle_state 取当前位置"
+        description="搜索中心位置坐标(lng,lat)。默认从 vehicle_state 取当前位置",
     )
     radius: Optional[int] = Field(
         default=3000,
@@ -54,40 +54,42 @@ class SearchPoiSlots(BaseModel):
 # Intent 2: navigate — 导航到目的地（rename from start_navigation）
 # ═══════════════════════════════════════════════════════════════
 
+
 class NavigateSlots(BaseModel):
     """
     导航到目的地。
     对应原 navigation/start_navigation，重命名为 navigate。
     """
+
     destination: str = Field(
         description="目的地名称或坐标。用户可能说地名（春熙路）、别名（家/公司）、坐标（104.08,30.66）"
     )
     origin: Optional[str] = Field(
         default=None,
-        description="起点坐标(lng,lat)。默认从 vehicle_state 取当前位置，一般不需要用户指定"
+        description="起点坐标(lng,lat)。默认从 vehicle_state 取当前位置，一般不需要用户指定",
     )
-    route_type: Optional[Literal["fastest", "shortest", "avoid_highway", "avoid_toll"]] = Field(
-        default="fastest",
-        description="路线偏好。默认最快路线"
-    )
+    route_type: Optional[
+        Literal["fastest", "shortest", "avoid_highway", "avoid_toll"]
+    ] = Field(default="fastest", description="路线偏好。默认最快路线")
 
 
 # ═══════════════════════════════════════════════════════════════
 # Intent 3: map_query — 地图信息查询
 # ═══════════════════════════════════════════════════════════════
 
+
 class MapQuerySlots(BaseModel):
     """
     地图信息查询。
     支持查询当前位置、距离、路况、预计到达时间。
     """
+
     query_type: Optional[Literal["location", "distance", "traffic", "eta"]] = Field(
         default="location",
-        description="查询类型：location=位置, distance=距离, traffic=路况, eta=预计到达时间"
+        description="查询类型：location=位置, distance=距离, traffic=路况, eta=预计到达时间",
     )
     target: Optional[str] = Field(
-        default=None,
-        description="查询目标。如距离查询的目标地点、路况查询的路段名称"
+        default=None, description="查询目标。如距离查询的目标地点、路况查询的路段名称"
     )
 
 
@@ -95,18 +97,18 @@ class MapQuerySlots(BaseModel):
 # Intent 4: weather — 天气查询
 # ═══════════════════════════════════════════════════════════════
 
+
 class WeatherSlots(BaseModel):
     """
     天气查询。
     查询指定城市和日期的天气信息。
     """
+
     city: Optional[str] = Field(
-        default=None,
-        description="查询城市。默认从当前位置所在城市获取"
+        default=None, description="查询城市名。用户未指定时留空"
     )
     date: Optional[str] = Field(
-        default="今天",
-        description="查询日期。如：今天、明天、后天"
+        default="今天", description="查询日期。如：今天、明天、后天"
     )
 
 
@@ -125,6 +127,7 @@ MAP_INTENTS: dict[str, type[BaseModel]] = {
 # ═══════════════════════════════════════════════════════════════
 # 工具函数
 # ═══════════════════════════════════════════════════════════════
+
 
 def get_intent_schema(intent: str) -> type[BaseModel] | None:
     """根据 intent 名获取对应的 Pydantic model"""

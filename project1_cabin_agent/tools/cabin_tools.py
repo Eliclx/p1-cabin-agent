@@ -576,7 +576,9 @@ BLACKBOARD_DECLS = {
         "produces": "entity.route",
         "fields": ["destination", "eta", "distance", "traffic"],
         "consumes": "entity.poi",
-        "slots": {"destination": "name"},
+        # _coordinates: 特殊映射，从 POI 结果取 lng+lat 拼成坐标字符串
+        # 优先用精确坐标而非地名重新地理编码，避免地名歧义导致路线偏差
+        "slots": {"destination": "_coordinates"},
     },
     "weather": {
         "produces": "entity.weather",

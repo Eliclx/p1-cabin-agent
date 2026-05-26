@@ -22,11 +22,13 @@ ContextEnrichmentNode — 按 CONTEXT_DEPS 声明组装 AgentContext
   context_enrich 只在新路径（已迁移的 domain）触发
   旧路径（climate/media 等）不走这个节点，黑板回填仍在 route_wave 里
 """
+
 from project1_cabin_agent.state import CabinAgentState
 from project1_cabin_agent.harness.context import AgentContext, VehicleSnapshot
 from project1_cabin_agent.harness.base import ContextDep
 from project1_cabin_agent.skills.registry import (
-    is_domain_migrated, get_harness, get_domain_for_intent,
+    get_harness,
+    get_domain_for_intent,
 )
 from project1_cabin_agent.vehicle_state import vehicle_state
 from shared.utils.logger import logger
@@ -66,7 +68,9 @@ def _extract_l1_dialogue(state: CabinAgentState) -> dict:
     flat = {}
     for tag, stack in dialogue_context.items():
         if isinstance(stack, list) and stack:
-            flat[tag] = stack[0].get("data", {}) if isinstance(stack[0], dict) else stack[0]
+            flat[tag] = (
+                stack[0].get("data", {}) if isinstance(stack[0], dict) else stack[0]
+            )
         else:
             flat[tag] = stack
     return flat
@@ -102,6 +106,7 @@ def _extract_l3_user_prefs() -> dict:
     """
     try:
         from project1_cabin_agent.nodes import user_profile
+
         prefs = {}
         # 尝试获取常用地址
         home = user_profile.get_preference("home_address")
@@ -152,7 +157,9 @@ def enrich_context_for_task(state: CabinAgentState, task: dict) -> AgentContext 
 
     if ContextDep.VEHICLE in deps:
         vehicle = _build_vehicle_snapshot()
-        logger.info(f"[context_enrich] <- VEHICLE: location={vehicle.location}, speed={vehicle.speed}")
+        logger.info(
+            f"[context_enrich] <- VEHICLE: location={vehicle.location}, speed={vehicle.speed}"
+        )
 
     if ContextDep.L1 in deps:
         dialogue = _extract_l1_dialogue(state)

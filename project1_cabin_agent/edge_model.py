@@ -13,6 +13,7 @@ project1_cabin_agent/edge_model.py
 - 恢复两阶段架构（Stage1 domain → Stage2 intent/slot）
 - 每个 stage 都用 System+User 分离格式（替代 v4 的纯 user 一坨）
 """
+
 import os
 import json
 import urllib.request
@@ -28,6 +29,8 @@ from project1_cabin_agent.skills.registry import registry
 EDGE_ENABLED = os.getenv("EDGE_ENABLED", "false").lower() == "true"
 EDGE_BASE_URL = os.getenv("EDGE_BASE_URL", "http://localhost:8001/v1")
 EDGE_MODEL = os.getenv("EDGE_MODEL", "Qwen2.5-3B-Instruct-AWQ")
+
+
 # LMDeploy 用完整 snapshot 路径做 model id，启动时动态获取覆盖默认值
 def _resolve_edge_model():
     """从 LMDeploy /v1/models 接口获取真实 model id"""
@@ -41,6 +44,7 @@ def _resolve_edge_model():
         pass
     return EDGE_MODEL  # fallback 到默认值
 
+
 EDGE_MODEL = _resolve_edge_model()
 EDGE_TIMEOUT = int(os.getenv("EDGE_TIMEOUT", "5"))
 EDGE_CONFIDENCE_THRESHOLD = float(os.getenv("EDGE_CONFIDENCE_THRESHOLD", "0.85"))
@@ -50,9 +54,12 @@ _SKIP_INTENTS = {"clarify", "direct_answer", "multi_intent", "chitchat"}
 
 # 置信度标签 → 数值映射（logprobs 不可用时兜底）
 _CONFIDENCE_MAP = {
-    "high": 0.95, "高": 0.95,
-    "medium": 0.70, "中": 0.70,
-    "low": 0.40, "低": 0.40,
+    "high": 0.95,
+    "高": 0.95,
+    "medium": 0.70,
+    "中": 0.70,
+    "low": 0.40,
+    "低": 0.40,
 }
 
 
@@ -99,10 +106,10 @@ _STAGE1_CACHED_PROMPT: str | None = None
 
 def _build_stage1_system() -> str:
     """构建 Stage1 系统 prompt，从 skill examples.yaml 动态注入 few-shot。
-    
+
     单一真相源：skill 的 examples.yaml 定义 domain→example 映射，
     未迁移的域用训练数据 training_stage1.jsonl 兜底。
-    
+
     结果缓存到模块级变量，只在首次调用时读文件（yaml 不会热更新）。
     """
     global _STAGE1_CACHED_PROMPT
@@ -155,7 +162,7 @@ STAGE2_SYSTEM_TEMPLATE = """你是车载语音助手的语义解析器。
 1. intent 必须从上面的列表中选
 2. slot key 必须用上面定义的英文名，不能自己造key
 3. slot value 必须符合类型要求（enum从可选值中选，数字在范围内）
-4. 无法确定的槽位不要填，留空即可（不要猜测）
+4. 无法确定的槽位不要填，留空即可（不要猜测、不要填"默认""当前""自动"等指令词）
 5. 只输出严格JSON，花括号必须配对，末尾不能有多余的}}或{{
 6. 只输出JSON，不要其他文字
 
@@ -167,7 +174,7 @@ STAGE2_SYSTEM_TEMPLATE = """你是车载语音助手的语义解析器。
 
 def _build_domain_examples(max_per_intent: int = 3) -> dict:
     """从 registry 构建 domain examples，保留双花括号转义格式用于 STAGE2_SYSTEM_TEMPLATE.format()
-    
+
     max_per_intent=3: 确保每个 intent 的 literal + implicit examples 都能入选，
     避免 ac_control 的"太热了"等隐式意图 example 被截断。
     """
@@ -241,7 +248,9 @@ def _build_schema_block(domain: str) -> str:
                         effective = item
                         break
             # description 可能在 anyOf 父级，优先取父级
-            sdesc = slot_def.get("description", slot_def.get("desc", "")) or effective.get("description", effective.get("desc", ""))
+            sdesc = slot_def.get(
+                "description", slot_def.get("desc", "")
+            ) or effective.get("description", effective.get("desc", ""))
             if "enum" in effective:
                 vals = "|".join(effective["enum"])
                 slot_parts.append(f"{key}({sdesc}, 可选值:{vals})")
@@ -259,16 +268,20 @@ def _build_schema_block(domain: str) -> str:
 def _build_stage2_system(domain: str) -> str:
     schema_block = _build_schema_block(domain)
     examples = _DOMAIN_EXAMPLES.get(domain, _DOMAIN_EXAMPLES["unknown"])
-    return STAGE2_SYSTEM_TEMPLATE.format(domain=domain, schema_block=schema_block, examples=examples)
+    return STAGE2_SYSTEM_TEMPLATE.format(
+        domain=domain, schema_block=schema_block, examples=examples
+    )
 
 
 # ═══════════════════════════════════════════════════
 # 数据结构
 # ═══════════════════════════════════════════════════
 
+
 @dataclass
 class EdgeResult:
     """端侧推理结果（接口不变，兼容 intent.py）"""
+
     intent: str
     confidence: float
     slots: dict
@@ -314,9 +327,13 @@ class EdgeResult:
 # HTTP 调用
 # ═══════════════════════════════════════════════════
 
-def _call_llm(messages: list, max_tokens: int = 40, response_format: dict | None = None) -> dict:
+
+def _call_llm(
+    messages: list, max_tokens: int = 40, response_format: dict | None = None
+) -> dict:
     """调用 LMDeploy API，返回 {raw_text, latency_ms}。可选 response_format 用于 guided generation。"""
     import time
+
     start = time.monotonic()
 
     payload_dict = {
@@ -332,7 +349,8 @@ def _call_llm(messages: list, max_tokens: int = 40, response_format: dict | None
     url = f"{EDGE_BASE_URL}/chat/completions"
 
     req = urllib.request.Request(
-        url, data=payload,
+        url,
+        data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -348,6 +366,7 @@ def _call_llm(messages: list, max_tokens: int = 40, response_format: dict | None
 # ═══════════════════════════════════════════════════
 # 两阶段推理
 # ═══════════════════════════════════════════════════
+
 
 def _classify_domain(user_input: str) -> tuple[str, float]:
     """Stage1: domain 分类，返回 (domain, latency_ms)。prompt 从 skill examples.yaml 动态构建。"""
@@ -367,7 +386,7 @@ def _classify_domain(user_input: str) -> tuple[str, float]:
 
     # 显式处理 multi → 多意图，跳过 Stage2 直接降级云端
     if "multi" in raw:
-        logger.info(f"[edge stage1] → multi-intent detected, bypass edge")
+        logger.info("[edge stage1] → multi-intent detected, bypass edge")
         return "unknown", latency
 
     # 匹配合法 domain
@@ -378,13 +397,15 @@ def _classify_domain(user_input: str) -> tuple[str, float]:
             domain = d
             break
 
-    logger.info(f"[edge stage1] → domain={domain} raw={raw[:30]} latency={latency:.0f}ms")
+    logger.info(
+        f"[edge stage1] → domain={domain} raw={raw[:30]} latency={latency:.0f}ms"
+    )
     return domain, latency
 
 
 def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, float]:
     """Stage2: 提取 intent + slots，返回 (intent, slots, latency_ms)。
-    
+
     Q2 优化：去掉 guided generation (xgrammar FSM)，改用纯 prompt 约束 + harness 兜底。
     原因：LMDeploy xgrammar FSM 导致 decode 每token从8ms涨到33ms（+300%），
     但 benchmark 132 case 对比显示准确率只差 0.9%（76.0% vs 76.9%），格式失败率不变。
@@ -397,7 +418,7 @@ def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, 
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_input},
     ]
-    
+
     try:
         result = _call_llm(messages, max_tokens=60)
     except Exception as e:
@@ -417,7 +438,9 @@ def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, 
     if not isinstance(raw_slots, dict):
         raw_slots = {}
 
-    logger.info(f"[edge stage2] → intent={intent} slots={raw_slots} latency={latency:.0f}ms")
+    logger.info(
+        f"[edge stage2] → intent={intent} slots={raw_slots} latency={latency:.0f}ms"
+    )
     return intent, raw_slots, latency
 
 
@@ -425,7 +448,10 @@ def _extract_intent_and_slots(user_input: str, domain: str) -> tuple[str, dict, 
 # Confidence 计算（多信号，替代硬编码 0.85）
 # ═══════════════════════════════════════════════════
 
-def _compute_confidence(domain: str, intent: str, slots: dict, all_slots_filtered: bool) -> float:
+
+def _compute_confidence(
+    domain: str, intent: str, slots: dict, all_slots_filtered: bool
+) -> float:
     """从结构化信号计算端侧置信度，而非硬编码常数。
 
     信号来源（均为确定性，不依赖模型概率输出）：
@@ -463,6 +489,7 @@ def edge_model_infer(user_input: str) -> EdgeResult:
       Stage2: intent + slot 提取 (System+User)
     """
     import time
+
     total_start = time.monotonic()
 
     # Stage1: domain
@@ -471,8 +498,12 @@ def edge_model_infer(user_input: str) -> EdgeResult:
     if domain == "unknown":
         total_lat = (time.monotonic() - total_start) * 1000
         return EdgeResult(
-            intent="chitchat", confidence=0.0, slots={},
-            domain=domain, latency_ms=total_lat, error="domain_unknown",
+            intent="chitchat",
+            confidence=0.0,
+            slots={},
+            domain=domain,
+            latency_ms=total_lat,
+            error="domain_unknown",
             all_slots_filtered=False,
         )
 
@@ -482,8 +513,12 @@ def edge_model_infer(user_input: str) -> EdgeResult:
 
     if intent == "unknown":
         return EdgeResult(
-            intent="chitchat", confidence=0.0, slots={},
-            domain=domain, latency_ms=total_lat, error="intent_unknown",
+            intent="chitchat",
+            confidence=0.0,
+            slots={},
+            domain=domain,
+            latency_ms=total_lat,
+            error="intent_unknown",
             all_slots_filtered=False,
         )
 
@@ -491,7 +526,9 @@ def edge_model_infer(user_input: str) -> EdgeResult:
     clean_slots = validate_slots(domain, intent, raw_slots)
 
     if raw_slots and not clean_slots:
-        logger.info(f"[edge 白名单] 全部过滤: {raw_slots} → {{}} (domain={domain}, intent={intent})")
+        logger.info(
+            f"[edge 白名单] 全部过滤: {raw_slots} → {{}} (domain={domain}, intent={intent})"
+        )
         all_slots_filtered = True
     elif clean_slots != raw_slots:
         logger.info(f"[edge 白名单] 部分过滤: {raw_slots} → {clean_slots}")
@@ -518,16 +555,16 @@ def edge_model_infer(user_input: str) -> EdgeResult:
 # 兼容层
 # ═══════════════════════════════════════════════════
 
+
 def _parse_edge_json(text: str) -> dict | None:
     """Harness 约束提取器：不信任 JSON 格式，多级降级从噪声中提取信号。
 
     L1: json.loads 严格解析 → confidence × 1.0
     L2: 去噪声 + json.loads（剥多余花括号、去尾部逗号、null 保留）
     L3: 正则硬提取（intent + slot 逐个匹配，不依赖 JSON 结构）
-    
+
     每一级提取的 {intent, slots} 仍会过 validate_slots 白名单校验。
     """
-    import re
 
     # ── 清理 ──
     if "```" in text:
@@ -565,8 +602,8 @@ def _level2_normalize(text: str) -> str | None:
     import re
 
     # 剥首尾多余花括号（端侧 3B 常见：{{...}}）
-    text = re.sub(r'^\{\{+', '{', text)  # {{{...→ {
-    text = re.sub(r'\}\}+$', '}', text)  # ...}}} → }
+    text = re.sub(r"^\{\{+", "{", text)  # {{{...→ {
+    text = re.sub(r"\}\}+$", "}", text)  # ...}}} → }
 
     # 数花括号，平衡配对
     opens = text.count("{")
@@ -574,7 +611,7 @@ def _level2_normalize(text: str) -> str | None:
     if closes > opens:
         # 从尾部切除多余 }
         idx = text.rfind("}")
-        text = text[:idx + 1]
+        text = text[: idx + 1]
         opens = text.count("{")
         closes = text.count("}")
 
@@ -601,7 +638,9 @@ def _level3_regex_extract(text: str) -> dict | None:
     slots = {}
 
     # 提取 slot key-value 对: "key": "val" 或 "key": 数字 或 "key": null
-    for m in re.finditer(r'"(\w+)"\s*:\s*("([^"\\]*(\\.[^"\\]*)*)"|(\d+\.?\d*)|null)', text):
+    for m in re.finditer(
+        r'"(\w+)"\s*:\s*("([^"\\]*(\\.[^"\\]*)*)"|(\d+\.?\d*)|null)', text
+    ):
         key = m.group(1)
         if key == "intent":
             continue
@@ -618,7 +657,9 @@ def _level3_regex_extract(text: str) -> dict | None:
 
 def _validate_intent(intent: str) -> bool:
     """校验 intent 是否在已知列表中（防正则误提取）"""
-    for domain_schemas in __import__("project1_cabin_agent.edge_schemas", fromlist=["INTENT_SCHEMAS"]).INTENT_SCHEMAS.values():
+    for domain_schemas in __import__(
+        "project1_cabin_agent.edge_schemas", fromlist=["INTENT_SCHEMAS"]
+    ).INTENT_SCHEMAS.values():
         if intent in domain_schemas:
             return True
     return False

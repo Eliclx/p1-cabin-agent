@@ -18,6 +18,7 @@ LangGraph 状态图构建（Send fan-out 并发版）
                        ├── 依赖链需聚合   → response_gen → END
                        └── 全部完成/已回复 → END
 """
+
 from langgraph.graph import StateGraph, END
 from langgraph.types import Send
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
@@ -39,12 +40,14 @@ from project1_cabin_agent.nodes.slot_transfer import fill_slots_from_blackboard
 from project1_cabin_agent.tools.cabin_tools import BLACKBOARD_DECLS
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────
 # 条件路由函数
 # ─────────────────────────────────────────────────────────────
+
 
 def route_after_fast_rules(state: CabinAgentState) -> str:
     """FastRules 短路判断：
@@ -72,10 +75,10 @@ def route_after_intent(state: CabinAgentState) -> str:
 def route_wave(state: CabinAgentState | dict):
     """
     波次调度器 —— 决定「这一波该执行哪些任务」
-    
+
     核心逻辑：只有「前置依赖全部完成」的任务才会被选中执行。
     被选中的任务通过 Send 并发投递给 task_pipeline，互不阻塞。
-    
+
     例：用户说 "查天气然后推荐活动，顺便开空调"
         sub_tasks = [t1(查天气, depends=[]), t2(推荐活动, depends=[t1]), t3(开空调, depends=[])]
         第1波 ready = [t1, t3]  → 并发执行
@@ -90,7 +93,8 @@ def route_wave(state: CabinAgentState | dict):
     #   注: depends_on=[] 的任务，all() 返回 True，天然就绪（独立任务）
     # 获取前置任务已完成，但还没执行的任务，后续给到task_pipeline执行，执行结果会更新completed_task_ids，触发下一波就绪任务的产生
     ready = [
-        t for t in sub_tasks
+        t
+        for t in sub_tasks
         if t.get("task_id") not in completed
         and all(dep in completed for dep in t.get("depends_on", []))
     ]
@@ -121,13 +125,17 @@ def route_wave(state: CabinAgentState | dict):
 
     # 为每个就绪任务创建一个 Send → 触发 task_pipeline 并发执行
     # Send 是 LangGraph 的并发原语：多个 Send 同时投递，task_pipeline 会并行处理
-    # 每个 task_pipeline 实例只接收自己的 current_task + 共享的 user_input/messages
+    # 每个 task_pipeline 实例接收自己的 current_task + 共享上下文
     return [
-        Send("task_pipeline", {
-            "current_task": task,
-            "user_input": state["user_input"],
-            "messages": state.get("messages", []),
-        })
+        Send(
+            "task_pipeline",
+            {
+                "current_task": task,
+                "user_input": state["user_input"],
+                "messages": state.get("messages", []),
+                "dialogue_context": state.get("dialogue_context", {}),
+            },
+        )
         for task in ready
     ]
 
@@ -146,8 +154,7 @@ def route_after_aggregate(state: CabinAgentState) -> str:
         # 修复：如果所有未完成的任务的 depends_on 都无法被满足，强制终止
         incomplete = [t for t in sub_tasks if t.get("task_id") not in completed]
         can_progress = any(
-            all(dep in completed for dep in t.get("depends_on", []))
-            for t in incomplete
+            all(dep in completed for dep in t.get("depends_on", [])) for t in incomplete
         )
         if not can_progress:
             # 无进展：存在无法满足的依赖，强制终止避免死循环
@@ -172,19 +179,20 @@ def route_after_aggregate(state: CabinAgentState) -> str:
 # 构建图
 # ─────────────────────────────────────────────────────────────
 
+
 def _build_graph():
     """构建 StateGraph（不绑定 checkpointer），供不同场景复用"""
     graph = StateGraph(CabinAgentState)
 
     graph.add_node("message_compressor", message_compressor)
-    graph.add_node("fast_rules",         fast_rules_node)
+    graph.add_node("fast_rules", fast_rules_node)
     graph.add_node("intent_classifier", intent_classifier)
-    graph.add_node("wave_planner",      _empty_planner)
-    graph.add_node("task_pipeline",     task_pipeline)
-    graph.add_node("session_update",    session_update)
-    graph.add_node("wave_aggregator",   wave_aggregator)
-    graph.add_node("response_gen",      response_gen)
-    graph.add_node("chitchat_handler",  chitchat_handler)
+    graph.add_node("wave_planner", _empty_planner)
+    graph.add_node("task_pipeline", task_pipeline)
+    graph.add_node("session_update", session_update)
+    graph.add_node("wave_aggregator", wave_aggregator)
+    graph.add_node("response_gen", response_gen)
+    graph.add_node("chitchat_handler", chitchat_handler)
 
     # 入口：先压缩历史消息，再 FastRules 前置检查，最后意图识别
     graph.set_entry_point("message_compressor")
@@ -207,7 +215,9 @@ def _build_graph():
         {"chitchat_handler": "chitchat_handler", "wave_planner": "wave_planner"},
     )
 
-    graph.add_conditional_edges("wave_planner", route_wave, ["task_pipeline", "wave_aggregator"])
+    graph.add_conditional_edges(
+        "wave_planner", route_wave, ["task_pipeline", "wave_aggregator"]
+    )
 
     graph.add_edge("task_pipeline", "session_update")
     graph.add_edge("session_update", "wave_aggregator")
