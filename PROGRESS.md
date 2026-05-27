@@ -129,16 +129,26 @@
 | eval 132条 | 91.7% 零退化 |
 | 纯逻辑测试 | 74 passed |
 | 端侧 e2e | 122 passed, 2 failed (多意图) |
-| SSOT 已解决 | 12/16，剩余 4 处 |
+| SSOT 已解决 | 16/16 全部闭合 |
 
-## ⏭️ 下一步：Phase E 剩余 → Phase F → Phase 3
+## Phase E: Legacy 清理 + SSOT 收尾 ✅
+
+> 提交范围: e6a3c20 → 018b6cb → a8775d1 → 06cbb67 → fed1a3f
+
+|| 子步骤 | 内容 | 提交 |
+|--------|------|------|
+| E0 | infer_slots 语义槽位推断层 | e6a3c20 |
+| E0.1 | 删除 _handle_tool_task legacy 路径 | 018b6cb |
+| E0.2 | 天气修复：歧义检测误杀 + 黑板/行程记忆 + 端侧幻觉清洗 | a8775d1 |
+| E0.3 | 天气三级优先级链 + POI→导航精确坐标 + 多轮端到端测试 | 06cbb67 |
+| E3 | BLACKBOARD_DECLS 迁移至各 skill schema（registry 自动发现） | fed1a3f |
+| E4 | _DOMAIN_SIGNALS 动态化（从 registry schema 读取） | fed1a3f |
+| E5 | cabin_tools.py 删除（全项目零引用，-584行） | fed1a3f |
+
+## ⏭️ 下一步：Phase F → Phase 3
 
 || 步骤 | 内容 | 状态 |
 |--------|------|------|
-| E2 | DYNAMIC_SCHEMA 从 registry 动态生成 | 待做 |
-| E3 | BLACKBOARD_DECLS 迁移至各 skill schema | 待做 |
-| E4 | _DOMAIN_SIGNALS 动态化 | 待做 |
-| E5 | cabin_tools.py 清理/删除 | 待做 |
 | F | 端侧 confidence 分布分析（132 eval cases） | 待做 |
 | 3.1 | orchestrator/planner.py 执行计划数据结构 | 待做 |
 | 3.2 | orchestrator/executor.py 逐步执行+条件判断 | 待做 |
@@ -155,12 +165,14 @@
 | 多轮端到端 | 5/5 全绿（新增） |
 | 全量测试 | 192/197 (97.5%)，5个预先存在失败 |
 | eval 132条 | 91.7% 零退化 |
-| SSOT 已解决 | 12/16，剩余 4 处 |
+| SSOT 已解决 | 16/16 全部闭合 |
 | pipeline.py | ~770行（从 ~1040行缩减） |
+| cabin_tools.py | 已删除（-584行） |
 
-## SSOT 审计进度 (16处违规)
+## SSOT 审计进度 (16处违规) — 全部闭合 ✅
 
-|| 状态 | 数量 | 说明 ||
+|| 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ 已解决 | 12 | Phase1 解决 10 处 + Phase2 解决 V16 |
-| ⏳ 剩余 | 4 | V3(unknown域), V11(pre_rules硬编码), V14(_DOMAIN_SIGNALS), V17(mode→route_type) |
+| ✅ 代码修复 | 12 | Phase1(10) + Phase2(V16) + PhaseE(V14) |
+| ✅ won't-fix | 2 | V3(unknown域硬编码合理) + V11(短路规则有 _validate_rules 校验) |
+| ✅ 间接解决 | 2 | V14(DOMAIN_SIGNALS→schema) + V17(mode→route_type 映射统一) |
