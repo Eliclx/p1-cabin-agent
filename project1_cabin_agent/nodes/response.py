@@ -121,10 +121,17 @@ def session_update(state: CabinAgentState | dict) -> dict:
 
         entity_tag = bb["produces"]
 
-        # 存储结构化数据（过滤掉 status/voice_reply 等内部字段）
-        data = {
-            k: v for k, v in tool_result.items() if k not in ("status", "voice_reply")
-        }
+        # 存储结构化数据：优先取 tool_result.data（干净业务数据），
+        # 兜底走字段过滤（climate/media 等扁平结构没有 data 包装层）
+        inner = tool_result.get("data")
+        if isinstance(inner, dict):
+            data = inner
+        else:
+            data = {
+                k: v
+                for k, v in tool_result.items()
+                if k not in ("status", "voice_reply", "success")
+            }
 
         context_update[entity_tag] = {
             "round": current_round,
