@@ -186,28 +186,27 @@ def _build_intent_to_domain() -> dict:
 
 _INTENT_TO_DOMAIN = _build_intent_to_domain()
 
-# V14 SSOT: 各 domain 的信号词从 edge_schemas.DOMAINS.keywords 动态派生，
-# 不再手动维护硬编码映射。补充词放 _SIGNAL_OVERRIDES（仅 registry 没有的额外信号）。
-_SIGNAL_OVERRIDES: dict[str, set[str]] = {
-    "map": {"回家", "回"},
-    "climate": {"开", "关"},
-}
-
 
 def _build_domain_signals() -> dict[str, set[str]]:
-    """从 edge_schemas.DOMAINS 的 keywords 字段构建信号词集合。
+    """从 edge_schemas.DOMAINS 的 keywords + registry schema 的 DOMAIN_SIGNALS 构建。
     单字词（len<=1）太泛容易误匹配，跳过。"""
     from project1_cabin_agent.edge_schemas import DOMAINS as _DOMAINS
+    from project1_cabin_agent.skills.registry import registry
     signals: dict[str, set[str]] = {}
+    # 1. edge_schemas DOMAINS.keywords
     for domain_name, info in _DOMAINS.items():
         if domain_name in ("chitchat", "unknown"):
             continue
         kws = info.get("keywords", "")
         words = {w for w in kws.split() if len(w) > 1}
-        # 叠加补充词
-        words.update(_SIGNAL_OVERRIDES.get(domain_name, set()))
         if words:
             signals[domain_name] = words
+    # 2. registry schema DOMAIN_SIGNALS（SSOT: 跟着 skill 走）
+    for domain, sig_set in registry.get_domain_signals().items():
+        if domain in signals:
+            signals[domain].update(sig_set)
+        else:
+            signals[domain] = set(sig_set)
     return signals
 
 

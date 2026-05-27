@@ -123,6 +123,31 @@ MAP_INTENTS: dict[str, type[BaseModel]] = {
     "weather": WeatherSlots,
 }
 
+# ═══════════════════════════════════════════════════════════════
+# 黑板声明（SSOT: 跟着 schema 走，registry 自动发现）
+# ═══════════════════════════════════════════════════════════════
+
+MAP_BLACKBOARD: dict[str, dict] = {
+    "search_poi": {
+        "produces": "entity.poi",
+        "fields": ["name", "distance", "rating", "lng", "lat"],
+    },
+    "navigate": {
+        "produces": "entity.route",
+        "fields": ["destination", "eta", "distance", "traffic"],
+        "consumes": "entity.poi",
+        # _coordinates: 从 POI lng/lat 拼坐标，避免文字名重新地理编码
+        "slots": {"destination": "_coordinates"},
+    },
+    "weather": {
+        "produces": "entity.weather",
+        "fields": ["city", "weather", "temperature"],
+    },
+}
+
+# 域信号词：补充 edge_schemas DOMAINS.keywords 没覆盖的词
+MAP_SIGNALS: set[str] = {"回家", "回"}
+
 
 # ═══════════════════════════════════════════════════════════════
 # 工具函数

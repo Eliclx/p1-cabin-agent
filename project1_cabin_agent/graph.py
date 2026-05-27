@@ -37,7 +37,7 @@ from project1_cabin_agent.nodes.agent_nodes import (
     chitchat_handler,
 )
 from project1_cabin_agent.nodes.slot_transfer import fill_slots_from_blackboard
-from project1_cabin_agent.tools.cabin_tools import BLACKBOARD_DECLS
+from project1_cabin_agent.skills.registry import registry
 
 import logging
 
@@ -115,7 +115,7 @@ def route_wave(state: CabinAgentState | dict):
     dialogue_context = state.get("dialogue_context", {})
     for task in ready:
         intent = task.get("intent", "")
-        bb_decl = BLACKBOARD_DECLS.get(intent)
+        bb_decl = registry.get_blackboard_decl(intent)
         if bb_decl and "consumes" in bb_decl:
             task["extracted_slots"] = fill_slots_from_blackboard(
                 task["extracted_slots"],

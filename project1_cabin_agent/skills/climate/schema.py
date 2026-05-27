@@ -81,6 +81,9 @@ CLIMATE_INTENTS: dict[str, type[BaseModel]] = {
     "cabin_query": CabinQuerySlots,
 }
 
+# 域信号词："开""关" 用于跨域 carry-over 拦截
+CLIMATE_SIGNALS: set[str] = {"开", "关"}
+
 
 def get_intent_schema(intent: str) -> type[BaseModel] | None:
     return CLIMATE_INTENTS.get(intent)

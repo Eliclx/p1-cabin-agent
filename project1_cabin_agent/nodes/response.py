@@ -3,10 +3,11 @@ project1_cabin_agent/nodes/response.py
 节点 3（session_update）、节点 4（wave_aggregator）、
 节点 5（response_gen）、节点 6（chitchat_handler）。
 """
+
 from langchain_core.messages import HumanMessage
 
 from project1_cabin_agent.state import CabinAgentState
-from project1_cabin_agent.tools.cabin_tools import BLACKBOARD_DECLS
+from project1_cabin_agent.skills.registry import registry
 from shared.utils.llm_factory import get_llm
 from shared.utils.logger import logger
 from shared.utils.metrics import track_node
@@ -31,7 +32,10 @@ _FAKE_ACTION_PATTERNS = [
     (r"已为您规划(?:路线|导航)", "navigate"),
     (r"温度.*(?:调到|设为|调为)\d+", "climate"),
     # 设备+完成态变体（"开好了""关好了""搞定了"）
-    (r"(?:空调|窗户|灯光|音乐|导航|蓝牙|座椅|车窗|天窗).{0,4}(?:开好|关好|调好|连好|设好|完成)了", "adjust"),
+    (
+        r"(?:空调|窗户|灯光|音乐|导航|蓝牙|座椅|车窗|天窗).{0,4}(?:开好|关好|调好|连好|设好|完成)了",
+        "adjust",
+    ),
     (r"已经\w*(?:搞定|完成|弄好|处理好|帮您)", "adjust"),
     (r"已经为您\w*", "adjust"),
 ]
@@ -69,7 +73,9 @@ def _validate_chitchat_reply(reply: str) -> tuple[str, str | None]:
     """
     for pat, hint in _FAKE_ACTION_PATTERNS:
         if re.search(pat, reply):
-            logger.warning(f"[chitchat harness] 虚假操作确认检测: '{reply}' → pattern={pat}")
+            logger.warning(
+                f"[chitchat harness] 虚假操作确认检测: '{reply}' → pattern={pat}"
+            )
             return _SAFE_FALLBACK, hint
     return reply, None
 
@@ -84,6 +90,7 @@ def _build_clarify_from_hint(action_hint: str) -> str:
 
 
 # ── 节点 3：L1 记忆写入 ──
+
 
 @track_node("session_update")
 def session_update(state: CabinAgentState | dict) -> dict:
@@ -107,7 +114,7 @@ def session_update(state: CabinAgentState | dict) -> dict:
         if not intent or not tool_result:
             continue
 
-        bb = BLACKBOARD_DECLS.get(intent)
+        bb = registry.get_blackboard_decl(intent)
         # 只有声明了 blackboard 标签的工具产出才写入 L1 结构化记忆，供后续轮次查询使用
         if not bb or "produces" not in bb:
             continue
@@ -115,8 +122,9 @@ def session_update(state: CabinAgentState | dict) -> dict:
         entity_tag = bb["produces"]
 
         # 存储结构化数据（过滤掉 status/voice_reply 等内部字段）
-        data = {k: v for k, v in tool_result.items()
-                if k not in ("status", "voice_reply")}
+        data = {
+            k: v for k, v in tool_result.items() if k not in ("status", "voice_reply")
+        }
 
         context_update[entity_tag] = {
             "round": current_round,
@@ -139,6 +147,7 @@ def session_update(state: CabinAgentState | dict) -> dict:
 
 # ── 节点 4：并发结果汇聚 ──
 
+
 @track_node("wave_aggregator")
 def wave_aggregator(state: CabinAgentState | dict) -> dict:
     """并发结果汇聚：紧急任务立即返回，依赖链等聚合。"""
@@ -151,13 +160,19 @@ def wave_aggregator(state: CabinAgentState | dict) -> dict:
             "final_response": "好的，已为您处理",
             "messages": [{"role": "assistant", "content": "好的，已为您处理"}],
         }
-    depended_ids = set(depend_task_id for task in sub_tasks for depend_task_id in task.get("depends_on", []))
+    depended_ids = set(
+        depend_task_id
+        for task in sub_tasks
+        for depend_task_id in task.get("depends_on", [])
+    )
 
     # ── 紧急任务立即返回 ──
     urgent = [r for r in results if r.get("urgency") == "immediate"]
     if urgent:
         reply = urgent[0].get("voice_reply", "检测到紧急情况")
-        logger.warning(f"[wave_aggregator] 紧急任务{urgent[0].get('task_id')} | 意图{urgent[0].get('intent')} | 紧急回复: {reply}")
+        logger.warning(
+            f"[wave_aggregator] 紧急任务{urgent[0].get('task_id')} | 意图{urgent[0].get('intent')} | 紧急回复: {reply}"
+        )
         return {
             "final_response": reply,
             "messages": [{"role": "assistant", "content": reply}],
@@ -165,29 +180,55 @@ def wave_aggregator(state: CabinAgentState | dict) -> dict:
 
     reply_parts = []
 
-    blocked = [r for r in results if r.get("status") == "blocked" and r.get("task_id") not in depended_ids and not r.get("depends_on")]
+    blocked = [
+        r
+        for r in results
+        if r.get("status") == "blocked"
+        and r.get("task_id") not in depended_ids
+        and not r.get("depends_on")
+    ]
     for r in blocked:
         reply = r.get("voice_reply", "操作被阻止")
-        logger.info(f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 被阻止: {reply}")
+        logger.info(
+            f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 被阻止: {reply}"
+        )
         reply_parts.append(reply)
 
-    done = [r for r in results if r.get("status") == "done" and r.get("task_id") not in depended_ids and not r.get("depends_on")]
+    done = [
+        r
+        for r in results
+        if r.get("status") == "done"
+        and r.get("task_id") not in depended_ids
+        and not r.get("depends_on")
+    ]
     for r in done:
         reply = r.get("voice_reply", "操作成功")
-        logger.info(f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 成功: {reply}")
+        logger.info(
+            f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 成功: {reply}"
+        )
         reply_parts.append(reply)
 
-    errors = [r for r in results if r.get("status") == "error" and r.get("task_id") not in depended_ids and not r.get("depends_on")]
+    errors = [
+        r
+        for r in results
+        if r.get("status") == "error"
+        and r.get("task_id") not in depended_ids
+        and not r.get("depends_on")
+    ]
     for r in errors:
         err_detail = r.get("error", "未知错误")
-        logger.error(f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 失败: {err_detail}")
+        logger.error(
+            f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 失败: {err_detail}"
+        )
         reply = r.get("voice_reply", "操作失败, 请稍后重试")
         reply_parts.append(reply)
 
     clarify = [r for r in results if r.get("status") == "need_clarify"]
     for r in clarify:
         missing_detail = r.get("missing_slots", [])
-        logger.info(f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 需要追问: 缺失槽位 {missing_detail}")
+        logger.info(
+            f"[wave_aggregator] 任务{r.get('task_id')} | 意图{r.get('intent')} | 需要追问: 缺失槽位 {missing_detail}"
+        )
         reply = r.get("voice_reply", "请补充信息")
         reply_parts.append(reply)
 
@@ -253,10 +294,11 @@ def response_gen(state: CabinAgentState | dict) -> dict:
 
 # ── 节点 6：闲聊处理 ──
 
+
 @track_node("chitchat_handler")
 def chitchat_handler(state: CabinAgentState | dict) -> dict:
     user_input = state["user_input"]
-    
+
     # FastRules ABANDON 短路：sub_tasks 中有预填的 voice_reply → 直接复用，不调 LLM
     sub_tasks = state.get("sub_tasks", [])
     if sub_tasks and sub_tasks[0].get("voice_reply"):
@@ -267,12 +309,14 @@ def chitchat_handler(state: CabinAgentState | dict) -> dict:
             "clarify_count": 0,
             "active_frames": [],
         }
-    
+
     messages = state.get("messages", [])
     episodic_ctx = state.get("episodic_context")
 
     if episodic_ctx:
-        response = _chitchat_reply_with_context(user_input, messages, episodic_ctx["text"])
+        response = _chitchat_reply_with_context(
+            user_input, messages, episodic_ctx["text"]
+        )
     else:
         response = _chitchat_reply(user_input, messages)
 
@@ -282,7 +326,9 @@ def chitchat_handler(state: CabinAgentState | dict) -> dict:
     if action_hint:
         # Layer 3: 从虚假操作推断用户真实意图，生成追问
         response = _build_clarify_from_hint(action_hint)
-        logger.info(f"[chitchat harness] clarify 升级: action_hint={action_hint} → '{response}'")
+        logger.info(
+            f"[chitchat harness] clarify 升级: action_hint={action_hint} → '{response}'"
+        )
 
     return {
         "final_response": response,
@@ -292,12 +338,14 @@ def chitchat_handler(state: CabinAgentState | dict) -> dict:
     }
 
 
-def _chitchat_reply_with_context(user_input: str, messages: list,
-                                  episodic_text: str) -> str:
+def _chitchat_reply_with_context(
+    user_input: str, messages: list, episodic_text: str
+) -> str:
     """带行程上下文的闲聊回复。"""
     try:
         llm = get_llm("fast", temperature=0.3)
         from project1_cabin_agent.nodes.message_utils import _format_history
+
         history = _format_history(messages)
         prompt = (
             f"{episodic_text}\n\n"

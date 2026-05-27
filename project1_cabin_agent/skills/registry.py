@@ -17,11 +17,10 @@ Skill 注册中心 — 自动扫描 skills/ 目录，按需加载
 from __future__ import annotations
 
 import importlib
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import yaml
 from pydantic import BaseModel
@@ -63,6 +62,8 @@ class _SkillEntry:
     validators: dict[str, Callable] = field(default_factory=dict)
     formatters: dict[str, Callable] = field(default_factory=dict)
     examples: dict[str, list[dict]] = field(default_factory=dict)
+    blackboard: dict[str, dict] = field(default_factory=dict)
+    domain_signals: set[str] = field(default_factory=set)
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
@@ -185,6 +186,17 @@ class SkillRegistry:
             )
             entry.intents[intent_name] = spec
             self._intent_to_domain[intent_name] = domain
+
+        # 自动发现 {DOMAIN}_BLACKBOARD（黑板声明）
+        bb_attr = f"{domain.upper()}_BLACKBOARD"
+        entry.blackboard = getattr(schema_mod, bb_attr, {})
+
+        # 自动发现 {DOMAIN}_SIGNALS（域信号词）
+        sig_attr = f"{domain.upper()}_SIGNALS"
+        signals = getattr(schema_mod, sig_attr, set())
+        if signals and not isinstance(signals, set):
+            signals = set(signals)
+        entry.domain_signals = signals
 
         return True
 
@@ -479,6 +491,34 @@ class SkillRegistry:
         if intent in _FALLBACK_DOMAINS:
             return True
         return self._find_domain_for_intent(intent) is not None
+
+    # ── 黑板 & 域信号（SSOT: 从 schema.py 自动发现）───────────────
+
+    def get_blackboard_decl(self, intent: str) -> dict | None:
+        """获取 intent 的黑板声明（produces/consumes/slots）"""
+        domain = self._intent_to_domain.get(intent)
+        if not domain:
+            return None
+        entry = self._skills.get(domain)
+        if not entry:
+            return None
+        return entry.blackboard.get(intent)
+
+    def get_all_blackboard_decls(self) -> dict[str, dict]:
+        """获取所有 intent 的黑板声明（扁平化）"""
+        result = {}
+        for entry in self._skills.values():
+            for intent_name, decl in entry.blackboard.items():
+                result[intent_name] = decl
+        return result
+
+    def get_domain_signals(self) -> dict[str, set[str]]:
+        """获取所有域的信号词集合"""
+        return {
+            domain: entry.domain_signals
+            for domain, entry in self._skills.items()
+            if entry.domain_signals
+        }
 
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────
 
