@@ -77,8 +77,52 @@ def evaluate_condition(
     return final, fail_msg if not final else ""
 
 
+# LLM 常见 field 名别夗 → 工具实际返回的字段名
+# 解决 LLM 猜测 field 名不精确的问题
+_FIELD_ALIASES: dict[str, list[str]] = {
+    "weather_main": ["weather"],
+    "weather_desc": ["weather"],
+    "weather_type": ["weather"],
+    "traffic_status": ["traffic"],
+    "traffic_info": ["traffic"],
+    "traffic_condition": ["traffic"],
+    "result_count": ["count"],
+    "num_results": ["count"],
+    "total": ["count"],
+    "eta": ["duration", "duration_min"],
+    "eta_min": ["duration_min", "duration"],
+    "distance": ["distance_km"],
+    "fuel_level": ["fuel"],
+    "battery_level": ["battery"],
+    "oil": ["fuel"],
+}
+
+
+def _resolve_field(field: str, data: dict) -> tuple[str, Any | None]:
+    """解析字段名：先精确匹配，再别名匹配，再后缀模糊匹配。
+
+    返回 (resolved_field, value)，未找到返回 (field, None)。
+    """
+    # 1. 精确匹配
+    if field in data:
+        return field, data[field]
+
+    # 2. 别名匹配
+    aliases = _FIELD_ALIASES.get(field, [])
+    for alias in aliases:
+        if alias in data:
+            return alias, data[alias]
+
+    # 3. 后缀模糊匹配：LLM 写 traffic_status，数据有 traffic → 前缀匹配
+    for key in data:
+        if key.startswith(field.split("_")[0]) or field.startswith(key.split("_")[0]):
+            return key, data[key]
+
+    return field, None
+
+
 def _evaluate_rule(rule: dict, result_map: dict[str, dict]) -> bool:
-    """评估单条规则。字段不存在 → False（保守策略）。"""
+    """评估单条规则。字段不存在时尝试别名容错，仍找不到 → 保守策略不通过。"""
     source = rule.get("source", "")
     field = rule.get("field", "")
     op = rule.get("op", "")
@@ -91,13 +135,16 @@ def _evaluate_rule(rule: dict, result_map: dict[str, dict]) -> bool:
         )
         return False
 
-    if field not in data:
+    resolved_field, actual = _resolve_field(field, data)
+    if actual is None:
         logger.warning(
-            f"[condition] field '{field}' 不在 {source} 的结果中 → 降级不通过"
+            f"[condition] field '{field}' 不在 {source} 的结果中 "
+            f"(可用字段: {list(data.keys())}) → 降级不通过"
         )
         return False
 
-    actual = data[field]
+    if resolved_field != field:
+        logger.info(f"[condition] 字段别名: {field} → {resolved_field}")
 
     try:
         return _compare(actual, op, value)

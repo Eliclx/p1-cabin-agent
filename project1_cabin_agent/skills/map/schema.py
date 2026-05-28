@@ -131,6 +131,11 @@ MAP_BLACKBOARD: dict[str, dict] = {
     "search_poi": {
         "produces": "entity.poi",
         "fields": ["name", "distance", "rating", "lng", "lat"],
+        # output_fields: 工具返回 data 中的字段，供 condition 引用
+        "output_fields": {
+            "count": "搜索结果数量(int)",
+            "results": "搜索结果列表(list)",
+        },
     },
     "navigate": {
         "produces": "entity.route",
@@ -138,10 +143,33 @@ MAP_BLACKBOARD: dict[str, dict] = {
         "consumes": "entity.poi",
         # _coordinates: 从 POI lng/lat 拼坐标，避免文字名重新地理编码
         "slots": {"destination": "_coordinates"},
+        "output_fields": {
+            "distance": "距离(公里, float)",
+            "duration": "预计时间(分钟, int)",
+            "tolls": "过路费(元, float)",
+        },
     },
     "weather": {
         "produces": "entity.weather",
         "fields": ["city", "weather", "temperature"],
+        "output_fields": {
+            "city": "城市名(str)",
+            "weather": "天气描述(str: 晴/多云/阴/雨/雪/雾/霾)",
+            "temperature": "温度(str)",
+            "humidity": "湿度(str)",
+        },
+    },
+    "map_query": {
+        "output_fields": {
+            # query_type=traffic 时
+            "traffic": "路况列表(list[{road, status}])，status 值: 畅通/缓行/拥堵",
+            "duration_min": "预计时间(分钟, int)",
+            "distance_km": "距离(公里, float)",
+            # query_type=location 时
+            "city": "城市(str)",
+            "district": "区(str)",
+            "address": "地址(str)",
+        },
     },
 }
 

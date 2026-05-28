@@ -243,7 +243,15 @@ CONDITION_EXAMPLE = """\n\n【条件分支示例】：
 
 用户:"看看天气怎么样，好的话导航去天府大道"
 → task_0: weather(depends_on=[])
-→ task_1: navigate(depends_on=["task_0"], condition={{"logic":"AND","rules":[{{"source":"task_0","field":"weather_main","op":"not_in","value":["雨","雪"]}}],"fail_msg":"今天天气不太好，还要导航吗？"}})
+→ task_1: navigate(depends_on=["task_0"], condition={{"logic":"AND","rules":[{{"source":"task_0","field":"weather","op":"not_in","value":["雨","雪"]}}],"fail_msg":"今天天气不太好，还要导航吗？"}})
+
+【condition field 参考 — 上游任务返回的可引用字段】：
+search_poi → count(结果数), results(列表)
+navigate → distance(公里), duration(分钟), tolls(过路费)
+weather → weather(晴/多云/阴/雨/雪), temperature, humidity, city
+map_query(traffic) → traffic(路况列表), duration_min(分钟), distance_km(公里)
+map_query(location) → city, district, address
+query_vehicle_status → fuel(油量百分比), battery(电量百分比), tire(胎压)
 """
 
 
