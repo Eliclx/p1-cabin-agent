@@ -8,7 +8,10 @@ project1_cabin_agent/tests/eval_harness.py
     python project1_cabin_agent/tests/eval_harness.py --compare # 只看对比
 """
 
-import os, sys, json, time
+import os
+import sys
+import json
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -168,6 +171,12 @@ EXTENDED_SET = [
     ("前方有摄像头吗","map","search_poi"),           # 电子眼→POI
     ("帮我记一下这个位置","map","navigate"), # 收藏位置
     ("还剩多少公里","map","map_query"),   # 距离查询→map_query
+    # ── 新增：条件分支（Phase 3.1/3.2，验证 LLM 生成 condition）──
+    ("附近有充电站吗有的话导航过去","needs_context",None),  # 条件: 有→导航
+    ("天气好的话导航去春熙路","needs_context",None),        # 条件: 天气好→导航
+    ("找下有没有停车场有的话过去","needs_context",None),    # 条件: 有→导航
+    ("如果油量低于30就去加油站","needs_context",None),      # 条件: 油少→导航
+    ("有便宜的就推荐个餐厅","map","search_poi"),            # 无条件，直接搜
 ]
 
 BOUNDARY_SET = [
@@ -328,7 +337,7 @@ def print_report(stats: dict, baseline: dict = None):
     print(f"  cloud:      {stats['cloud_fallback_rate']:.1%}")
     print(f"  耗时:       {stats['elapsed_s']:.1f}s")
     
-    print(f"\n  各 domain:")
+    print("\n  各 domain:")
     for domain, d in sorted(stats.get("by_domain", {}).items()):
         acc = d["correct"] / d["total"] if d["total"] else 0
         bar = "█" * int(acc * 20) + "░" * (20 - int(acc * 20))
@@ -349,11 +358,11 @@ def print_report(stats: dict, baseline: dict = None):
         
         alerts = compare_baseline(stats, baseline)
         if alerts:
-            print(f"\n  🚨 退化告警:")
+            print("\n  🚨 退化告警:")
             for a in alerts:
                 print(f"    {a}")
         else:
-            print(f"  ✅ 无退化")
+            print("  ✅ 无退化")
     
     errors = stats.get("errors", [])
     if errors:

@@ -124,7 +124,7 @@
 | 指标 | 数值 |
 |------|------|
 | skill 域 | 4 (climate, map, media, vehicle) |
-| intent 总数 | 14 |
+| intent 总数 | 11（skill）+ 4 特殊(chitchat/clarify/direct_answer/no_support) |
 | harness 单测 | 103/103 全绿 |
 | eval 132条 | 91.7% 零退化 |
 | 纯逻辑测试 | 74 passed |
@@ -173,55 +173,64 @@
 | 3.2 | Recovery 容错 | 待做 |
 | 3.3 | eval 加条件编排测试用例 | 待做 |
 
-### Phase 3.1 条件分支设计
+### Phase 3.1 条件分支实现 ✅
 
-**核心问题：** "天气好就导航"、"有充电站才去" — 任务 B 是否执行取决于任务 A 的结果。
+> 提交: c71abdc
 
-**三种校验方案：**
+- `condition.py`: 新建条件评估模块，支持 AND/OR + 10 种 op
+- `constants.py`: Condition / ConditionRule Pydantic 模型
+- `graph.py`: route_wave 集成条件评估，不通过替换为 direct_answer（零新增 state 字段）
+- `intent.py`: LLM prompt 新增 condition 字段 + CONDITION_EXAMPLE 示例 + output_fields 参考
+- LLM timeout 10s→60s（修复 deepseek-v4-flash 超时）
 
-| 方案 | 做法 | 优缺点 |
-|------|------|--------|
-| A: harness 约束 | source task 的 harness 声明 condition_fields | SSOT 但校验需反向查找 source harness |
-| B: 集中注册表 | registry.py 一份 CONDITION_FIELDS | 和 blackboard_decl 信息重复 |
-| C: 运行时校验 | evaluate 时直接从 task_results 取实际数据 | 最简单，字段不存在则降级 |
+**测试：**
+- test_condition_20.py: 30 个条件评估单元测试（全绿）
+- test_stress_20.py: 22 个跨模块测试（全绿）
+- test_condition_e2e.py: 8 个端到端测试（LLM+condition 全通）
 
-**当前选择：方案 C 先实现看效果。**
+**端到端验证结果（8/8）：**
+| # | 用户输入 | LLM condition | 评估结果 |
+|---|---------|---------------|----------|
+| 1 | 查下附近有没有充电站，有的话导航 | count gt 0 | count=3 → 通过 ✅ |
+| 2 | 天气好的话导航去天府广场 | weather not_in [雨,雪] | weather=雨 → 不通过 ✅ |
+| 3 | 附近有停车场吗有的话导航 | count gt 0 | count=0 → 不通过 ✅ |
+| 4 | 油量低于30%就导航去加油站 | fuel lt 30 | fuel=15 → 通过 ✅ |
+| 5 | 开空调顺便导航去春熙路 | 无 condition | 独立多意图 ✅ |
+| 6 | 前面堵不堵车不堵走高速 | traffic not_in [拥堵,阻塞] | traffic=畅通 → 通过 ✅ |
+| 7 | 有便宜的就推荐个餐厅 | 无 condition | 单任务搜索 ✅ |
+| 8 | 找下有没有露营地有的话导航 | count gt 0 | count=2 → 通过 ✅ |
 
-**数据结构：**
-```python
-task = {
-    "task_id": "task_1",
-    "intent": "navigate",
-    "depends_on": ["task_0"],
-    "condition": {                    # 可选
-        "logic": "AND",              # AND | OR
-        "rules": [
-            {"source": "task_0", "field": "count", "op": "gt", "value": 0}
-        ],
-        "fail_msg": "附近没有充电站"
-    }
-}
-```
+### Phase 3.2 Recovery 容错 ✅
 
-**支持的 op:** eq/neq/gt/gte/lt/lte/in/not_in/is_empty/is_not_empty
+> 提交: c74356a
 
-**执行流程：** route_wave 中 depends_on 满足后、调度前评估 condition → 通过加入 ready / 不通过标记 skipped
+**问题：** LLM 生成 condition field 名时不知道工具实际返回什么字段（如写 `traffic_status` 而非 `traffic`）
 
-**改动文件：** intent.py（LLM 生成 condition）、graph.py（评估逻辑）、response.py（处理 skipped）、state.py（skipped_task_ids）
+**三层防御：**
+1. **声明层** — MAP_BLACKBOARD 新增 `output_fields`，列出工具返回的可引用字段
+2. **Prompt 层** — CONDITION_EXAMPLE 末尾加 output_fields 参考，引导 LLM 写正确字段名
+3. **运行时层** — `condition.py` 新增 `_resolve_field` 三级容火：精确→别名表→前缀模糊
 
-**测试样例：**
-| 用户说法 | condition | 预期 |
-|---------|-----------|------|
-| 有充电站就导航 | count gt 0 | 有→导航 / 没→"附近没找到" |
-| 天气好就导航 | weather_main not_in ["雨","雪"] | 晴→导航 / 雨→"天气不好" |
-| 找附近有没有露营地 | 无 condition | 正常执行 |
+**别名表覆盖：**
+- weather_main/weather_desc/weather_type → weather
+- traffic_status/traffic_info/traffic_condition → traffic
+- fuel_level/oil → fuel
+- eta → duration_min
+
+### Phase 3.3 eval 扩充 ✅
+
+> 提交: (当前)
+
+- CONDITIONAL_CASES: 3 → 9 个条件分支端到端用例
+- eval_harness EXTENDED_SET: 新增 6 个条件编排 eval 用例
+- 覆盖：有→导航 / 天气→导航 / 油量→导航 / 路况→高速 / 无条件 / 模糊条件
 
 ## 当前状态总览
 
 | 指标 | 数值 |
 |------|------|
 | skill 域 | 4 (climate, map, media, vehicle) |
-| intent 总数 | 14 |
+| intent 总数 | 11（skill）+ 4 特殊(chitchat/clarify/direct_answer/no_support) |
 | harness 单测 | 104/104 全绿 |
 | 多轮端到端 | 5/5 全绿（新增） |
 | 全量测试 | 192/197 (97.5%)，5个预先存在失败 |
