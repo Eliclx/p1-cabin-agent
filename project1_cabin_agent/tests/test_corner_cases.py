@@ -13,6 +13,7 @@ Corner Case 测试集
 8. 多意图依赖链（串行 + 聚合回复）
 9. interrupt 多轮追问闭环
 """
+
 import asyncio
 import uuid
 import pytest
@@ -25,7 +26,9 @@ from project1_cabin_agent.state import CabinAgentState
 cabin_agent = build_graph_with_checkpointer(MemorySaver())
 
 
-def make_state(user_input: str, asr_confidence: float = 1.0, messages: list | None = None) -> CabinAgentState:
+def make_state(
+    user_input: str, asr_confidence: float = 1.0, messages: list | None = None
+) -> CabinAgentState:
     return {
         "messages": messages or [],
         "user_input": user_input,
@@ -54,25 +57,26 @@ def _new_thread() -> dict:
 
 AMBIGUOUS_CASES = [
     # 短句（≤4字）无明确对象
-    ("开一下",       "缺少操作对象"),
-    ("调小点",       "缺少操作目标"),
-    ("去那边",       "目的地不明确"),
-    ("停一下",       "可能是停车或停止播放"),
-    ("换一个",       "换什么不明确"),
-    ("打开",         "打开什么没说"),
-    ("关掉",         "关掉什么没说"),
-    ("调高",         "调高什么没说"),
-    ("来点",         "来点什么没说"),
-    ("停",           "停什么没说"),
+    ("开一下", "缺少操作对象"),
+    ("调小点", "缺少操作目标"),
+    ("去那边", "目的地不明确"),
+    ("停一下", "可能是停车或停止播放"),
+    ("换一个", "换什么不明确"),
+    ("打开", "打开什么没说"),
+    ("关掉", "关掉什么没说"),
+    ("调高", "调高什么没说"),
+    ("来点", "来点什么没说"),
+    ("停", "停什么没说"),
     # 不完整长句（>4字但缺关键信息）
-    ("帮我打开",     "打开什么没说"),
-    ("太亮了",       "暗指灯光但未说操作"),
-    ("太冷了",       "暗指空调但未说具体操作"),
-    ("好吵啊",       "暗指媒体/空调但不确定"),
-    ("换一个吧",     "换什么没说"),
-    ("我想去",       "去哪没说"),
+    ("帮我打开", "打开什么没说"),
+    ("太亮了", "暗指灯光但未说操作"),
+    ("太冷了", "暗指空调但未说具体操作"),
+    ("好吵啊", "暗指媒体/空调但不确定"),
+    ("换一个吧", "换什么没说"),
+    ("我想去", "去哪没说"),
     ("太热了开一下", "空调意图明确但操作模糊"),
 ]
+
 
 @pytest.mark.parametrize("text,reason", AMBIGUOUS_CASES)
 @pytest.mark.asyncio
@@ -90,9 +94,10 @@ async def test_ambiguous_intent(text, reason):
 
 NOISY_ASR_CASES = [
     ("导航去天府广", 0.6, "天府广场"),
-    ("空调调到22",   0.5, "空调"),
-    ("加油站",       0.4, "加油"),
+    ("空调调到22", 0.5, "空调"),
+    ("加油站", 0.4, "加油"),
 ]
+
 
 @pytest.mark.parametrize("text,conf,keyword", NOISY_ASR_CASES)
 @pytest.mark.asyncio
@@ -109,11 +114,12 @@ async def test_noisy_asr(text, conf, keyword):
 # ─────────────────────────────────────────────────────────────
 
 IMPLICIT_CASES = [
-    ("我有点冷",   "vehicle_control", "ac"),
-    ("有点吵",     "vehicle_control", "music"),
-    ("看不清楚",   "vehicle_control", "light"),
-    ("好渴",       "search_poi", "便利店"),
+    ("我有点冷", "vehicle_control", "ac"),
+    ("有点吵", "vehicle_control", "music"),
+    ("看不清楚", "vehicle_control", "light"),
+    ("好渴", "search_poi", "便利店"),
 ]
+
 
 @pytest.mark.parametrize("text,expected_intent,hint", IMPLICIT_CASES)
 @pytest.mark.asyncio
@@ -135,6 +141,7 @@ HIGH_RISK_CASES = [
     "关发动机",
 ]
 
+
 @pytest.mark.parametrize("text", HIGH_RISK_CASES)
 @pytest.mark.asyncio
 async def test_high_risk_control(text):
@@ -152,6 +159,7 @@ async def test_high_risk_control(text):
 # 5. 多轮上下文测试
 # ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_multi_turn_context():
     history = []
@@ -159,10 +167,12 @@ async def test_multi_turn_context():
     cfg = _new_thread()
     state1 = make_state("我想去看电影", messages=history)
     result1 = await cabin_agent.ainvoke(state1, config=cfg)
-    history.extend([
-        {"role": "user", "content": "我想去看电影"},
-        {"role": "assistant", "content": result1.get("final_response", "")},
-    ])
+    history.extend(
+        [
+            {"role": "user", "content": "我想去看电影"},
+            {"role": "assistant", "content": result1.get("final_response", "")},
+        ]
+    )
 
     state2 = make_state("最近的那个", messages=history)
     result2 = await cabin_agent.ainvoke(state2, config=cfg)
@@ -176,12 +186,13 @@ async def test_multi_turn_context():
 # ─────────────────────────────────────────────────────────────
 
 SMOKE_CASES = [
-    ("导航去天府广场",   "navigate",    "天府广场"),
-    ("附近有加油站吗",   "search_poi",  "加油站"),
-    ("把空调调到22度",   "control",     "空调"),
-    ("还有多少油",       "query",       "油量"),
-    ("你好",             "chitchat",    ""),
+    ("导航去天府广场", "navigate", "天府广场"),
+    ("附近有加油站吗", "search_poi", "加油站"),
+    ("把空调调到22度", "control", "空调"),
+    ("还有多少油", "query", "油量"),
+    ("你好", "chitchat", ""),
 ]
+
 
 @pytest.mark.parametrize("text,tag,keyword", SMOKE_CASES)
 @pytest.mark.asyncio
@@ -203,6 +214,7 @@ MULTI_INTENT_INDEPENDENT = [
     ("开窗放音乐", "独立多意图，应并发执行"),
 ]
 
+
 @pytest.mark.parametrize("text,reason", MULTI_INTENT_INDEPENDENT)
 @pytest.mark.asyncio
 async def test_multi_intent_independent(text, reason):
@@ -216,7 +228,9 @@ async def test_multi_intent_independent(text, reason):
     assert is_complex, f"[{reason}] 应识别为多意图"
     assert len(completed) > 0, f"[{reason}] 应有完成的子任务"
     assert response, f"[{reason}] 应有回复"
-    print(f"✅ [{reason}] {text}: 完成{len(completed)}/{total}任务, 回复={response[:60]}")
+    print(
+        f"✅ [{reason}] {text}: 完成{len(completed)}/{total}任务, 回复={response[:60]}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -227,6 +241,7 @@ MULTI_INTENT_DEPENDENT = [
     ("先找加油站再导航过去", "依赖链，应串行聚合回复"),
     ("帮我找最近的停车场然后导航", "依赖链，应串行聚合回复"),
 ]
+
 
 @pytest.mark.parametrize("text,reason", MULTI_INTENT_DEPENDENT)
 @pytest.mark.asyncio
@@ -239,14 +254,60 @@ async def test_multi_intent_dependent(text, reason):
 
     assert len(sub_tasks) >= 2, f"[{reason}] 应有多个子任务"
     assert has_dependencies, f"[{reason}] 应有依赖关系"
-    print(f"✅ [{reason}] {text}: 子任务数={len(sub_tasks)}, 依赖={[t.get('depends_on') for t in sub_tasks]}")
+    print(
+        f"✅ [{reason}] {text}: 子任务数={len(sub_tasks)}, 依赖={[t.get('depends_on') for t in sub_tasks]}"
+    )
     if response:
         print(f"   回复: {response[:60]}")
 
 
 # ─────────────────────────────────────────────────────────────
+# 8b. 条件分支测试
+# ─────────────────────────────────────────────────────────────
+
+CONDITIONAL_CASES = [
+    ("查下附近有没有充电站，有的话导航过去", "条件分支：有结果才导航"),
+    ("看看今天天气怎么样，好的话导航去天府大道", "条件分支：天气好才导航"),
+    ("找附近有没有星巴克，有的话去最近的那家", "条件分支：有POI才导航"),
+]
+
+
+@pytest.mark.parametrize("text,reason", CONDITIONAL_CASES)
+@pytest.mark.asyncio
+async def test_conditional_branch(text, reason):
+    """条件分支：task 应带 condition 字段，且链路完整执行"""
+    state = make_state(text)
+    result = await cabin_agent.ainvoke(state, config=_new_thread())
+    sub_tasks = result.get("sub_tasks", [])
+    response = result.get("final_response", "")
+
+    assert len(sub_tasks) >= 2, f"[{reason}] 应有多个子任务"
+
+    # 至少一个 task 有 depends_on
+    has_dep = any(t.get("depends_on") for t in sub_tasks)
+    assert has_dep, f"[{reason}] 应有依赖关系"
+
+    # 至少一个下游 task 带 condition
+    has_condition = any(t.get("condition") for t in sub_tasks)
+    assert has_condition, f"[{reason}] 下游任务应有 condition 字段"
+
+    # 应有回复
+    assert response, f"[{reason}] 应有最终回复"
+
+    print(f"✅ [{reason}] {text}")
+    for t in sub_tasks:
+        cond = t.get("condition")
+        cond_str = f" condition={cond}" if cond else ""
+        print(
+            f"   {t.get('task_id')}: {t.get('intent')} dep={t.get('depends_on')}{cond_str}"
+        )
+    print(f"   回复: {response[:80]}")
+
+
+# ─────────────────────────────────────────────────────────────
 # 9. interrupt 多轮追问闭环测试
 # ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_interrupt_single_clarify():
@@ -335,6 +396,7 @@ async def test_interrupt_with_multi_intent():
 # 10. 历史污染防护 + Slot Carry-Over 测试
 # ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_no_context_bleeding():
     """导航后说'打开'不应延续导航意图"""
@@ -347,7 +409,9 @@ async def test_no_context_bleeding():
     sub_tasks = result.get("sub_tasks", [])
     intents = [t.get("intent") for t in sub_tasks]
 
-    navigate_tasks = [t for t in sub_tasks if t.get("intent") in ("start_navigation", "navigate")]
+    navigate_tasks = [
+        t for t in sub_tasks if t.get("intent") in ("start_navigation", "navigate")
+    ]
     assert not navigate_tasks, f"'打开'不应被识别为导航意图, 实际 intents={intents}"
     print(f"✅ 历史污染防护: '打开' → intents={intents}")
 
@@ -364,7 +428,9 @@ async def test_coreference_resolution():
     sub_tasks = result.get("sub_tasks", [])
 
     assert len(sub_tasks) >= 1, "应有子任务"
-    print(f"✅ 指代消解: '最近的那个导航过去' → intents={[t.get('intent') for t in sub_tasks]}")
+    print(
+        f"✅ 指代消解: '最近的那个导航过去' → intents={[t.get('intent') for t in sub_tasks]}"
+    )
 
 
 @pytest.mark.asyncio
@@ -406,6 +472,7 @@ async def test_independent_with_location_word():
 
 
 if __name__ == "__main__":
+
     async def run_all():
         print("=" * 60)
         print("车载 Agent Corner Case 测试")
@@ -428,7 +495,9 @@ if __name__ == "__main__":
             result = await cabin_agent.ainvoke(state, config=_new_thread())
             completed = len(result.get("completed_task_ids", []))
             total = len(result.get("sub_tasks", []))
-            print(f"[并发] {text!r:20} → 完成{completed}/{total}, 回复={result.get('final_response', '')[:50]}")
+            print(
+                f"[并发] {text!r:20} → 完成{completed}/{total}, 回复={result.get('final_response', '')[:50]}"
+            )
 
         print()
         print("--- interrupt 测试 ---")

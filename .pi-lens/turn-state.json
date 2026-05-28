@@ -54,11 +54,11 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 218
+          "end": 243
         }
       ],
-      "importsChanged": false,
-      "lastEdit": "2026-05-26T14:04:38.322Z"
+      "importsChanged": true,
+      "lastEdit": "2026-05-27T14:50:44.426Z"
     },
     "project1_cabin_agent/tools/cabin_tools.py": {
       "modifiedRanges": [
@@ -94,21 +94,21 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 681
+          "end": 797
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-05-26T15:18:40.946Z"
+      "lastEdit": "2026-05-27T09:18:56.321Z"
     },
     "project1_cabin_agent/graph.py": {
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 261
+          "end": 277
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-05-27T02:06:52.090Z"
+      "lastEdit": "2026-05-27T14:50:23.889Z"
     },
     "project1_cabin_agent/nodes/context_enrich.py": {
       "modifiedRanges": [
@@ -124,11 +124,11 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 160
+          "end": 163
         }
       ],
       "importsChanged": false,
-      "lastEdit": "2026-05-26T16:12:11.355Z"
+      "lastEdit": "2026-05-27T12:36:22.442Z"
     },
     "project1_cabin_agent/tests/test_multi_turn.py": {
       "modifiedRanges": [
@@ -176,11 +176,11 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 360
+          "end": 367
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-05-27T02:18:11.747Z"
+      "lastEdit": "2026-05-27T12:45:44.195Z"
     },
     "project1_cabin_agent/nodes/post_rules.py": {
       "modifiedRanges": [
@@ -215,10 +215,100 @@
       ],
       "importsChanged": true,
       "lastEdit": "2026-05-26T17:11:40.703Z"
+    },
+    "scripts/confidence_analysis.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 338
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-27T08:29:12.407Z"
+    },
+    "scripts/logprob_test.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 173
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-27T08:51:11.899Z"
+    },
+    "project1_cabin_agent/nodes/condition.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 140
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-27T14:50:44.478Z"
+    },
+    "project1_cabin_agent/nodes/intent.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 496
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-28T12:08:25.885Z"
+    },
+    "project1_cabin_agent/tests/test_corner_cases.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 516
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-27T15:15:13.119Z"
+    },
+    "project1_cabin_agent/tests/test_stress_20.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 423
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-28T08:29:39.953Z"
+    },
+    "project1_cabin_agent/tests/test_condition_20.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 552
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-28T08:32:16.619Z"
+    },
+    "scripts/test_condition_20.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 316
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-28T08:45:43.716Z"
+    },
+    "scripts/test_condition_e2e.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 160
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-28T09:09:06.517Z"
     }
   },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-05-27T02:18:11.747Z",
-  "sessionId": "lens-mpndzgu0-71d795a3"
+  "lastUpdated": "2026-05-28T12:08:25.885Z",
+  "sessionId": "lens-mpp6sjvq-8071a6b1"
 }

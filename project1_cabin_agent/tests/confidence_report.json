@@ -1,0 +1,2387 @@
+{
+  "timestamp": "2026-05-27T16:28:42",
+  "threshold": 0.85,
+  "total_cases": 132,
+  "edge_ran": 96,
+  "avg_confidence": 0.778,
+  "accept_rate": 0.646,
+  "by_domain": {
+    "climate": {
+      "count": 36,
+      "confidences": [
+        0.9,
+        0.85,
+        0.75,
+        0.75,
+        0.75,
+        0.9,
+        0.9,
+        0.75,
+        0.9,
+        0.9,
+        0.75,
+        0.75,
+        1.0,
+        1.0,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        1.0,
+        0.9,
+        0.75,
+        1.0,
+        0.9,
+        0.9,
+        0.9,
+        1.0,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "media": {
+      "count": 20,
+      "confidences": [
+        0.0,
+        0.75,
+        0.9,
+        0.75,
+        0.75,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.0,
+        0.9,
+        0.75,
+        0.9,
+        0.6,
+        0.9,
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "map": {
+      "count": 19,
+      "confidences": [
+        1.0,
+        1.0,
+        0.9,
+        0.9,
+        1.0,
+        1.0,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        1.0,
+        1.0,
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "vehicle": {
+      "count": 12,
+      "confidences": [
+        0.9,
+        0.0,
+        0.9,
+        0.9,
+        0.0,
+        0.9,
+        0.0,
+        0.0,
+        0.0,
+        0.7,
+        0.9
+      ]
+    },
+    "chitchat": {
+      "count": 15,
+      "confidences": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "multi": {
+      "count": 15,
+      "confidences": []
+    },
+    "needs_context": {
+      "count": 4,
+      "confidences": []
+    },
+    "unknown": {
+      "count": 11,
+      "confidences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "by_intent": {
+    "ac_control": {
+      "count": 16,
+      "confidences": [
+        0.9,
+        0.85,
+        0.75,
+        0.75,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        1.0,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "window_control": {
+      "count": 7,
+      "confidences": [
+        0.75,
+        0.75,
+        0.9,
+        0.9,
+        0.75,
+        0.9,
+        0.9
+      ]
+    },
+    "chitchat": {
+      "count": 24,
+      "confidences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    "navigate": {
+      "count": 8,
+      "confidences": [
+        1.0,
+        0.9,
+        0.9,
+        1.0,
+        0.9,
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "media_control": {
+      "count": 17,
+      "confidences": [
+        0.75,
+        0.9,
+        0.75,
+        0.75,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.75,
+        0.9,
+        0.6,
+        0.9,
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "search_poi": {
+      "count": 6,
+      "confidences": [
+        1.0,
+        1.0,
+        0.9,
+        0.9,
+        1.0,
+        1.0
+      ]
+    },
+    "query_vehicle_status": {
+      "count": 6,
+      "confidences": [
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.7,
+        0.9
+      ]
+    },
+    "light_control": {
+      "count": 3,
+      "confidences": [
+        0.75,
+        0.75,
+        0.9
+      ]
+    },
+    "seat_control": {
+      "count": 7,
+      "confidences": [
+        1.0,
+        1.0,
+        0.9,
+        1.0,
+        0.9,
+        1.0,
+        0.9
+      ]
+    },
+    "cabin_query": {
+      "count": 1,
+      "confidences": [
+        0.9
+      ]
+    },
+    "map_query": {
+      "count": 1,
+      "confidences": [
+        0.9
+      ]
+    }
+  },
+  "details": [
+    {
+      "input": "调到26度",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 880.0,
+      "slots": {
+        "action": "adjust",
+        "temperature": 26
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "关空调",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.85,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 528.0,
+      "slots": {
+        "action": "off"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "开窗",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 564.0,
+      "slots": {
+        "target": "window",
+        "action": "open"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "灯太暗了",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 260.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "导航去公司",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 501.0,
+      "slots": {
+        "destination": "公司"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "放首歌",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 401.0,
+      "slots": {
+        "action": "play"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "附近有没有加油站",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "search_poi",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 519.0,
+      "slots": {
+        "keyword": "加油站"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "测下胎压",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "query_vehicle_status",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 403.0,
+      "slots": {
+        "items": "tire"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "早上好",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截"
+    },
+    {
+      "input": "打开音乐关闭空调",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "最远的",
+      "exp_domain": "needs_context",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=拦截(正确)"
+    },
+    {
+      "input": "太热了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 574.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "cool"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "冷死了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 573.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "cool"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "温度调到22",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 573.0,
+      "slots": {
+        "action": "adjust",
+        "temperature": 22
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "风速调到3档",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 632.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "auto",
+        "fan_level": 3
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "关窗",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 579.0,
+      "slots": {
+        "target": "window",
+        "action": "close"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "打开车窗",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 570.0,
+      "slots": {
+        "target": "window",
+        "action": "open"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "天窗打开",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 585.0,
+      "slots": {
+        "target": "sunroof",
+        "action": "open"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "开灯",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "light_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 526.0,
+      "slots": {
+        "action": "on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "关灯",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "light_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 518.0,
+      "slots": {
+        "action": "off"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "阅读灯打开",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 242.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "打开座椅加热",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 517.0,
+      "slots": {
+        "action": "heat_on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "座椅加热关掉",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 520.0,
+      "slots": {
+        "action": "heat_off"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "座椅通风",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 527.0,
+      "slots": {
+        "action": "ventilate_on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "呃开一下空调",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 511.0,
+      "slots": {
+        "action": "on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "麻烦帮我把空调关了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 511.0,
+      "slots": {
+        "action": "off"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "热得不行了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 559.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "heat"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "导航到天府广场",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 496.0,
+      "slots": {
+        "destination": "天府广场"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "去春熙路",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 505.0,
+      "slots": {
+        "destination": "春熙路"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "导航去最近的加油站",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 504.0,
+      "slots": {
+        "destination": "最近的加油站"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "导航去成都春熙路太古里避开高速",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "unknown",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 148.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "domain_unknown"
+    },
+    {
+      "input": "播放周杰伦",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 459.0,
+      "slots": {
+        "action": "play",
+        "query": "周杰伦"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "下一首",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 395.0,
+      "slots": {
+        "action": "next"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "暂停",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 395.0,
+      "slots": {
+        "action": "pause"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "声音大一点",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 411.0,
+      "slots": {
+        "action": "volume_up"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "音量调到80",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 442.0,
+      "slots": {
+        "action": "set_volume",
+        "volume": 80
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "来点音乐",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 396.0,
+      "slots": {
+        "action": "play"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "我想听周杰伦的歌",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 442.0,
+      "slots": {
+        "action": "search",
+        "query": "周杰伦"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "麻烦帮我放首歌呗",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 380.0,
+      "slots": {
+        "action": "play"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "附近有没有川菜馆",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "search_poi",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 519.0,
+      "slots": {
+        "keyword": "川菜馆"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "帮我找下附近的医院",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "search_poi",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 519.0,
+      "slots": {
+        "keyword": "医院"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "附近的火锅店",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "search_poi",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 524.0,
+      "slots": {
+        "keyword": "火锅店"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "还有多少油",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "query_vehicle_status",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 399.0,
+      "slots": {
+        "items": "fuel"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "电量还剩多少",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "query_vehicle_status",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 381.0,
+      "slots": {
+        "items": "battery"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "舒适模式",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "休息模式",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "出发前检查",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "空调多少度",
+      "exp_domain": "climate",
+      "exp_intent": "cabin_query",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "cabin_query",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 552.0,
+      "slots": {
+        "items": "cabin_temp"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "该保养了吗",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": false,
+      "latency_ms": 242.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "讲个笑话",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 374.0,
+      "slots": {},
+      "all_slots_filtered": true,
+      "error": null
+    },
+    {
+      "input": "今天星期几",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截"
+    },
+    {
+      "input": "今天天气怎么样",
+      "exp_domain": "map",
+      "exp_intent": "weather",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "几点了",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 348.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "开空调、关窗",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "多意图, 门控=拦截(正确)"
+    },
+    {
+      "input": "打开空调 然后放歌",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "多意图, 门控=拦截(正确)"
+    },
+    {
+      "input": "第二个",
+      "exp_domain": "needs_context",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=拦截(正确)"
+    },
+    {
+      "input": "还有多远",
+      "exp_domain": "needs_context",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=拦截(正确)"
+    },
+    {
+      "input": "最近的有多远",
+      "exp_domain": "needs_context",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=拦截(正确)"
+    },
+    {
+      "input": "开窗放音乐",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "帮我打开空调并播放音乐",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "先找加油站再导航过去",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "导航到天府广场然后放点音乐",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "多意图, 门控=拦截(正确)"
+    },
+    {
+      "input": "附近有便利店吗帮我调低温度",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "帮我加油顺便开空调",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "多意图, 门控=拦截(正确)"
+    },
+    {
+      "input": "打开空调",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 525.0,
+      "slots": {
+        "action": "on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "空调开到18度",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 571.0,
+      "slots": {
+        "action": "adjust",
+        "temperature": 18
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "关天窗",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 589.0,
+      "slots": {
+        "target": "sunroof",
+        "action": "close"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "开阅读灯",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 263.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "座椅加热调到3档",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 589.0,
+      "slots": {
+        "action": "heat_on",
+        "heat_level": 3
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "关座椅通风",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 553.0,
+      "slots": {
+        "action": "ventilate_off"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "去最近的加油站",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 521.0,
+      "slots": {
+        "destination": "最近的加油站"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "导航去成都避开高速",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 581.0,
+      "slots": {
+        "destination": "成都"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "音量调小点",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 433.0,
+      "slots": {
+        "action": "volume_down"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "切歌",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.75,
+      "is_acceptable": false,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 422.0,
+      "slots": {
+        "action": "search"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "我想听周杰伦",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 465.0,
+      "slots": {
+        "action": "search",
+        "query": "周杰伦"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "有没有附近的火锅店",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "search_poi",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 536.0,
+      "slots": {
+        "keyword": "火锅店"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "胎压怎么样",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "睡眠模式",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "空调暖风",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 585.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "heat"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "车窗全开",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 656.0,
+      "slots": {
+        "target": "window",
+        "action": "open",
+        "percent": 100
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "灯调亮点",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.6,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 373.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "座椅加热开",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 533.0,
+      "slots": {
+        "action": "heat_on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "放周杰伦",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 477.0,
+      "slots": {
+        "action": "play",
+        "query": "周杰伦"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "搜一下附近的加油站",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "search_poi",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 511.0,
+      "slots": {
+        "keyword": "加油站"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "车还有多少电",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "query_vehicle_status",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 386.0,
+      "slots": {
+        "items": "battery"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "运动模式",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "帮我把空挑关掉",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "unknown",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 150.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "domain_unknown"
+    },
+    {
+      "input": "去到春熙路吧",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 512.0,
+      "slots": {
+        "destination": "春熙路"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "我想停歌",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 400.0,
+      "slots": {
+        "action": "pause"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "把那啥温度调低一点",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "导一下航到天府广场",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "navigate",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 502.0,
+      "slots": {
+        "destination": "天府广场"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "太冷了 那个 调到26度",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "热成狗了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 572.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "heat"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "冻死我了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 587.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "heat"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "闷得喘不过气",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 587.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "cool"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "亮瞎了",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 346.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "啥也看不见",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 350.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "耳朵要聋了",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 352.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "吵死啦",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 339.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "来点带劲的音乐",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 385.0,
+      "slots": {
+        "action": "search"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "这什么歌啊换掉",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "饿得不行了",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 339.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "想喝奶茶",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 396.0,
+      "slots": {},
+      "all_slots_filtered": true,
+      "error": null
+    },
+    {
+      "input": "困了找个地方睡觉",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 355.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "打开暖风",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 245.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "车里好暗",
+      "exp_domain": "climate",
+      "exp_intent": "light_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "light_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 597.0,
+      "slots": {
+        "action": "adjust",
+        "target": "cabin"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "后背好热",
+      "exp_domain": "climate",
+      "exp_intent": "seat_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 244.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "挡风玻璃起雾了",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 248.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "intent_unknown"
+    },
+    {
+      "input": "前面堵不堵",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "query_vehicle_status",
+      "confidence": 0.7,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 361.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "换一条路",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "unknown",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 150.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "domain_unknown"
+    },
+    {
+      "input": "现在在哪儿",
+      "exp_domain": "map",
+      "exp_intent": "map_query",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "map",
+      "actual_intent": "map_query",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 516.0,
+      "slots": {
+        "query_type": "location"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "离机场还有多远",
+      "exp_domain": "map",
+      "exp_intent": "map_query",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "油灯亮了",
+      "exp_domain": "vehicle",
+      "exp_intent": "query_vehicle_status",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "unknown",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 151.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "domain_unknown"
+    },
+    {
+      "input": "这个按钮干嘛的",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截"
+    },
+    {
+      "input": "你好小Q",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 350.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "不是 我是说开窗",
+      "exp_domain": "climate",
+      "exp_intent": "window_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "window_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 587.0,
+      "slots": {
+        "target": "window",
+        "action": "open"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "不对 关掉音乐",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "media",
+      "actual_intent": "media_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 409.0,
+      "slots": {
+        "action": "pause"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "别开空调了 开窗吧",
+      "exp_domain": "multi",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "多意图, 门控=通过(误放)"
+    },
+    {
+      "input": "算了不去了",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "unknown",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": true,
+      "latency_ms": 151.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "domain_unknown"
+    },
+    {
+      "input": "后排说冷",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "seat_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": false,
+      "latency_ms": 586.0,
+      "slots": {
+        "action": "heat_on"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "副驾太热",
+      "exp_domain": "climate",
+      "exp_intent": "ac_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "climate",
+      "actual_intent": "ac_control",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": true,
+      "intent_ok": true,
+      "latency_ms": 568.0,
+      "slots": {
+        "action": "adjust",
+        "mode": "heat"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "孩子睡着了 小声点",
+      "exp_domain": "media",
+      "exp_intent": "media_control",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "chitchat",
+      "actual_intent": "chitchat",
+      "confidence": 1.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 353.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "路上还有多久",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "前方有摄像头吗",
+      "exp_domain": "map",
+      "exp_intent": "search_poi",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "unknown",
+      "actual_intent": "chitchat",
+      "confidence": 0.0,
+      "is_acceptable": false,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 151.0,
+      "slots": {},
+      "all_slots_filtered": false,
+      "error": "domain_unknown"
+    },
+    {
+      "input": "帮我记一下这个位置",
+      "exp_domain": "map",
+      "exp_intent": "navigate",
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截(误拦)"
+    },
+    {
+      "input": "还剩多少公里",
+      "exp_domain": "map",
+      "exp_intent": "map_query",
+      "gate_pass": true,
+      "edge_ran": true,
+      "actual_domain": "vehicle",
+      "actual_intent": "query_vehicle_status",
+      "confidence": 0.9,
+      "is_acceptable": true,
+      "domain_ok": false,
+      "intent_ok": false,
+      "latency_ms": 396.0,
+      "slots": {
+        "items": "mileage"
+      },
+      "all_slots_filtered": false,
+      "error": null
+    },
+    {
+      "input": "阿巴阿巴",
+      "exp_domain": "unknown",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=通过(误放)"
+    },
+    {
+      "input": "asdfghjkl",
+      "exp_domain": "unknown",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=通过(误放)"
+    },
+    {
+      "input": "12345",
+      "exp_domain": "unknown",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=通过(误放)"
+    },
+    {
+      "input": "！！！",
+      "exp_domain": "unknown",
+      "exp_intent": null,
+      "gate_pass": true,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=通过(误放)"
+    },
+    {
+      "input": "嗯",
+      "exp_domain": "chitchat",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "门控拦截"
+    },
+    {
+      "input": "开",
+      "exp_domain": "unknown",
+      "exp_intent": null,
+      "gate_pass": false,
+      "edge_ran": false,
+      "note": "期望不走端侧, 门控=拦截(正确)"
+    }
+  ]
+}

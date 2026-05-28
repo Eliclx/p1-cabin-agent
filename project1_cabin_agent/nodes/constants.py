@@ -6,7 +6,7 @@ Pydantic 模型 + 关键词常量集合。
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 # ── 指代 / 上下文关键词 ──
@@ -189,6 +189,27 @@ COREFERENCE_INDICATORS = {
 # ── Pydantic 模型 ──
 
 
+class ConditionRule(BaseModel):
+    """条件评估规则：引用上游 task 的输出字段进行比较"""
+
+    source: str = Field(description="依赖的 task_id")
+    field: str = Field(description="取 tool_result.data 中的字段名")
+    op: str = Field(
+        description="比较操作: eq/neq/gt/gte/lt/lte/in/not_in/is_empty/is_not_empty"
+    )
+    value: Any = Field(
+        default=None, description="目标值（is_empty/is_not_empty 时可省略）"
+    )
+
+
+class Condition(BaseModel):
+    """条件评估：AND/OR 组合多条规则"""
+
+    logic: str = Field(default="AND", description="逻辑组合: AND | OR")
+    rules: List[ConditionRule] = Field(description="条件规则列表")
+    fail_msg: str = Field(default="条件不满足", description="条件不满足时的回复")
+
+
 class SubTask(BaseModel):
     task_id: str = Field(default="", description="子任务唯一ID")
     intent: str = Field(description="意图类型")
@@ -208,6 +229,10 @@ class SubTask(BaseModel):
     voice_reply: str = Field(
         default="",
         description="语音播报文本。由下游回复节点生成，意图分类时留空。direct_answer 意图不填此字段",
+    )
+    condition: Optional[Condition] = Field(
+        default=None,
+        description="条件评估：满足才执行此任务，不满足则跳过并回复 fail_msg",
     )
 
 

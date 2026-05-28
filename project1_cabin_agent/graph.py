@@ -37,6 +37,7 @@ from project1_cabin_agent.nodes.agent_nodes import (
     chitchat_handler,
 )
 from project1_cabin_agent.nodes.slot_transfer import fill_slots_from_blackboard
+from project1_cabin_agent.nodes.condition import evaluate_condition
 from project1_cabin_agent.skills.registry import registry
 
 import logging
@@ -122,6 +123,23 @@ def route_wave(state: CabinAgentState | dict):
                 bb_decl,
                 dialogue_context,
             )
+
+    # ── 条件评估：有 condition 的任务，评估通过才真正执行 ──
+    # 不通过时替换为 direct_answer（fail_msg），复用现有链路，零新增字段
+    task_results = state.get("task_results", [])
+    for i, task in enumerate(ready):
+        condition = task.get("condition")
+        if not condition:
+            continue
+        passed, fail_msg = evaluate_condition(condition, task_results)
+        if not passed:
+            # 替换为 direct_answer，task_pipeline 已有处理分支
+            ready[i] = {
+                "task_id": task["task_id"],
+                "intent": "direct_answer",
+                "extracted_slots": {"answer": fail_msg},
+                "depends_on": task.get("depends_on", []),
+            }
 
     # 为每个就绪任务创建一个 Send → 触发 task_pipeline 并发执行
     # Send 是 LangGraph 的并发原语：多个 Send 同时投递，task_pipeline 会并行处理

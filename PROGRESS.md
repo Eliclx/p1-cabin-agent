@@ -145,15 +145,76 @@
 | E4 | _DOMAIN_SIGNALS 动态化（从 registry schema 读取） | fed1a3f |
 | E5 | cabin_tools.py 删除（全项目零引用，-584行） | fed1a3f |
 
-## ⏭️ 下一步：Phase F → Phase 3
+## ⏭️ 下一步：Phase 3（Plan-and-Execute）
+
+### Phase F 结论（⏸ 暂缓）
 
 || 步骤 | 内容 | 状态 |
 |--------|------|------|
-| F | 端侧 confidence 分布分析（132 eval cases） | 待做 |
-| 3.1 | orchestrator/planner.py 执行计划数据结构 | 待做 |
-| 3.2 | orchestrator/executor.py 逐步执行+条件判断 | 待做 |
-| 3.3 | pipeline.py 加入 Layer 3 路由 | 待做 |
-| 3.4 | eval 加条件编排测试用例 | 待做 |
+| F1 | 端侧 confidence 分布分析（132 eval cases） | ✅ |
+| F2 | logprobs 不可行（LMDeploy+few-shot 结构化输出下=0） | ✅ |
+| F3 | 企业级方案调研（Self-Assessment / Verification Gate / Confidence Token） | ✅ |
+| F4 | confidence 重设计 | ⏸ 暂缓 |
+
+3B 模型在结构化 JSON 输出场景下，confidence scoring 本质上是小模型能力边界问题，
+非 scoring 机制能补。待 Phase 3 云端接入后有 ground truth 对比数据再回来校准更合理。
+
+**调研成果留存：**
+- logprobs 不可行（LMDeploy+AWQ+TurboMind，few-shot 导致 logits 极化 → logprobs=0）
+- 企业级方案 4 条路径已评估（Self-Assessment / Verification Gate / Confidence Token / Post-hoc Validator）
+- 方案 C（Confidence Token, Self-REF arxiv 2410.13284）留作未来微调方向
+
+### Phase 3 任务列表
+
+| 步骤 | 内容 | 状态 |
+|--------|------|------|
+| 3.0 | depends_on 验证（已实现，slot_transfer bug 已修） | ✅ cbdc099 |
+| 3.1 | 条件分支（condition 评估机制） | 🔧 进行中 |
+| 3.2 | Recovery 容错 | 待做 |
+| 3.3 | eval 加条件编排测试用例 | 待做 |
+
+### Phase 3.1 条件分支设计
+
+**核心问题：** "天气好就导航"、"有充电站才去" — 任务 B 是否执行取决于任务 A 的结果。
+
+**三种校验方案：**
+
+| 方案 | 做法 | 优缺点 |
+|------|------|--------|
+| A: harness 约束 | source task 的 harness 声明 condition_fields | SSOT 但校验需反向查找 source harness |
+| B: 集中注册表 | registry.py 一份 CONDITION_FIELDS | 和 blackboard_decl 信息重复 |
+| C: 运行时校验 | evaluate 时直接从 task_results 取实际数据 | 最简单，字段不存在则降级 |
+
+**当前选择：方案 C 先实现看效果。**
+
+**数据结构：**
+```python
+task = {
+    "task_id": "task_1",
+    "intent": "navigate",
+    "depends_on": ["task_0"],
+    "condition": {                    # 可选
+        "logic": "AND",              # AND | OR
+        "rules": [
+            {"source": "task_0", "field": "count", "op": "gt", "value": 0}
+        ],
+        "fail_msg": "附近没有充电站"
+    }
+}
+```
+
+**支持的 op:** eq/neq/gt/gte/lt/lte/in/not_in/is_empty/is_not_empty
+
+**执行流程：** route_wave 中 depends_on 满足后、调度前评估 condition → 通过加入 ready / 不通过标记 skipped
+
+**改动文件：** intent.py（LLM 生成 condition）、graph.py（评估逻辑）、response.py（处理 skipped）、state.py（skipped_task_ids）
+
+**测试样例：**
+| 用户说法 | condition | 预期 |
+|---------|-----------|------|
+| 有充电站就导航 | count gt 0 | 有→导航 / 没→"附近没找到" |
+| 天气好就导航 | weather_main not_in ["雨","雪"] | 晴→导航 / 雨→"天气不好" |
+| 找附近有没有露营地 | 无 condition | 正常执行 |
 
 ## 当前状态总览
 
