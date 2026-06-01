@@ -61,12 +61,28 @@ _ULTRA_SHORT_AMBIGUOUS = {
     "换",
     "来",
     "去",
+    "什么",  # 极短追问/指代，需要上下文
 }
 
 # 序数指代词模式 → "第二个"/"第3个" 等需要历史上下文
 import re
 
 _ORDINAL_COREFERENCE = re.compile(r"第[一二两三四五六七八九十\d]+")
+
+# 条件分支模式 → "有的话就X""如果X就Y" 等，需要云端 LLM 生成 condition 字段
+_CONDITIONAL_PATTERNS = re.compile(
+    r"("
+    r"有的话|没有的话|的话就|的话过去"  # "有充电站吗有的话导航过去"
+    r"|如果.{1,8}就"  # "如果下雨就别走高速"
+    r"|低于\d|高于\d|不足\d"  # "油量低于30就..."
+    r"|不正常"  # "胎压不正常就提醒我"
+    r"|好的话|天气好"  # "天气好的话导航去春熙路"
+    r"|找到.*的话"  # "找到充电桩的话告诉我"
+    r"|[就便]\s*换"  # "堵车就换条路"
+    r"|便宜的就"  # "有便宜的就推荐个餐厅"
+    r"|最近的就"  # "有最近的就过去"
+    r")"
+)
 
 
 def _can_use_edge(user_input: str, active_frames: list) -> bool:
@@ -95,6 +111,10 @@ def _can_use_edge(user_input: str, active_frames: list) -> bool:
     # 注："最近的"已移除——"最近的加油站"是独立导航目标非指代
     # 但"最近的"+"追问词"（有多远/是哪个/在哪里）是追问，端侧不接
     if any(w in text for w in STRONG_COREFERENCE):
+        return False
+
+    # 1b. 条件分支模式 → 需要云端 LLM 生成 condition 字段，端侧不支持
+    if _CONDITIONAL_PATTERNS.search(text):
         return False
 
     # 2b. "最近的" + 追问模式 → 需要上下文
@@ -130,10 +150,30 @@ def _can_use_edge(user_input: str, active_frames: list) -> bool:
         return False
 
     # 2e. 追问模式（有多远/多久/怎么样/多少钱）→ 需要上轮上下文
+    # 但输入含明确操作对象（胎压/油量/电量等）→ 独立新指令，不拦截
     _FOLLOWUP_PATTERNS = re.compile(
         r"(有多远|多远|还有多远|多久|还有多久|怎么样|好不好|多少钱|电话|评价|营业时间)"
     )
-    if _FOLLOWUP_PATTERNS.search(text) and len(text) <= 10:
+    _INDEPENDENT_QUERY_TARGETS = {
+        "胎压",
+        "油量",
+        "电量",
+        "续航",
+        "车况",
+        "油耗",
+        "里程",
+        "温度",
+        "天气",
+        "空调",
+        "速度",
+        "路况",
+    }
+    has_independent_target = any(w in text for w in _INDEPENDENT_QUERY_TARGETS)
+    if (
+        _FOLLOWUP_PATTERNS.search(text)
+        and len(text) <= 10
+        and not has_independent_target
+    ):
         return False
 
     # 3. 多意图连接词 → 可能多意图，端侧不接
