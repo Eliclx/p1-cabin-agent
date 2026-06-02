@@ -78,7 +78,7 @@
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-05-26T14:43:07.770Z"
+      "lastEdit": "2026-06-02T13:58:13.724Z"
     },
     "project1_cabin_agent/skills/map/schema.py": {
       "modifiedRanges": [
@@ -254,7 +254,7 @@
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-06-02T09:25:57.180Z"
+      "lastEdit": "2026-06-02T13:54:20.044Z"
     },
     "project1_cabin_agent/tests/test_corner_cases.py": {
       "modifiedRanges": [
@@ -455,10 +455,40 @@
       ],
       "importsChanged": false,
       "lastEdit": "2026-06-02T10:01:02.950Z"
+    },
+    "project1_cabin_agent/tests/test_memory_integration.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 268
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T13:25:06.317Z"
+    },
+    "project1_cabin_agent/memory/_instance.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 42
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T13:52:09.225Z"
+    },
+    "project1_cabin_agent/nodes/user_profile.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 96
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T13:53:41.200Z"
     }
   },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-06-02T10:24:18.187Z",
+  "lastUpdated": "2026-06-02T13:58:13.724Z",
   "sessionId": "lens-mpwau2do-d9d7938c"
 }

@@ -43,8 +43,7 @@ from project1_cabin_agent.nodes.episodic_memory import (
 )
 
 from project1_cabin_agent.nodes.context_builder import ContextBuilder
-from project1_cabin_agent.memory import MemoryManager, MemoryConfig
-from project1_cabin_agent.skills.registry import registry as _skill_registry
+from project1_cabin_agent.memory._instance import get_memory as _get_memory_instance
 
 
 # ── 端侧门控（独立于 _needs_context）──
@@ -310,8 +309,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
 
     # ===== DST 构建（0ms）=====
     # 构建 DialogueState + 生成摘要，后续注入 prompt
-    _meta = _skill_registry.get_all_memory_meta()
-    _memory = MemoryManager(MemoryConfig(memory_meta=_meta))
+    _memory = _get_memory_instance()
     _ctx_builder = ContextBuilder(_memory)
     _ds = _ctx_builder.build_state(state)
     _dst_summary = _ctx_builder.generate_summary(_ds)
