@@ -31,9 +31,9 @@ def get_memory() -> MemoryManager:
 
 def reset_memory(memory: MemoryManager | None = None) -> MemoryManager | None:
     """
-    重置单例（测试用）。
-  无参调用 → 置 None，下次 get_memory() 会重建。
-    传入 MemoryManager → 替换为给定实例。
+      重置单例（测试用）。
+    无参调用 → 置 None，下次 get_memory() 会重建。
+      传入 MemoryManager → 替换为给定实例。
     """
     global _instance
     old = _instance

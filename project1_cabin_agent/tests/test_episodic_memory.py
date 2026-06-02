@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from datetime import datetime, timedelta
+from datetime import datetime
 from project1_cabin_agent.nodes.episodic_memory import (
     set_current_time_fn, reset_current_time_fn,
     clear_events, seed_event, log_event,
@@ -201,7 +201,7 @@ class TestRetrieveEpisodicContext:
 class TestLogEvent:
     def test_whitelist_allows(self):
         """白名单类型正常写入"""
-        log_event('start_navigation', '导航去天府广场')
+        log_event('navigate', '导航去天府广场')
         result = retrieve_episodic_context('刚才去了哪')
         # 刚刚写入的在 30min 窗口内
         assert result is not None
@@ -216,7 +216,7 @@ class TestLogEvent:
     def test_auto_log_from_task_results(self):
         """自动化归档"""
         task_results = [
-            {'intent': 'start_navigation', 'tool_result': {'destination': '天府广场'}},
+            {'intent': 'navigate', 'tool_result': {'destination': '天府广场'}},
             {'intent': 'ac_control', 'tool_result': {'action': 'on'}},
             {'intent': 'search_poi', 'tool_result': {'keyword': '火锅店'}},
             {'intent': 'media_control', 'tool_result': {'action': 'play', 'query': '周杰伦'}},
@@ -233,7 +233,7 @@ class TestLogEvent:
     def test_auto_log_empty_tool_result(self):
         """tool_result 为空时不写"""
         task_results = [
-            {'intent': 'start_navigation', 'tool_result': {}},
+            {'intent': 'navigate', 'tool_result': {}},
         ]
         auto_log_from_task_results(task_results)
         assert retrieve_episodic_context('刚才做了什么') is None

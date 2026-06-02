@@ -12,7 +12,6 @@ L2 长期记忆 — 用户画像存储（跨 session 持久化）
   - save_from_tool_result → MemoryManager.save_from_tool_result（映射 + 过滤）
 """
 
-
 from shared.utils.logger import logger
 
 # ── Intent → L3 key 映射（SSOT 从 skill schema 的 l3_keys 注入，这里保留兼容）──

@@ -145,14 +145,28 @@ def log_event(
     timestamp: str | None = None,
 ) -> None:
     """写入一条事件日志。委托给 MemoryManager.log_event。"""
-    result = _get_memory().log_event(event_type, summary, details, timestamp)
+    ts = timestamp or _get_current_time().isoformat()
+    result = _get_memory().log_event(event_type, summary, details, ts)
     if result != "skipped":
         logger.info(f"[L1.5行程记忆] <- {event_type}: {summary}")
 
 
 def auto_log_from_task_results(task_results: list) -> None:
-    """从 task_results 自动提取事件并归档。委托给 MemoryManager。"""
-    _get_memory().log_event_from_results(task_results)
+    """从 task_results 自动提取事件并归档。使用 mock 时间。"""
+    ts = _get_current_time().isoformat()
+    memory = _get_memory()
+    for r in task_results:
+        intent = r.get("intent", "")
+        meta = memory._get_meta(intent)
+        if not meta.get("log", False):
+            continue
+        tool_result = r.get("tool_result", {})
+        summary = memory._extract_summary(intent, tool_result)
+        if summary:
+            details = memory._extract_details(intent, tool_result)
+            result = memory.log_event(intent, summary, details, ts)
+            if result != "skipped":
+                logger.info(f"[L1.5行程记忆] <- {intent}: {summary}")
 
 
 def retrieve_episodic_context(user_input: str, limit: int = 10) -> dict | None:
@@ -215,9 +229,7 @@ def retrieve_episodic_context(user_input: str, limit: int = 10) -> dict | None:
         )
 
     context_text = "\n".join(text_lines)
-    logger.info(
-        f"[L1.5行程记忆] 检索到 {len(filtered)} 条事件，注入 LLM context"
-    )
+    logger.info(f"[L1.5行程记忆] 检索到 {len(filtered)} 条事件，注入 LLM context")
     return {"text": context_text, "raw": raw_data}
 
 
@@ -228,6 +240,7 @@ def seed_event(
     memory = _get_memory()
     conn = memory.backend._episodic_conn()
     import json as _json
+
     details_json = _json.dumps(details or {}, ensure_ascii=False)
     conn.execute(
         "INSERT INTO events (timestamp, event_type, summary, details, dedup_hash, heat, dedup_count) "
