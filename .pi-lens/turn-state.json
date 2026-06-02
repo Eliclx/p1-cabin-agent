@@ -18,7 +18,7 @@
         }
       ],
       "importsChanged": false,
-      "lastEdit": "2026-05-26T16:12:11.408Z"
+      "lastEdit": "2026-06-01T16:02:36.353Z"
     },
     "project1_cabin_agent/skills/climate/harness.py": {
       "modifiedRanges": [
@@ -84,11 +84,11 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 173
+          "end": 251
         }
       ],
       "importsChanged": false,
-      "lastEdit": "2026-05-28T12:41:15.747Z"
+      "lastEdit": "2026-06-02T10:01:02.771Z"
     },
     "project1_cabin_agent/edge_model.py": {
       "modifiedRanges": [
@@ -143,34 +143,22 @@
     "project1_cabin_agent/skills/registry.py": {
       "modifiedRanges": [
         {
-          "start": 66,
-          "end": 67
-        },
-        {
-          "start": 190,
-          "end": 200
-        },
-        {
-          "start": 495,
-          "end": 522
+          "start": 1,
+          "end": 698
         }
       ],
-      "importsChanged": false,
-      "lastEdit": "2026-05-26T17:04:49.295Z"
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T10:01:03.002Z"
     },
     "project1_cabin_agent/skills/climate/schema.py": {
       "modifiedRanges": [
         {
-          "start": 84,
-          "end": 85
-        },
-        {
-          "start": 87,
-          "end": 87
+          "start": 1,
+          "end": 103
         }
       ],
       "importsChanged": false,
-      "lastEdit": "2026-05-26T17:07:37.780Z"
+      "lastEdit": "2026-06-02T10:01:02.823Z"
     },
     "project1_cabin_agent/nodes/response.py": {
       "modifiedRanges": [
@@ -254,11 +242,19 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 496
+          "end": 544
+        },
+        {
+          "start": 548,
+          "end": 548
+        },
+        {
+          "start": 557,
+          "end": 557
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-05-28T12:42:20.318Z"
+      "lastEdit": "2026-06-02T09:25:57.180Z"
     },
     "project1_cabin_agent/tests/test_corner_cases.py": {
       "modifiedRanges": [
@@ -319,10 +315,150 @@
       ],
       "importsChanged": true,
       "lastEdit": "2026-05-28T13:29:41.306Z"
+    },
+    "project1_cabin_agent/skills/map/tools.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 530
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-01T15:49:55.444Z"
+    },
+    "project1_cabin_agent/memory/__init__.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 44
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T10:23:39.407Z"
+    },
+    "project1_cabin_agent/memory/models.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 112
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T10:24:18.147Z"
+    },
+    "project1_cabin_agent/memory/decay.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 58
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T09:04:26.103Z"
+    },
+    "project1_cabin_agent/memory/backends/__init__.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 8
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T08:53:36.132Z"
+    },
+    "project1_cabin_agent/memory/backends/sqlite_backend.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 509
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T09:04:26.185Z"
+    },
+    "project1_cabin_agent/memory/manager.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 435
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T10:24:18.187Z"
+    },
+    "project1_cabin_agent/tests/test_memory_manager.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 340
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T10:19:42.384Z"
+    },
+    "project1_cabin_agent/nodes/dialogue_state.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 99
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T09:30:02.687Z"
+    },
+    "project1_cabin_agent/nodes/context_builder.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 393
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T09:49:07.554Z"
+    },
+    "project1_cabin_agent/state.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 183
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T09:30:02.810Z"
+    },
+    "project1_cabin_agent/tests/test_dst_context.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 316
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-02T10:22:10.294Z"
+    },
+    "project1_cabin_agent/skills/media/schema.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 60
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T10:01:02.891Z"
+    },
+    "project1_cabin_agent/skills/vehicle/schema.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 37
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-02T10:01:02.950Z"
     }
   },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-05-28T13:29:41.306Z",
-  "sessionId": "lens-mpp6sjvq-8071a6b1"
+  "lastUpdated": "2026-06-02T10:24:18.187Z",
+  "sessionId": "lens-mpwau2do-d9d7938c"
 }

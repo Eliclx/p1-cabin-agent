@@ -42,6 +42,10 @@ from project1_cabin_agent.nodes.episodic_memory import (
     has_temporal_keywords,
 )
 
+from project1_cabin_agent.nodes.context_builder import ContextBuilder
+from project1_cabin_agent.memory import MemoryManager, MemoryConfig
+from project1_cabin_agent.skills.registry import registry as _skill_registry
+
 
 # ── 端侧门控（独立于 _needs_context）──
 
@@ -304,6 +308,16 @@ def intent_classifier(state: CabinAgentState) -> dict:
     active_frames = state.get("active_frames", [])
     episodic_context = None  # Stage 1.5 会设置
 
+    # ===== DST 构建（0ms）=====
+    # 构建 DialogueState + 生成摘要，后续注入 prompt
+    _meta = _skill_registry.get_all_memory_meta()
+    _memory = MemoryManager(MemoryConfig(memory_meta=_meta))
+    _ctx_builder = ContextBuilder(_memory)
+    _ds = _ctx_builder.build_state(state)
+    _dst_summary = _ctx_builder.generate_summary(_ds)
+    if _dst_summary:
+        logger.info(f"[DST] 摘要已生成 ({len(_dst_summary)}字)")
+
     # ===== Stage 0: Slot Carry-Over（0ms）=====
     carried = _try_carry_over(user_input, active_frames)
     if carried:
@@ -423,6 +437,10 @@ def intent_classifier(state: CabinAgentState) -> dict:
     if episodic_context:
         prompt = episodic_context["text"] + "\n\n" + prompt
 
+    # DST 摘要注入（在 episodic 之后、CONDITION_EXAMPLE 之前）
+    if _dst_summary:
+        prompt += "\n\n" + _dst_summary
+
     # 条件分支示例（帮助 LLM 理解 condition 字段的生成格式）
     prompt += CONDITION_EXAMPLE
 
@@ -532,6 +550,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result["episodic_context"] = episodic_context
         result["_oos_flag"] = None
         result["_cross_domain_flag"] = None
+        result["dialogue_state"] = _ds.model_dump()
         return result
 
     except Exception as e:
@@ -540,4 +559,5 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result["episodic_context"] = episodic_context
         result["_oos_flag"] = None
         result["_cross_domain_flag"] = None
+        result["dialogue_state"] = _ds.model_dump()
         return result

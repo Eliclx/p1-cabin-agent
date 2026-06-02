@@ -173,6 +173,35 @@ MAP_BLACKBOARD: dict[str, dict] = {
     },
 }
 
+# 记忆元数据 — 每个 intent 的记忆行为声明（SSOT）
+# memory/manager.py 从 registry 读取，新增 skill 只需在此声明
+MAP_MEMORY: dict[str, dict] = {
+    "navigate": {
+        "log": True,
+        "dedup_key": "destination",  # 用 destination 做 dedup hash
+        "link_key": "destination",  # 同 destination 归入同一组
+        "summary_template": "导航去{destination}",
+        "detail_fields": ["destination", "route_type", "distance", "toll", "duration"],
+    },
+    "search_poi": {
+        "log": True,
+        "dedup_key": "keyword",
+        "link_key": "keyword",
+        "summary_template": "搜索了{keyword}({count}个结果)",
+        "detail_fields": ["keyword", "category"],
+    },
+    "weather": {
+        "log": True,
+        "dedup_key": "city",
+        "link_key": "",  # 天气不按地点链接
+        "summary_template": "查询了{city}天气: {weather}",
+        "detail_fields": ["city", "weather", "temperature"],
+    },
+    "map_query": {
+        "log": False,  # 查询类不记
+    },
+}
+
 # 域信号词：补充 edge_schemas DOMAINS.keywords 没覆盖的词
 MAP_SIGNALS: set[str] = {"回家", "回"}
 

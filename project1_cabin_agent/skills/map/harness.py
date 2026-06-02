@@ -165,6 +165,35 @@ class MapHarness(BaseHarness):
         if "mode" in result and "route_type" not in result:
             result["route_type"] = result["mode"]
 
+        # ── 6b. route_type 中文→英文映射 ──
+        _VALID_ROUTE_TYPES = {"fastest", "shortest", "avoid_highway", "avoid_toll"}
+        rt = result.get("route_type", "")
+        if rt and rt not in _VALID_ROUTE_TYPES:
+            _ROUTE_TYPE_ZH_MAP = {
+                # 不走高速
+                "国道": "avoid_highway",
+                "不走高速": "avoid_highway",
+                "避开高速": "avoid_highway",
+                "避免高速": "avoid_highway",
+                # 不收费
+                "不走收费": "avoid_toll",
+                "免费": "avoid_toll",
+                "不收费": "avoid_toll",
+                "别走收费": "avoid_toll",
+                "省钱": "avoid_toll",
+                "国道（免费）": "avoid_toll",
+                # 最短
+                "最短": "shortest",
+                "最近": "shortest",
+            }
+            mapped = _ROUTE_TYPE_ZH_MAP.get(rt)
+            if mapped:
+                logger.info(f"[slot_infer] route_type 中文映射: '{rt}' → '{mapped}'")
+                result["route_type"] = mapped
+            else:
+                logger.warning(f"[slot_infer] route_type 未知值 '{rt}'，回退 fastest")
+                result["route_type"] = "fastest"
+
         # ── 7. 精确坐标替换: 如果黑板有 POI 坐标，用坐标替换文字 destination ──
         # 避免地名重新地理编码导致路线偏差（同名不同店问题）
         dest = result.get("destination", "")

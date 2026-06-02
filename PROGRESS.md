@@ -310,3 +310,53 @@
 | ✅ 代码修复 | 12 | Phase1(10) + Phase2(V16) + PhaseE(V14) |
 | ✅ won't-fix | 2 | V3(unknown域硬编码合理) + V11(短路规则有 _validate_rules 校验) |
 | ✅ 间接解决 | 2 | V14(DOMAIN_SIGNALS→schema) + V17(mode→route_type 映射统一) |
+
+## ⏭️ Phase 4: DST + 对话策略 (计划中)
+
+> 基于标准 TOD 五层架构差距分析，对标 Rasa CALM
+> 详细计划: ~/Desktop/P1-DST-对话策略升级计划.md
+
+### 架构差距分析
+
+| 层 | 模块 | 现状 | 差距 |
+|----|------|------|------|
+| NLU | 意图识别 | ✅ 三层漏斗 | — |
+| NLU | 槽位抽取 | ✅ LLM+harness | — |
+| NLU | 对话行为(DA) | ❌ 缺 confirm/deny/correction | 🔴 Phase 5 |
+| DST | Belief State | ❌ 无置信度 | 🔴 |
+| DST | Slot Carry-Over | ✅ active_frames | — |
+| DST | Confirmed Facts | ✅ 黑板栈 | — |
+| DPL | Action 选择 | ⚠️ 缺 propose/explain/reroute | 🔴 |
+| DPL | 主动策略 | ❌ 无 Proactive | 🔴 |
+| DPL | Safety Guard | ✅ harness | — |
+| NLG | 回复生成 | ⚠️ 纯拼接 | 🟡 Phase 6 |
+| 记忆 | L1-L3 | ✅ 全有 | — |
+
+### Phase 4 任务列表 (~5h)
+
+| 步骤 | 内容 | 文件 |
+|--------|------|------|
+| 4.1 | DialogueState 数据结构 | nodes/dialogue_state.py (新建) |
+| 4.2 | Context Builder（黑板→摘要） | nodes/context_builder.py (新建) |
+| 4.3 | 对话策略 Policy | nodes/policy.py (新建) |
+| 4.4 | state.py 新增 dialogue_state 字段 | state.py (修改) |
+| 4.5 | intent.py 集成 Context Builder | nodes/intent.py (修改) |
+| 4.6 | pipeline.py 集成 Policy | nodes/pipeline.py (修改) |
+| 4.7 | 测试 + eval 验证零退化 | tests/ |
+
+### Phase 5: 对话行为识别 DA (~3h)
+
+- DA 分类器: confirm/deny/correction/select
+- 跟 Carry-Over 和歧义检测整合
+
+### Phase 6: NLG + Error Recovery (~3h)
+
+- NLG 润色层（基于 dialogue_state）
+- 工具失败重试 + 槽位修复
+
+### Demo 测试发现的 4 个问题
+
+1. "太贵了" → LLM 没设 route_type=avoid_toll
+2. "那就走国道" → LLM 丢 destination（黑板有但不利用）
+3. avoid_highway 跟 fastest 差不多（300.9km/157元 vs 300.3km/165元）
+4. 对话整体机械，没有记忆和主动性

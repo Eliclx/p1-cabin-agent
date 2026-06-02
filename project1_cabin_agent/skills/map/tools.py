@@ -13,6 +13,7 @@ Map Skill 工具层 — 高德 REST API 封装
 - navigation/tools.py → search_poi, navigate, geocode
 - 新增 → map_query, weather
 """
+
 import os
 import requests
 from typing import Optional
@@ -26,6 +27,7 @@ AMAP_BASE = "https://restapi.amap.com/v3"
 
 
 # ── 工具函数 ──────────────────────────────────────────────────────
+
 
 def _is_coord(s: str) -> bool:
     """判断是否是坐标格式 'lng,lat'"""
@@ -61,21 +63,21 @@ def _amap_get(endpoint: str, params: dict, timeout: int = 5) -> Optional[dict]:
         return None
 
 
-def geocode(address: str, city: str = "成都") -> Optional[str]:
+def geocode(address: str, city: str = "") -> Optional[str]:
     """
     地理编码：地名 → 坐标
 
     Args:
         address: 地名（春熙路、天府广场）
-        city: 城市名（默认成都）
+        city: 城市名（可选，不传则全国搜索）
 
     Returns:
         "lng,lat" 坐标字符串，失败返回 None
     """
-    data = _amap_get("/geocode/geo", {
-        "address": address,
-        "city": city,
-    })
+    params = {"address": address}
+    if city:
+        params["city"] = city
+    data = _amap_get("/geocode/geo", params)
     if not data:
         return None
 
@@ -98,10 +100,13 @@ def _reverse_geocode(location: str) -> Optional[dict]:
     Returns:
         {"province": ..., "city": ..., "district": ..., "address": ...}
     """
-    data = _amap_get("/geocode/regeo", {
-        "location": location,
-        "extensions": "base",
-    })
+    data = _amap_get(
+        "/geocode/regeo",
+        {
+            "location": location,
+            "extensions": "base",
+        },
+    )
     if not data:
         return None
 
@@ -118,6 +123,7 @@ def _reverse_geocode(location: str) -> Optional[dict]:
 # ═══════════════════════════════════════════════════════════════
 # Intent 1: search_poi — 搜索周边设施
 # ═══════════════════════════════════════════════════════════════
+
 
 def search_poi(
     keyword: str,
@@ -161,14 +167,16 @@ def search_poi(
     results = []
     for p in pois:
         loc = p.get("location", "0,0").split(",")
-        results.append({
-            "name": p["name"],
-            "lng": float(loc[0]),
-            "lat": float(loc[1]),
-            "distance": int(float(p.get("distance", 0))),
-            "address": p.get("address", ""),
-            "rating": float(p.get("biz_ext", {}).get("rating", 0) or 0),
-        })
+        results.append(
+            {
+                "name": p["name"],
+                "lng": float(loc[0]),
+                "lat": float(loc[1]),
+                "distance": int(float(p.get("distance", 0))),
+                "address": p.get("address", ""),
+                "rating": float(p.get("biz_ext", {}).get("rating", 0) or 0),
+            }
+        )
 
     logger.info(f"[高德] 周边搜索 {keyword}: {len(results)}个结果")
     return {"success": True, "data": {"results": results, "count": len(results)}}
@@ -177,6 +185,7 @@ def search_poi(
 # ═══════════════════════════════════════════════════════════════
 # Intent 2: navigate — 导航到目的地
 # ═══════════════════════════════════════════════════════════════
+
 
 def navigate(
     destination: str,
@@ -208,18 +217,21 @@ def navigate(
 
     # 高德路线策略映射
     strategy_map = {
-        "fastest": 2,        # 速度最快
-        "shortest": 3,       # 距离最短
+        "fastest": 2,  # 速度最快
+        "shortest": 3,  # 距离最短
         "avoid_highway": 4,  # 不走高速
-        "avoid_toll": 9,     # 不走收费
+        "avoid_toll": 9,  # 不走收费
     }
     strategy = strategy_map.get(route_type, 2)
 
-    data = _amap_get("/direction/driving", {
-        "origin": origin,
-        "destination": destination,
-        "strategy": strategy,
-    })
+    data = _amap_get(
+        "/direction/driving",
+        {
+            "origin": origin,
+            "destination": destination,
+            "strategy": strategy,
+        },
+    )
     if data is None:
         return {"success": False, "error": "高德 API 请求失败"}
 
@@ -246,6 +258,7 @@ def navigate(
 # ═══════════════════════════════════════════════════════════════
 # Intent 3: map_query — 地图信息查询
 # ═══════════════════════════════════════════════════════════════
+
 
 def map_query(
     query_type: str = "location",
@@ -275,11 +288,14 @@ def map_query(
         addr_info = _reverse_geocode(location)
         if not addr_info:
             return {"success": False, "error": "逆地理编码失败"}
-        return {"success": True, "data": {
-            "query_type": "location",
-            "location": location,
-            **addr_info,
-        }}
+        return {
+            "success": True,
+            "data": {
+                "query_type": "location",
+                "location": location,
+                **addr_info,
+            },
+        }
 
     # ── 距离查询 ──
     if query_type == "distance":
@@ -292,11 +308,14 @@ def map_query(
                 return {"success": False, "error": f"无法解析目标地点: {target}"}
             destination = dest_coord
 
-        data = _amap_get("/distance", {
-            "origins": location,
-            "destination": destination,
-            "type": "1",  # 驾车距离
-        })
+        data = _amap_get(
+            "/distance",
+            {
+                "origins": location,
+                "destination": destination,
+                "type": "1",  # 驾车距离
+            },
+        )
         if data is None:
             return {"success": False, "error": "高德距离查询失败"}
 
@@ -306,12 +325,15 @@ def map_query(
 
         dist_m = int(float(results[0].get("distance", 0)))
         dist_km = round(dist_m / 1000, 1)
-        return {"success": True, "data": {
-            "query_type": "distance",
-            "target": target or destination,
-            "distance_m": dist_m,
-            "distance_km": dist_km,
-        }}
+        return {
+            "success": True,
+            "data": {
+                "query_type": "distance",
+                "target": target or destination,
+                "distance_m": dist_m,
+                "distance_km": dist_km,
+            },
+        }
 
     # ── 路况查询 ──
     if query_type == "traffic":
@@ -323,12 +345,15 @@ def map_query(
                 return {"success": False, "error": f"无法解析目标地点: {target}"}
             destination = dest_coord
 
-        data = _amap_get("/direction/driving", {
-            "origin": location,
-            "destination": destination,
-            "strategy": 2,
-            "extensions": "all",
-        })
+        data = _amap_get(
+            "/direction/driving",
+            {
+                "origin": location,
+                "destination": destination,
+                "strategy": 2,
+                "extensions": "all",
+            },
+        )
         if data is None:
             return {"success": False, "error": "高德路况查询失败"}
 
@@ -351,13 +376,16 @@ def map_query(
         duration_min = int(round(float(p.get("duration", 0)) / 60, 0))
         distance_km = round(float(p.get("distance", 0)) / 1000, 1)
 
-        return {"success": True, "data": {
-            "query_type": "traffic",
-            "target": target or destination,
-            "distance_km": distance_km,
-            "duration_min": duration_min,
-            "traffic": traffic_desc,
-        }}
+        return {
+            "success": True,
+            "data": {
+                "query_type": "traffic",
+                "target": target or destination,
+                "distance_km": distance_km,
+                "duration_min": duration_min,
+                "traffic": traffic_desc,
+            },
+        }
 
     # ── 预计到达时间 ──
     if query_type == "eta":
@@ -369,11 +397,14 @@ def map_query(
                 return {"success": False, "error": f"无法解析目标地点: {target}"}
             destination = dest_coord
 
-        data = _amap_get("/direction/driving", {
-            "origin": location,
-            "destination": destination,
-            "strategy": 2,
-        })
+        data = _amap_get(
+            "/direction/driving",
+            {
+                "origin": location,
+                "destination": destination,
+                "strategy": 2,
+            },
+        )
         if data is None:
             return {"success": False, "error": "高德路径规划失败"}
 
@@ -386,12 +417,15 @@ def map_query(
         duration_min = int(round(float(p.get("duration", 0)) / 60, 0))
         distance_km = round(float(p.get("distance", 0)) / 1000, 1)
 
-        return {"success": True, "data": {
-            "query_type": "eta",
-            "target": target or destination,
-            "eta_min": duration_min,
-            "distance_km": distance_km,
-        }}
+        return {
+            "success": True,
+            "data": {
+                "query_type": "eta",
+                "target": target or destination,
+                "eta_min": duration_min,
+                "distance_km": distance_km,
+            },
+        }
 
     return {"success": False, "error": f"不支持的 query_type: {query_type}"}
 
@@ -399,6 +433,7 @@ def map_query(
 # ═══════════════════════════════════════════════════════════════
 # Intent 4: weather — 天气查询
 # ═══════════════════════════════════════════════════════════════
+
 
 def weather(
     city: Optional[str] = None,
@@ -426,15 +461,21 @@ def weather(
                 # 高德天气 API 接受城市名或 adcode
                 city = addr_info.get("city") or addr_info.get("province", "")
         if not city:
-            return {"success": False, "error": "缺少城市信息，请告诉我您想查询哪个城市的天气"}
+            return {
+                "success": False,
+                "error": "缺少城市信息，请告诉我您想查询哪个城市的天气",
+            }
 
     # 高德 extensions: base=实况天气, all=预报天气
     extensions = "base" if date in ("今天",) else "all"
 
-    data = _amap_get("/weather/weatherInfo", {
-        "city": city,
-        "extensions": extensions,
-    })
+    data = _amap_get(
+        "/weather/weatherInfo",
+        {
+            "city": city,
+            "extensions": extensions,
+        },
+    )
     if data is None:
         return {"success": False, "error": "高德天气 API 请求失败"}
 
@@ -452,7 +493,9 @@ def weather(
             "humidity": w.get("humidity", ""),
             "date": "今天",
         }
-        logger.info(f"[高德] 天气查询 {city}: {result['weather']} {result['temperature']}°C")
+        logger.info(
+            f"[高德] 天气查询 {city}: {result['weather']} {result['temperature']}°C"
+        )
         return {"success": True, "data": result}
 
     if extensions == "all" and forecasts:
@@ -478,7 +521,9 @@ def weather(
                 "wind_power": c.get("daypower", ""),
                 "date": target_date,
             }
-            logger.info(f"[高德] 天气预报 {city}: {result['weather']} {result['temperature_lo']}~{result['temperature_hi']}°C")
+            logger.info(
+                f"[高德] 天气预报 {city}: {result['weather']} {result['temperature_lo']}~{result['temperature_hi']}°C"
+            )
             return {"success": True, "data": result}
 
     return {"success": False, "error": f"未找到{city}的天气信息"}

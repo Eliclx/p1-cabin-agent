@@ -14,6 +14,7 @@ Skill 注册中心 — 自动扫描 skills/ 目录，按需加载
 
 全局单例：registry = SkillRegistry(Path(__file__).parent)
 """
+
 from __future__ import annotations
 
 import importlib
@@ -42,9 +43,11 @@ _REQUIRED_FILES = ("schema.py", "tools.py", "harness.py", "examples.yaml")
 
 # ── 数据结构 ───────────────────────────────────────────────────────
 
+
 @dataclass
 class IntentSpec:
     """单个 intent 的描述信息"""
+
     name: str
     domain: str
     description: str
@@ -55,6 +58,7 @@ class IntentSpec:
 @dataclass
 class _SkillEntry:
     """单个 skill 目录的注册信息（内部使用）"""
+
     domain: str
     path: Path
     intents: dict[str, IntentSpec] = field(default_factory=dict)
@@ -64,12 +68,14 @@ class _SkillEntry:
     examples: dict[str, list[dict]] = field(default_factory=dict)
     blackboard: dict[str, dict] = field(default_factory=dict)
     domain_signals: set[str] = field(default_factory=set)
+    memory_meta: dict[str, dict] = field(default_factory=dict)  # 记忆元数据（SSOT）
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
 
 
 # ── SkillRegistry ─────────────────────────────────────────────────
+
 
 class SkillRegistry:
     """
@@ -146,7 +152,9 @@ class SkillRegistry:
 
         # 查找 {DOMAIN}_INTENTS 字典
         attr_name = f"{domain.upper()}_INTENTS"
-        intents_dict: dict[str, type[BaseModel]] | None = getattr(schema_mod, attr_name, None)
+        intents_dict: dict[str, type[BaseModel]] | None = getattr(
+            schema_mod, attr_name, None
+        )
         if intents_dict is None:
             # 尝试遍历模块属性找 *_INTENTS
             for attr in dir(schema_mod):
@@ -197,6 +205,10 @@ class SkillRegistry:
         if signals and not isinstance(signals, set):
             signals = set(signals)
         entry.domain_signals = signals
+
+        # 自动发现 {DOMAIN}_MEMORY（记忆元数据声明）
+        mem_attr = f"{domain.upper()}_MEMORY"
+        entry.memory_meta = getattr(schema_mod, mem_attr, {})
 
         return True
 
@@ -267,7 +279,9 @@ class SkillRegistry:
         self._try_load_class_harness(entry, harness_mod)
         entry.harness_loaded = True
 
-    def _try_load_class_harness(self, entry: _SkillEntry, harness_mod: ModuleType) -> None:
+    def _try_load_class_harness(
+        self, entry: _SkillEntry, harness_mod: ModuleType
+    ) -> None:
         """兼容旧的 BaseHarness 子类模式（如 ClimateHarness）"""
         try:
             from project1_cabin_agent.harness.base import BaseHarness
@@ -367,7 +381,9 @@ class SkillRegistry:
         if entry is None:
             return None
         # 先用原名查，再用别名查
-        return entry.intents.get(intent) or entry.intents.get(self._resolve_alias(intent))
+        return entry.intents.get(intent) or entry.intents.get(
+            self._resolve_alias(intent)
+        )
 
     def get_skill_for_intent(self, intent: str) -> str | None:
         """
@@ -520,6 +536,24 @@ class SkillRegistry:
             if entry.domain_signals
         }
 
+    def get_memory_meta(self, intent: str) -> dict | None:
+        """获取 intent 的记忆元数据声明"""
+        domain = self._intent_to_domain.get(intent)
+        if not domain:
+            return None
+        entry = self._skills.get(domain)
+        if not entry:
+            return None
+        return entry.memory_meta.get(intent)
+
+    def get_all_memory_meta(self) -> dict[str, dict]:
+        """获取所有 intent 的记忆元数据（扁平化）"""
+        result = {}
+        for entry in self._skills.values():
+            for intent_name, meta in entry.memory_meta.items():
+                result[intent_name] = meta
+        return result
+
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────
 
     def get_domain_for_intent(self, intent: str) -> str | None:
@@ -556,7 +590,9 @@ class SkillRegistry:
             return None
 
         # 查找 {Domain}Harness 类
-        class_name = "".join(part.capitalize() for part in domain.split("_")) + "Harness"
+        class_name = (
+            "".join(part.capitalize() for part in domain.split("_")) + "Harness"
+        )
         harness_cls = getattr(harness_mod, class_name, None)
         if harness_cls is not None:
             try:
@@ -619,6 +655,7 @@ registry = SkillRegistry(Path(__file__).parent)
 
 # ── 模块级函数（兼容旧调用方直接 import）───────────────────────────
 # 旧代码: from project1_cabin_agent.skills.registry import is_domain_migrated, get_harness, ...
+
 
 def is_domain_migrated(domain: str) -> bool:
     """兼容旧接口"""
