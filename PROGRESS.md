@@ -258,7 +258,7 @@
 | intent 总数 | 11（skill）+ 4 特殊(chitchat/clarify/direct_answer/no_support) |
 | harness 单测 | 104/104 全绿 |
 | 多轮端到端 | 5/5 全绿 |
-| 全量测试 | 192/197 (97.5%)，5个预先存在失败 |
+| 全量测试 | 331/335 (98.8%)，4个失败(2 pre-existing + 2 LLM flaky) |
 | **eval 336条** | **92.0%** 零退化 |
 | SSOT 已解决 | 16/16 全部闭合 |
 | pipeline.py | ~770行（从 ~1040行缩减） |
@@ -311,10 +311,78 @@
 | ✅ won't-fix | 2 | V3(unknown域硬编码合理) + V11(短路规则有 _validate_rules 校验) |
 | ✅ 间接解决 | 2 | V14(DOMAIN_SIGNALS→schema) + V17(mode→route_type 映射统一) |
 
-## ⏭️ Phase 4: DST + 对话策略 (计划中)
+### Phase 4: 记忆系统 + DST + 对话策略 (进行中)
 
-> 基于标准 TOD 五层架构差距分析，对标 Rasa CALM
-> 详细计划: ~/Desktop/P1-DST-对话策略升级计划.md
+> 提交范围: 04e10e8 → 688dbe9 → eae71c8
+> 设计文档: docs/memory-system-design.md
+
+### 调研基础
+
+- MemoryOS (BAI-LAB) — heat-based evolution trigger
+- A-MEM (agiresearch) — agent-centric memory
+- MemOS (MemTensor) — time decay formula, recency scoring
+
+### Phase 4 任务列表
+
+| 步骤 | 内容 | 状态 | 测试 |
+|--------|------|------|------|
+| 4A | MemoryManager (SQLite backend, dedup, heat, decay, preferences, recall) | ✅ 04e10e8 | 27/27 |
+| 4B | DST + ContextBuilder (态度推断, 目标追踪, 摘要生成) | ✅ 04e10e8 | 29/29 |
+| — | SSOT修复: context_builder 硬编码 → registry API | ✅ 04e10e8 | — |
+| — | Skill-Memory解耦: 声明式 {DOMAIN}_MEMORY + 依赖注入 | ✅ 04e10e8 | 22/22 集成 |
+| 4E | 旧模块迁移: episodic/user_profile → MemoryManager 薄代理 | ✅ 688dbe9 | 38/38 |
+| 4E补 | test_episodic_memory 修 start_navigation→navigate + mock时间 | ✅ eae71c8 | 38/38 |
+| 4C | Policy 对话策略 (nodes/policy.py) | ⬅️ 下一步 | |
+| 4D | Proactive 主动引擎 (nodes/proactive.py) | 待做 | |
+| 4F | Memory evolution (异步 LLM) | 待做 | |
+
+### Phase 4A: MemoryManager ✅
+
+**文件清单：**
+- `memory/models.py` — Event, Preference, FrequentPlace, MemoryConfig, MemoryHit
+- `memory/decay.py` — score_with_decay, time_decay (half-life 14d, α=0.3)
+- `memory/backends/sqlite_backend.py` — SqliteBackend (双 DB: events + preferences)
+- `memory/manager.py` — 统一入口: log/query/recall/preference/lifecycle
+
+**核心设计决策：**
+- 去重: `event_type:dedup_key_value` hash（O(1) 确定性，不用 embedding）
+- 时间衰减: `heat × (0.3 + 0.7 × 0.5^(age/14))`
+- 进化触发: heat 累积 > 10.0 时才调 LLM
+- 偏好: confidence + source 区分 slot_extraction vs llm_analysis
+
+### Phase 4B: DST + ContextBuilder ✅
+
+**文件清单：**
+- `nodes/dialogue_state.py` — DialogueState, UserAttitude, ActiveGoal
+- `nodes/context_builder.py` — ContextBuilder (态度推断, 目标追踪, 记忆摘要)
+- `state.py` — 新增 `dialogue_state: Optional[dict]`
+- `nodes/intent.py` — DST 构建 + 摘要注入 prompt
+
+### SSOT + Skill-Memory 解耦 ✅
+
+**依赖方向：**
+```
+skills/schema.py  ← 声明 {DOMAIN}_MEMORY (SSOT)
+      ↓
+skills/registry.py ← 自动发现 + get_memory_meta()
+      ↓ push
+调用方 (intent.py)
+      ↓ inject via MemoryConfig
+memory/manager.py  ← 零外部 import, 完全独立
+```
+
+**memory/ 模块独立性验证：**
+- 对外 import: 零（不 import skills/nodes/任何上层模块）
+- 新增 skill: 只需在 schema.py 加 `{DOMAIN}_MEMORY` 声明，memory 代码零改动
+
+### Phase 4E: 旧模块迁移 ✅
+
+**改动：**
+- `episodic_memory.py` → 薄代理（log/query/seed/clear 委托 MemoryManager）
+- `user_profile.py` → 薄代理（save/get preference 委托 MemoryManager）
+- `memory/_instance.py` → 全局单例 + reset_memory()（测试注入点）
+- `intent.py` → `_get_memory_instance()` 取单例，不再每次 MemoryManager()
+- 上层调用方（response.py / pipeline.py / context_enrich.py）零改动
 
 ### 架构差距分析
 
@@ -323,26 +391,15 @@
 | NLU | 意图识别 | ✅ 三层漏斗 | — |
 | NLU | 槽位抽取 | ✅ LLM+harness | — |
 | NLU | 对话行为(DA) | ❌ 缺 confirm/deny/correction | 🔴 Phase 5 |
-| DST | Belief State | ❌ 无置信度 | 🔴 |
+| DST | Belief State | ✅ DialogueState (Phase 4B) | — |
 | DST | Slot Carry-Over | ✅ active_frames | — |
 | DST | Confirmed Facts | ✅ 黑板栈 | — |
-| DPL | Action 选择 | ⚠️ 缺 propose/explain/reroute | 🔴 |
-| DPL | 主动策略 | ❌ 无 Proactive | 🔴 |
+| DPL | Action 选择 | ⚠️ 缺 propose/explain/reroute | 🔴 Phase 4C |
+| DPL | 主动策略 | ❌ 无 Proactive | 🔴 Phase 4D |
 | DPL | Safety Guard | ✅ harness | — |
 | NLG | 回复生成 | ⚠️ 纯拼接 | 🟡 Phase 6 |
-| 记忆 | L1-L3 | ✅ 全有 | — |
-
-### Phase 4 任务列表 (~5h)
-
-| 步骤 | 内容 | 文件 |
-|--------|------|------|
-| 4.1 | DialogueState 数据结构 | nodes/dialogue_state.py (新建) |
-| 4.2 | Context Builder（黑板→摘要） | nodes/context_builder.py (新建) |
-| 4.3 | 对话策略 Policy | nodes/policy.py (新建) |
-| 4.4 | state.py 新增 dialogue_state 字段 | state.py (修改) |
-| 4.5 | intent.py 集成 Context Builder | nodes/intent.py (修改) |
-| 4.6 | pipeline.py 集成 Policy | nodes/pipeline.py (修改) |
-| 4.7 | 测试 + eval 验证零退化 | tests/ |
+| 记忆 | L1-L3 | ✅ MemoryManager (Phase 4A/4E) | — |
+| 记忆 | 进化 | ❌ 无 async LLM | 🔴 Phase 4F |
 
 ### Phase 5: 对话行为识别 DA (~3h)
 
