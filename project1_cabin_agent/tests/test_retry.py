@@ -35,7 +35,10 @@ class TestClassifyError:
         assert classify_error("network unreachable", {}) == ErrorKind.NETWORK
 
     def test_api_error_from_tool_result(self):
-        assert classify_error("", {"success": False, "error": "API失败"}) == ErrorKind.API_ERROR
+        assert (
+            classify_error("", {"success": False, "error": "API失败"})
+            == ErrorKind.API_ERROR
+        )
 
     def test_empty_result_from_tool_result(self):
         result = {"success": True, "data": {"results": [], "count": 0}}
@@ -46,8 +49,14 @@ class TestClassifyError:
         assert classify_error("", result) == ErrorKind.EMPTY_RESULT
 
     def test_invalid_input(self):
-        assert classify_error("", {"status": "error", "error": "无法解析目的地"}) == ErrorKind.INVALID_INPUT
-        assert classify_error("", {"status": "error", "error": "缺少位置坐标"}) == ErrorKind.INVALID_INPUT
+        assert (
+            classify_error("", {"status": "error", "error": "无法解析目的地"})
+            == ErrorKind.INVALID_INPUT
+        )
+        assert (
+            classify_error("", {"status": "error", "error": "缺少位置坐标"})
+            == ErrorKind.INVALID_INPUT
+        )
 
     def test_unknown(self):
         assert classify_error("", {}) == ErrorKind.UNKNOWN
@@ -62,7 +71,9 @@ class TestClassifyError:
 class TestMapRetry:
     def test_search_poi_empty_expand_radius(self):
         result = decide_retry(
-            "map", "search_poi", "",
+            "map",
+            "search_poi",
+            "",
             {"success": True, "data": {"results": [], "count": 0}},
             {"radius": 3000},
         )
@@ -73,7 +84,9 @@ class TestMapRetry:
     def test_search_poi_empty_large_radius_no_double(self):
         """已经扩大过就不再扩大"""
         result = decide_retry(
-            "map", "search_poi", "",
+            "map",
+            "search_poi",
+            "",
             {"success": True, "data": {"results": [], "count": 0}},
             {"radius": 30000},
         )
@@ -82,21 +95,31 @@ class TestMapRetry:
 
     def test_timeout_retry(self):
         result = decide_retry(
-            "map", "navigate", "timeout", {}, {"destination": "重庆"},
+            "map",
+            "navigate",
+            "timeout",
+            {},
+            {"destination": "重庆"},
         )
         assert result.action == "retry"
         assert result.error_kind == ErrorKind.TIMEOUT
 
     def test_network_retry(self):
         result = decide_retry(
-            "map", "navigate", "ConnectionError", {}, {"destination": "重庆"},
+            "map",
+            "navigate",
+            "ConnectionError",
+            {},
+            {"destination": "重庆"},
         )
         assert result.action == "retry"
         assert result.error_kind == ErrorKind.NETWORK
 
     def test_geocode_invalid_no_retry(self):
         result = decide_retry(
-            "map", "navigate", "",
+            "map",
+            "navigate",
+            "",
             {"status": "error", "error": "无法解析目的地: xyz"},
             {"destination": "xyz"},
         )
@@ -105,7 +128,9 @@ class TestMapRetry:
 
     def test_api_error_friendly(self):
         result = decide_retry(
-            "map", "weather", "",
+            "map",
+            "weather",
+            "",
             {"success": False, "error": "API请求失败"},
             {"city": "成都"},
         )
@@ -115,7 +140,12 @@ class TestMapRetry:
     def test_attempt_2_no_retry(self):
         """第二次不再重试"""
         result = decide_retry(
-            "map", "navigate", "timeout", {}, {"destination": "重庆"}, attempt=2,
+            "map",
+            "navigate",
+            "timeout",
+            {},
+            {"destination": "重庆"},
+            attempt=2,
         )
         assert result.action == "friendly_error"
         assert "已重试" in result.reason
@@ -129,7 +159,9 @@ class TestMapRetry:
 class TestClimateRetry:
     def test_ac_error_friendly(self):
         result = decide_retry(
-            "climate", "ac_control", "hardware error",
+            "climate",
+            "ac_control",
+            "hardware error",
             {"status": "error", "error": "硬件无响应"},
             {"action": "on", "temperature": 24},
         )
@@ -138,24 +170,33 @@ class TestClimateRetry:
 
     def test_window_error_friendly(self):
         result = decide_retry(
-            "climate", "window_control", "error",
-            {"status": "error"}, {"action": "open"},
+            "climate",
+            "window_control",
+            "error",
+            {"status": "error"},
+            {"action": "open"},
         )
         assert result.action == "friendly_error"
         assert "车窗" in result.friendly_message
 
     def test_light_error_friendly(self):
         result = decide_retry(
-            "climate", "light_control", "error",
-            {"status": "error"}, {},
+            "climate",
+            "light_control",
+            "error",
+            {"status": "error"},
+            {},
         )
         assert result.action == "friendly_error"
         assert "灯光" in result.friendly_message
 
     def test_seat_error_friendly(self):
         result = decide_retry(
-            "climate", "seat_control", "error",
-            {"status": "error"}, {},
+            "climate",
+            "seat_control",
+            "error",
+            {"status": "error"},
+            {},
         )
         assert result.action == "friendly_error"
         assert "座椅" in result.friendly_message
@@ -169,7 +210,11 @@ class TestClimateRetry:
 class TestUnknownDomain:
     def test_unknown_domain_friendly_error(self):
         result = decide_retry(
-            "unknown", "test_intent", "some error", {}, {},
+            "unknown",
+            "test_intent",
+            "some error",
+            {},
+            {},
         )
         assert result.action == "friendly_error"
         assert result.friendly_message  # 通用友好信息
@@ -185,6 +230,7 @@ class TestFriendlyErrors:
     def test_all_error_kinds_have_message(self, kind):
         """每种错误类型都有对应的友好提示"""
         from project1_cabin_agent.nodes.retry import _FRIENDLY_ERRORS
+
         assert kind in _FRIENDLY_ERRORS
         assert len(_FRIENDLY_ERRORS[kind]) > 0
 

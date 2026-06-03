@@ -13,7 +13,11 @@ from project1_cabin_agent.nodes.retry import ErrorKind, RetryAction
 
 
 def rule_search_poi_expand_radius(
-    intent: str, error_kind: ErrorKind, error: str, tool_result: dict, slots: dict,
+    intent: str,
+    error_kind: ErrorKind,
+    error: str,
+    tool_result: dict,
+    slots: dict,
 ) -> RetryAction | None:
     """search_poi 空结果 → 扩大半径 3 倍重试"""
     if intent != "search_poi":
@@ -33,7 +37,11 @@ def rule_search_poi_expand_radius(
 
 
 def rule_api_timeout_retry(
-    intent: str, error_kind: ErrorKind, error: str, tool_result: dict, slots: dict,
+    intent: str,
+    error_kind: ErrorKind,
+    error: str,
+    tool_result: dict,
+    slots: dict,
 ) -> RetryAction | None:
     """超时 → 同参数重试 1 次"""
     if error_kind != ErrorKind.TIMEOUT:
@@ -52,7 +60,11 @@ def rule_api_timeout_retry(
 
 
 def rule_network_retry(
-    intent: str, error_kind: ErrorKind, error: str, tool_result: dict, slots: dict,
+    intent: str,
+    error_kind: ErrorKind,
+    error: str,
+    tool_result: dict,
+    slots: dict,
 ) -> RetryAction | None:
     """网络错误 → 同参数重试 1 次"""
     if error_kind != ErrorKind.NETWORK:
@@ -67,13 +79,19 @@ def rule_network_retry(
 
 
 def rule_geocode_invalid_input(
-    intent: str, error_kind: ErrorKind, error: str, tool_result: dict, slots: dict,
+    intent: str,
+    error_kind: ErrorKind,
+    error: str,
+    tool_result: dict,
+    slots: dict,
 ) -> RetryAction | None:
     """geocode 无法解析地名 → 友好提示（不重试）"""
     if error_kind != ErrorKind.INVALID_INPUT:
         return None
     # error 可能在异常信息或 tool_result.error 里
-    combined = (error or "") + (tool_result.get("error", "") if isinstance(tool_result, dict) else "")
+    combined = (error or "") + (
+        tool_result.get("error", "") if isinstance(tool_result, dict) else ""
+    )
     if "无法解析" not in combined and "缺少" not in combined:
         return None
 

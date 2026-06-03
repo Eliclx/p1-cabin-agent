@@ -75,7 +75,11 @@ def classify_error(error: str, tool_result: dict) -> ErrorKind:
 
     if "timeout" in error_lower:
         return ErrorKind.TIMEOUT
-    if "connection" in error_lower or "network" in error_lower or "connect" in error_lower:
+    if (
+        "connection" in error_lower
+        or "network" in error_lower
+        or "connect" in error_lower
+    ):
         return ErrorKind.NETWORK
     if "json" in error_lower or "parse" in error_lower:
         return ErrorKind.API_ERROR
@@ -153,7 +157,7 @@ def decide_retry(
             action="friendly_error",
             friendly_message=friendly,
             error_kind=error_kind,
-            reason=f"已重试{attempt-1}次，不再重试",
+            reason=f"已重试{attempt - 1}次，不再重试",
         )
 
     # ── 1. Per-domain 重试规则（从 registry 加载）──

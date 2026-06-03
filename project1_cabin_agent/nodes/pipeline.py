@@ -317,7 +317,12 @@ def _build_clarify_reply(candidates: list) -> str:
 
 
 def _try_retry(
-    domain: str, intent: str, error: str, tool_result: dict, slots: dict, attempt: int,
+    domain: str,
+    intent: str,
+    error: str,
+    tool_result: dict,
+    slots: dict,
+    attempt: int,
 ):
     """best-effort 调用 retry 引擎，失败返回 None"""
     try:
@@ -561,9 +566,7 @@ async def _handle_skill_task(
     for attempt in range(1, max_attempts + 1):
         try:
             if hasattr(tool_fn, "ainvoke"):
-                result = await asyncio.wait_for(
-                    tool_fn.ainvoke(exec_slots), timeout=8
-                )
+                result = await asyncio.wait_for(tool_fn.ainvoke(exec_slots), timeout=8)
             else:
                 result = await asyncio.wait_for(
                     asyncio.get_event_loop().run_in_executor(
@@ -575,16 +578,22 @@ async def _handle_skill_task(
             break  # 成功则跳出
 
         except asyncio.TimeoutError:
-            logger.warning(f"[skill_task] 工具超时 (attempt {attempt}): {domain}.{intent}")
+            logger.warning(
+                f"[skill_task] 工具超时 (attempt {attempt}): {domain}.{intent}"
+            )
             retry = _try_retry(domain, intent, "timeout", {}, slots, attempt)
             if retry:
                 exec_slots.update(retry.modified_slots)
                 logger.info(f"[retry] 重试参数: {retry.modified_slots}")
                 continue
             return _make_result(
-                task_id, intent,
+                task_id,
+                intent,
                 retry.friendly_message if retry else "操作超时，请稍后再试",
-                task, msgs, status="error", error="timeout",
+                task,
+                msgs,
+                status="error",
+                error="timeout",
             )
 
         except Exception as e:
@@ -601,20 +610,33 @@ async def _handle_skill_task(
             if not post_result.valid:
                 fallback_reply = harness.format_response({"status": "error"})
                 return _make_result(
-                    task_id, intent, fallback_reply, task, msgs,
-                    status="error", error=str(e),
+                    task_id,
+                    intent,
+                    fallback_reply,
+                    task,
+                    msgs,
+                    status="error",
+                    error=str(e),
                 )
             return _make_result(
-                task_id, intent,
+                task_id,
+                intent,
                 retry.friendly_message if retry else "操作过程中发生错误",
-                task, msgs, status="error", error=str(e),
+                task,
+                msgs,
+                status="error",
+                error=str(e),
             )
 
     # ── 4.5 post_validate 空结果 retry ──
     # 工具执行成功但结果为空（如 search_poi 无结果），走 retry
     if tool_result is not None:
         post_result = harness.post_validate(tool_result, ctx)
-        if not post_result.valid and not post_result.need_confirm and not post_result.need_clarify:
+        if (
+            not post_result.valid
+            and not post_result.need_confirm
+            and not post_result.need_clarify
+        ):
             # API 失败兜底
             retry = _try_retry(domain, intent, "", tool_result, slots, 1)
             if retry and retry.action == "retry":
@@ -639,8 +661,13 @@ async def _handle_skill_task(
                     pass  # 重试失败，用原始结果继续
             elif retry and retry.action == "friendly_error":
                 return _make_result(
-                    task_id, intent, retry.friendly_message, task, msgs,
-                    tool_result=tool_result, status="error",
+                    task_id,
+                    intent,
+                    retry.friendly_message,
+                    task,
+                    msgs,
+                    tool_result=tool_result,
+                    status="error",
                 )
     else:
         # 不应该走到这，安全兜底

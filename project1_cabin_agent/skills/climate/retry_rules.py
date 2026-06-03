@@ -11,7 +11,11 @@ from project1_cabin_agent.nodes.retry import ErrorKind, RetryAction
 
 
 def rule_climate_friendly_error(
-    intent: str, error_kind: ErrorKind, error: str, tool_result: dict, slots: dict,
+    intent: str,
+    error_kind: ErrorKind,
+    error: str,
+    tool_result: dict,
+    slots: dict,
 ) -> RetryAction | None:
     """climate 失败 → 友好提示（不重试，硬件指令重试无意义）"""
     if intent not in ("ac_control", "window_control", "light_control", "seat_control"):

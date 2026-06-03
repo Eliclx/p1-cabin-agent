@@ -31,3 +31,6 @@ Thumbs.db
 
 # pytest
 .pytest_cache/
+
+# Ruff cache
+.ruff_cache/
