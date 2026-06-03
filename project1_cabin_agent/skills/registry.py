@@ -72,6 +72,7 @@ class _SkillEntry:
     policy_rules: list = field(default_factory=list)  # per-domain 策略规则
     proactive_rules: list = field(default_factory=list)  # per-domain 主动规则
     action_formatters: dict = field(default_factory=dict)  # per-domain action 转换
+    da_rules: list = field(default_factory=list)  # per-domain DA 规则
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
@@ -248,6 +249,18 @@ class SkillRegistry:
             entry.action_formatters = getattr(act_mod, act_attr, {})
         except (ImportError, AttributeError):
             pass  # 域没有 action 转换，正常
+
+        # 自动发现 DA 规则（per-domain）
+        try:
+            from importlib import import_module
+
+            da_mod = import_module(
+                f"project1_cabin_agent.skills.{domain}.da_rules"
+            )
+            da_attr = f"{domain.upper()}_DA_RULES"
+            entry.da_rules = getattr(da_mod, da_attr, [])
+        except (ImportError, AttributeError):
+            pass  # 域没有 DA 规则，正常
 
         return True
 
@@ -634,6 +647,20 @@ class SkillRegistry:
         for entry in self._skills.values():
             result.update(entry.action_formatters)
         return result
+
+    def get_da_rules(self, domain: str) -> list:
+        """获取域的 DA 规则"""
+        entry = self._skills.get(domain)
+        if not entry:
+            return []
+        return entry.da_rules
+
+    def get_all_da_rules(self) -> list:
+        """获取所有域的 DA 规则"""
+        rules = []
+        for entry in self._skills.values():
+            rules.extend(entry.da_rules)
+        return rules
 
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────
 

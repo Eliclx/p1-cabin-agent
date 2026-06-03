@@ -33,6 +33,7 @@ from project1_cabin_agent.nodes.message_utils import (
 from project1_cabin_agent.nodes.post_rules import _try_carry_over, _needs_context
 from project1_cabin_agent.nodes.post_rules import _detect_context_bleeding
 from project1_cabin_agent.nodes.post_rules import _detect_ambiguity
+from project1_cabin_agent.nodes.da import classify_dialogue_act, DialogueAct
 from project1_cabin_agent.nodes.intent_slots import (
     _validate_slots,
     _create_fallback_result,
@@ -87,6 +88,105 @@ _CONDITIONAL_PATTERNS = re.compile(
     r"|最近的就"  # "有最近的就过去"
     r")"
 )
+
+
+def _build_da_context(state: CabinAgentState) -> dict:
+    """从 state 构建 DA 分类所需的上下文"""
+    task_results = state.get("task_results", [])
+    last_result = task_results[-1] if task_results else {}
+    last_action = last_result.get("action") or {}
+
+    # 从上一轮结果提取候选项（search_poi 的 results）
+    candidates = []
+    tool_data = (last_result.get("tool_result") or {}).get("data", {})
+    if isinstance(tool_data, dict):
+        candidates = tool_data.get("results", [])
+
+    return {
+        "last_domain": last_action.get("domain", ""),
+        "last_intent": last_result.get("intent", ""),
+        "last_action": last_action,
+        "last_tool_result": last_result.get("tool_result"),
+        "candidates": candidates,
+        "active_frames": state.get("active_frames", []),
+    }
+
+
+def _handle_da_select(da_result, state: CabinAgentState) -> dict | None:
+    """DA=SELECT → 从候选项中选取，构造 navigate 子任务"""
+    selection = da_result.selection
+    idx = selection.get("index")
+
+    task_results = state.get("task_results", [])
+    last_result = task_results[-1] if task_results else {}
+    tool_data = (last_result.get("tool_result") or {}).get("data", {})
+    candidates = tool_data.get("results", []) if isinstance(tool_data, dict) else []
+
+    if idx is None or idx >= len(candidates):
+        return None
+
+    chosen = candidates[idx]
+    logger.info(f"[DA] SELECT → {chosen.get('name', '')}")
+
+    # 构造 navigate 子任务
+    return {
+        "sub_tasks": [{
+            "task_id": f"task_da_{idx}",
+            "intent": "navigate",
+            "extracted_slots": {
+                "destination": chosen.get("name", ""),
+                "destination_lng": chosen.get("lng"),
+                "destination_lat": chosen.get("lat"),
+            },
+            "required_slots": ["destination"],
+            "urgency": "normal",
+            "status": "completed",
+        }],
+        "is_complex": False,
+        "task_results": None,
+        "completed_task_ids": None,
+        "intent": "navigate",
+        "active_frames": state.get("active_frames", []),
+        "episodic_context": None,
+    }
+
+
+def _handle_da_correction(da_result, state: CabinAgentState) -> dict | None:
+    """DA=CORRECTION → 修改上一轮参数，重新执行"""
+    corrections = da_result.corrections
+    if not corrections:
+        return None
+
+    task_results = state.get("task_results", [])
+    last_result = task_results[-1] if task_results else {}
+    last_intent = last_result.get("intent", "")
+    last_slots = (last_result.get("tool_result") or {}).copy()
+
+    if not last_intent:
+        return None
+
+    # 合并纠正
+    new_slots = last_slots.copy()
+    new_slots.update(corrections)
+    new_slots["_intent"] = last_intent
+    logger.info(f"[DA] CORRECTION → {last_intent}, corrections={corrections}")
+
+    return {
+        "sub_tasks": [{
+            "task_id": "task_da_corr",
+            "intent": last_intent,
+            "extracted_slots": new_slots,
+            "required_slots": [],
+            "urgency": "normal",
+            "status": "completed",
+        }],
+        "is_complex": False,
+        "task_results": None,
+        "completed_task_ids": None,
+        "intent": last_intent,
+        "active_frames": state.get("active_frames", []),
+        "episodic_context": None,
+    }
 
 
 def _can_use_edge(user_input: str, active_frames: list) -> bool:
@@ -339,7 +439,57 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "final_response": _policy_action.reply_template,
             "dialogue_state": _ds.model_dump(mode="json"),
             "policy_action": _policy_dict,
+            "da_result": None,
         }
+
+    # ===== DA 分类（0ms，规则优先）=====
+    # 判断用户输入是对上一轮的反应（confirm/deny/correction/select）还是新意图
+    da_context = _build_da_context(state)
+    da_result = classify_dialogue_act(user_input, da_context)
+    da_dict = da_result.to_dict() if da_result else None
+    if da_result:
+        logger.info(f"[DA] act={da_result.act.value}, raw={user_input!r}")
+
+    # DA: DENY → 直接取消，0ms
+    if da_result and da_result.act == DialogueAct.DENY:
+        logger.info("[DA] DENY → 直接取消")
+        return {
+            "sub_tasks": [],
+            "is_complex": False,
+            "task_results": None,
+            "completed_task_ids": None,
+            "intent": "direct_answer",
+            "active_frames": active_frames,
+            "episodic_context": episodic_context,
+            "final_response": "好的，已取消",
+            "dialogue_state": _ds.model_dump(mode="json"),
+            "policy_action": _policy_dict,
+            "da_result": da_dict,
+        }
+
+    # DA: SELECT → 从候选项构造子任务
+    if da_result and da_result.act == DialogueAct.SELECT:
+        selected = _handle_da_select(da_result, state)
+        if selected:
+            return {
+                **selected,
+                "dialogue_state": _ds.model_dump(mode="json"),
+                "policy_action": _policy_dict,
+                "da_result": da_dict,
+            }
+        # SELECT 无法处理，fallthrough 到正常流程
+
+    # DA: CORRECTION → 从上一轮结果构造纠正子任务
+    if da_result and da_result.act == DialogueAct.CORRECTION:
+        corrected = _handle_da_correction(da_result, state)
+        if corrected:
+            return {
+                **corrected,
+                "dialogue_state": _ds.model_dump(mode="json"),
+                "policy_action": _policy_dict,
+                "da_result": da_dict,
+            }
+        # CORRECTION 无法处理，fallthrough 到正常流程
 
     # ===== Stage 0: Slot Carry-Over（0ms）=====
     carried = _try_carry_over(user_input, active_frames)
@@ -355,6 +505,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "episodic_context": episodic_context,
             "dialogue_state": _ds.model_dump(mode="json"),
             "policy_action": _policy_dict,
+            "da_result": da_dict,
         }
 
     # ===== Stage 1: 历史注入判断（0ms）=====
@@ -438,6 +589,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
                 "_cross_domain_flag": None,
                 "dialogue_state": _ds.model_dump(mode="json"),
                 "policy_action": _policy_dict,
+                "da_result": da_dict,
             }
         else:
             logger.info(
@@ -571,6 +723,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "_cross_domain_flag": None,  # 清空跨域 flag
             "dialogue_state": _ds.model_dump(mode="json"),
             "policy_action": _policy_dict,
+            "da_result": da_dict,
         }
     except json.JSONDecodeError as je:
         logger.error(f"[意图识别] ❌ JSON 解析错误: {je}")
