@@ -144,11 +144,11 @@
       "modifiedRanges": [
         {
           "start": 1,
-          "end": 698
+          "end": 725
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-06-03T07:42:15.988Z"
+      "lastEdit": "2026-06-03T08:13:05.576Z"
     },
     "project1_cabin_agent/skills/climate/schema.py": {
       "modifiedRanges": [
@@ -168,7 +168,7 @@
         }
       ],
       "importsChanged": true,
-      "lastEdit": "2026-05-27T12:45:44.195Z"
+      "lastEdit": "2026-06-03T08:14:45.582Z"
     },
     "project1_cabin_agent/nodes/post_rules.py": {
       "modifiedRanges": [
@@ -496,7 +496,7 @@
         }
       ],
       "importsChanged": false,
-      "lastEdit": "2026-06-03T07:42:51.543Z"
+      "lastEdit": "2026-06-03T07:44:24.651Z"
     },
     "project1_cabin_agent/tests/test_policy.py": {
       "modifiedRanges": [
@@ -516,11 +516,51 @@
         }
       ],
       "importsChanged": false,
-      "lastEdit": "2026-06-03T07:40:39.748Z"
+      "lastEdit": "2026-06-03T07:44:24.545Z"
+    },
+    "project1_cabin_agent/nodes/proactive.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 163
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-03T08:12:11.412Z"
+    },
+    "project1_cabin_agent/skills/map/proactive_rules.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 88
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-03T08:13:23.666Z"
+    },
+    "project1_cabin_agent/skills/climate/proactive_rules.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 66
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-06-03T08:13:48.615Z"
+    },
+    "project1_cabin_agent/tests/test_proactive.py": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 458
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-06-03T08:15:51.087Z"
     }
   },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-06-03T07:42:51.543Z",
+  "lastUpdated": "2026-06-03T08:15:51.087Z",
   "sessionId": "lens-mpwau2do-d9d7938c"
 }

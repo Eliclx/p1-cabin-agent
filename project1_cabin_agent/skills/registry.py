@@ -70,6 +70,7 @@ class _SkillEntry:
     domain_signals: set[str] = field(default_factory=set)
     memory_meta: dict[str, dict] = field(default_factory=dict)  # 记忆元数据（SSOT）
     policy_rules: list = field(default_factory=list)  # per-domain 策略规则
+    proactive_rules: list = field(default_factory=list)  # per-domain 主动规则
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
@@ -214,11 +215,26 @@ class SkillRegistry:
         # 自动发现策略规则（per-domain）
         try:
             from importlib import import_module
-            rules_mod = import_module(f"project1_cabin_agent.skills.{domain}.policy_rules")
+
+            rules_mod = import_module(
+                f"project1_cabin_agent.skills.{domain}.policy_rules"
+            )
             rules_attr = f"{domain.upper()}_POLICY_RULES"
             entry.policy_rules = getattr(rules_mod, rules_attr, [])
         except (ImportError, AttributeError):
             pass  # 域没有策略规则，正常
+
+        # 自动发现主动规则（per-domain）
+        try:
+            from importlib import import_module
+
+            pro_mod = import_module(
+                f"project1_cabin_agent.skills.{domain}.proactive_rules"
+            )
+            pro_attr = f"{domain.upper()}_PROACTIVE_RULES"
+            entry.proactive_rules = getattr(pro_mod, pro_attr, [])
+        except (ImportError, AttributeError):
+            pass  # 域没有主动规则，正常
 
         return True
 
@@ -576,6 +592,20 @@ class SkillRegistry:
         rules = []
         for entry in self._skills.values():
             rules.extend(entry.policy_rules)
+        return rules
+
+    def get_proactive_rules(self, domain: str) -> list:
+        """获取域的主动规则列表"""
+        entry = self._skills.get(domain)
+        if not entry:
+            return []
+        return entry.proactive_rules
+
+    def get_all_proactive_rules(self) -> list:
+        """获取所有域的主动规则"""
+        rules = []
+        for entry in self._skills.values():
+            rules.extend(entry.proactive_rules)
         return rules
 
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────

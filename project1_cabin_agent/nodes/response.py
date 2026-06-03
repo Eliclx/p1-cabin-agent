@@ -292,11 +292,63 @@ def response_gen(state: CabinAgentState | dict) -> dict:
             logger.error(f"[聚合回复] LLM 失败: {e}")
             response = "；".join(s.split("] ", 1)[-1] for s in summaries if "] " in s)
 
+    # ── Proactive 主动建议（后置追加）───────────────────
+    response = _append_proactive(response, state)
+
     logger.info(f"[聚合回复] {response}")
     return {
         "final_response": response,
         "messages": [{"role": "assistant", "content": response}],
     }
+
+
+# ── Proactive 主动建议 ────────────────────────────────
+
+_proactive_engine = None  # 延迟初始化，避免顶层 import
+
+
+def _append_proactive(response: str, state: CabinAgentState | dict) -> str:
+    """在回复后追加主动建议（如果有的话）"""
+    global _proactive_engine
+
+    # 延迟初始化
+    if _proactive_engine is None:
+        try:
+            from project1_cabin_agent.nodes.proactive import (
+                ProactiveContext,
+                ProactiveEngine,
+            )
+            from project1_cabin_agent.nodes.dialogue_state import DialogueState
+            from project1_cabin_agent.vehicle_state import vehicle_state
+
+            _proactive_engine = ProactiveEngine()
+        except Exception as e:
+            logger.debug(f"[Proactive] 初始化失败，跳过: {e}")
+            return response
+
+    try:
+        from project1_cabin_agent.nodes.dialogue_state import DialogueState
+        from project1_cabin_agent.vehicle_state import vehicle_state
+
+        # 重建 DST
+        ds_dict = state.get("dialogue_state")
+        ds = DialogueState(**ds_dict) if ds_dict else DialogueState()
+
+        ctx = ProactiveContext(
+            dialogue_state=ds,
+            vehicle_snapshot=vehicle_state.snapshot(),
+        )
+
+        suggestion = _proactive_engine.check(ctx)
+        if suggestion:
+            logger.info(
+                f"[Proactive] {suggestion.rule_name}: {suggestion.message}"
+            )
+            return f"{response}\n\n{suggestion.message}"
+    except Exception as e:
+        logger.debug(f"[Proactive] 检查失败，跳过: {e}")
+
+    return response
 
 
 # ── 节点 6：闲聊处理 ──

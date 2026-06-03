@@ -30,7 +30,7 @@ _EXPLAIN_WORDS = {"为什么", "怎么回事", "为啥", "怎么走"}
 # dedup_key/detail_fields 声明了哪些字段重要，策略直接用
 
 _DEST_KEY = "destination"  # MEMORY.detail_fields 里第一个
-_TOLL_KEY = "toll"         # MEMORY.detail_fields 里
+_TOLL_KEY = "toll"  # MEMORY.detail_fields 里
 _ROUTE_KEY = "route_type"  # MEMORY.detail_fields 里
 
 

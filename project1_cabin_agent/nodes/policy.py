@@ -143,9 +143,10 @@ class PolicyEngine:
         """延迟加载规则链（通用 + 域规则）"""
         if self._rules is None:
             from project1_cabin_agent.skills.registry import registry
+
             self._rules = [
-                _rule_retry_limit,   # 通用：连续失败
-                _rule_abandon,        # 通用：明确放弃
+                _rule_retry_limit,  # 通用：连续失败
+                _rule_abandon,  # 通用：明确放弃
             ] + registry.get_all_policy_rules()  # per-domain
         return self._rules
 
