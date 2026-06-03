@@ -337,7 +337,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "active_frames": [],
             "episodic_context": None,
             "final_response": _policy_action.reply_template,
-            "dialogue_state": _ds.model_dump(),
+            "dialogue_state": _ds.model_dump(mode="json"),
             "policy_action": _policy_dict,
         }
 
@@ -353,7 +353,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "intent": carried.get("intent", "chitchat"),
             "active_frames": active_frames,
             "episodic_context": episodic_context,
-            "dialogue_state": _ds.model_dump(),
+            "dialogue_state": _ds.model_dump(mode="json"),
             "policy_action": _policy_dict,
         }
 
@@ -436,7 +436,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
                 "episodic_context": episodic_context,
                 "_oos_flag": None,
                 "_cross_domain_flag": None,
-                "dialogue_state": _ds.model_dump(),
+                "dialogue_state": _ds.model_dump(mode="json"),
                 "policy_action": _policy_dict,
             }
         else:
@@ -569,7 +569,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "episodic_context": episodic_context,
             "_oos_flag": None,  # 清空 OOS flag
             "_cross_domain_flag": None,  # 清空跨域 flag
-            "dialogue_state": _ds.model_dump(),
+            "dialogue_state": _ds.model_dump(mode="json"),
             "policy_action": _policy_dict,
         }
     except json.JSONDecodeError as je:
@@ -579,7 +579,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result["episodic_context"] = episodic_context
         result["_oos_flag"] = None
         result["_cross_domain_flag"] = None
-        result["dialogue_state"] = _ds.model_dump()
+        result["dialogue_state"] = _ds.model_dump(mode="json")
         result["policy_action"] = _policy_dict
         return result
 
@@ -589,6 +589,6 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result["episodic_context"] = episodic_context
         result["_oos_flag"] = None
         result["_cross_domain_flag"] = None
-        result["dialogue_state"] = _ds.model_dump()
+        result["dialogue_state"] = _ds.model_dump(mode="json")
         result["policy_action"] = _policy_dict
         return result
