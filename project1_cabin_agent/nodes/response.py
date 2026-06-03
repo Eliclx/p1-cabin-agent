@@ -295,12 +295,27 @@ def response_gen(state: CabinAgentState | dict) -> dict:
     # ── Proactive 主动建议（后置追加）───────────────────
     response = _append_proactive(response, state)
 
+    # ── Evolution 记忆进化（异步背景任务，不影响回复）─────────
+    _trigger_evolution()
+
     logger.info(f"[聚合回复] {response}")
     return {
         "final_response": response,
         "messages": [{"role": "assistant", "content": response}],
     }
 
+
+def _trigger_evolution() -> None:
+    """触发记忆进化（best-effort，失败不影响主流程）"""
+    try:
+        from project1_cabin_agent.memory._instance import get_memory
+        from project1_cabin_agent.memory.evolution_runner import run_evolution
+
+        memory = get_memory()
+        if memory:
+            run_evolution(memory)
+    except Exception as e:
+        logger.debug(f"[Evolution] 跳过: {e}")
 
 # ── Proactive 主动建议 ────────────────────────────────
 
