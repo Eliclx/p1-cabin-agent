@@ -69,6 +69,7 @@ class _SkillEntry:
     blackboard: dict[str, dict] = field(default_factory=dict)
     domain_signals: set[str] = field(default_factory=set)
     memory_meta: dict[str, dict] = field(default_factory=dict)  # 记忆元数据（SSOT）
+    policy_rules: list = field(default_factory=list)  # per-domain 策略规则
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
@@ -209,6 +210,15 @@ class SkillRegistry:
         # 自动发现 {DOMAIN}_MEMORY（记忆元数据声明）
         mem_attr = f"{domain.upper()}_MEMORY"
         entry.memory_meta = getattr(schema_mod, mem_attr, {})
+
+        # 自动发现策略规则（per-domain）
+        try:
+            from importlib import import_module
+            rules_mod = import_module(f"project1_cabin_agent.skills.{domain}.policy_rules")
+            rules_attr = f"{domain.upper()}_POLICY_RULES"
+            entry.policy_rules = getattr(rules_mod, rules_attr, [])
+        except (ImportError, AttributeError):
+            pass  # 域没有策略规则，正常
 
         return True
 
@@ -553,6 +563,20 @@ class SkillRegistry:
             for intent_name, meta in entry.memory_meta.items():
                 result[intent_name] = meta
         return result
+
+    def get_policy_rules(self, domain: str) -> list:
+        """获取域的策略规则列表"""
+        entry = self._skills.get(domain)
+        if not entry:
+            return []
+        return entry.policy_rules
+
+    def get_all_policy_rules(self) -> list:
+        """获取所有域的策略规则（按 domain 优先级拼接）"""
+        rules = []
+        for entry in self._skills.values():
+            rules.extend(entry.policy_rules)
+        return rules
 
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────
 
