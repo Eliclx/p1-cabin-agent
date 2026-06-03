@@ -71,6 +71,7 @@ class _SkillEntry:
     memory_meta: dict[str, dict] = field(default_factory=dict)  # 记忆元数据（SSOT）
     policy_rules: list = field(default_factory=list)  # per-domain 策略规则
     proactive_rules: list = field(default_factory=list)  # per-domain 主动规则
+    action_formatters: dict = field(default_factory=dict)  # per-domain action 转换
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
@@ -235,6 +236,18 @@ class SkillRegistry:
             entry.proactive_rules = getattr(pro_mod, pro_attr, [])
         except (ImportError, AttributeError):
             pass  # 域没有主动规则，正常
+
+        # 自动发现 action 转换（per-domain）
+        try:
+            from importlib import import_module
+
+            act_mod = import_module(
+                f"project1_cabin_agent.skills.{domain}.action_format"
+            )
+            act_attr = f"{domain.upper()}_ACTION_FORMATTERS"
+            entry.action_formatters = getattr(act_mod, act_attr, {})
+        except (ImportError, AttributeError):
+            pass  # 域没有 action 转换，正常
 
         return True
 
@@ -607,6 +620,20 @@ class SkillRegistry:
         for entry in self._skills.values():
             rules.extend(entry.proactive_rules)
         return rules
+
+    def get_action_formatter(self, domain: str, intent: str) -> callable | None:
+        """获取域的 intent action 转换函数"""
+        entry = self._skills.get(domain)
+        if not entry:
+            return None
+        return entry.action_formatters.get(intent)
+
+    def get_all_action_formatters(self) -> dict:
+        """获取所有域的 action 转换函数"""
+        result = {}
+        for entry in self._skills.values():
+            result.update(entry.action_formatters)
+        return result
 
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────
 

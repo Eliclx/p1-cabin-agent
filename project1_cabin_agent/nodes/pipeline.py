@@ -314,7 +314,7 @@ def _make_result(
         "depends_on": task.get("depends_on", []),
     }
     # 可选字段
-    for key in ("tool_result", "error", "missing_slots"):
+    for key in ("tool_result", "error", "missing_slots", "action"):
         if key in extra:
             result_item[key] = extra.pop(key)
     ret = {
@@ -645,15 +645,27 @@ async def _handle_skill_task(
                 task_id, intent, "好的，已取消", task, msgs, tool_result={}
             )
 
-    # ── 7. harness.format_response ──
+    # ── 7. harness.format_response + action 信号 ──
     voice_reply = harness.format_response(tool_result)
+
+    # action 信号：tool_result → CabinAction → task_result.action
+    action_signal = None
+    try:
+        from project1_cabin_agent.actions.engine import format_action
+        cabin_action = format_action(domain, intent, tool_result)
+        if cabin_action:
+            action_signal = cabin_action.to_dict()
+            logger.debug(f"[action] {domain}.{intent} → {cabin_action.command}({cabin_action.params})")
+    except Exception:
+        pass  # action 层 best-effort，不影响主流程
 
     # L2 记忆写入
     user_profile.save_from_tool_result(intent, slots)
 
     logger.info(f"[skill_task] {domain}.{intent} 完成, reply={voice_reply}")
     return _make_result(
-        task_id, intent, voice_reply, task, msgs, tool_result=tool_result
+        task_id, intent, voice_reply, task, msgs,
+        tool_result=tool_result, action=action_signal,
     )
 
 
