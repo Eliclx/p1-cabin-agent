@@ -316,6 +316,18 @@ def _build_clarify_reply(candidates: list) -> str:
 # ═══════════════════════════════════════════════
 
 
+def _try_retry(
+    domain: str, intent: str, error: str, tool_result: dict, slots: dict, attempt: int,
+):
+    """best-effort 调用 retry 引擎，失败返回 None"""
+    try:
+        from project1_cabin_agent.nodes.retry import decide_retry
+
+        return decide_retry(domain, intent, error, tool_result, slots, attempt)
+    except Exception:
+        return None
+
+
 def _make_result(
     task_id: str, intent: str, voice_reply: str, task: dict, msgs: list = None, **extra
 ) -> dict:
@@ -539,57 +551,102 @@ async def _handle_skill_task(
     slots = pre_result.slots
     logger.info(f"[skill_task] pre_validate 通过, slots={slots}")
 
-    # ── 4. 工具执行 ──
+    # ── 4. 工具执行（含 retry）──
     # skill 纯函数：过滤内部字段，**kwargs 展开；LangChain @tool：走 .ainvoke()
+    # 失败时走 retry 引擎决定是否重试或友好错误
     exec_slots = {k: v for k, v in slots.items() if not k.startswith("_")}
-    try:
-        if hasattr(tool_fn, "ainvoke"):
-            result = await asyncio.wait_for(tool_fn.ainvoke(exec_slots), timeout=8)
-        else:
-            result = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(
-                    None, lambda: tool_fn(**exec_slots)
-                ),
-                timeout=8,
-            )
-    except asyncio.TimeoutError:
-        logger.error(f"[skill_task] 工具超时: {domain}.{intent}")
-        return _make_result(
-            task_id,
-            intent,
-            "操作超时，请稍后再试",
-            task,
-            msgs,
-            status="error",
-            error="timeout",
-        )
-    except Exception as e:
-        logger.error(f"[skill_task] 工具执行失败: {e}")
-        # 走 harness.post_validate 的失败兜底
-        post_result = harness.post_validate({"status": "error", "error": str(e)}, ctx)
-        if not post_result.valid:
-            fallback_reply = harness.format_response({"status": "error"})
+    max_attempts = 2
+    tool_result = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            if hasattr(tool_fn, "ainvoke"):
+                result = await asyncio.wait_for(
+                    tool_fn.ainvoke(exec_slots), timeout=8
+                )
+            else:
+                result = await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(
+                        None, lambda s=exec_slots: tool_fn(**s)
+                    ),
+                    timeout=8,
+                )
+            tool_result = result if isinstance(result, dict) else {"raw": result}
+            break  # 成功则跳出
+
+        except asyncio.TimeoutError:
+            logger.warning(f"[skill_task] 工具超时 (attempt {attempt}): {domain}.{intent}")
+            retry = _try_retry(domain, intent, "timeout", {}, slots, attempt)
+            if retry:
+                exec_slots.update(retry.modified_slots)
+                logger.info(f"[retry] 重试参数: {retry.modified_slots}")
+                continue
             return _make_result(
-                task_id,
-                intent,
-                fallback_reply,
-                task,
-                msgs,
-                status="error",
-                error=str(e),
+                task_id, intent,
+                retry.friendly_message if retry else "操作超时，请稍后再试",
+                task, msgs, status="error", error="timeout",
             )
-        return _make_result(
-            task_id,
-            intent,
-            "操作过程中发生错误",
-            task,
-            msgs,
-            status="error",
-            error=str(e),
-        )
+
+        except Exception as e:
+            logger.warning(f"[skill_task] 工具执行失败 (attempt {attempt}): {e}")
+            retry = _try_retry(domain, intent, str(e), {}, slots, attempt)
+            if retry and retry.action == "retry":
+                exec_slots.update(retry.modified_slots)
+                logger.info(f"[retry] 重试参数: {retry.modified_slots}")
+                continue
+            # 重试后仍失败或无重试策略
+            post_result = harness.post_validate(
+                {"status": "error", "error": str(e)}, ctx
+            )
+            if not post_result.valid:
+                fallback_reply = harness.format_response({"status": "error"})
+                return _make_result(
+                    task_id, intent, fallback_reply, task, msgs,
+                    status="error", error=str(e),
+                )
+            return _make_result(
+                task_id, intent,
+                retry.friendly_message if retry else "操作过程中发生错误",
+                task, msgs, status="error", error=str(e),
+            )
+
+    # ── 4.5 post_validate 空结果 retry ──
+    # 工具执行成功但结果为空（如 search_poi 无结果），走 retry
+    if tool_result is not None:
+        post_result = harness.post_validate(tool_result, ctx)
+        if not post_result.valid and not post_result.need_confirm and not post_result.need_clarify:
+            # API 失败兜底
+            retry = _try_retry(domain, intent, "", tool_result, slots, 1)
+            if retry and retry.action == "retry":
+                exec_slots.update(retry.modified_slots)
+                logger.info(f"[retry] 空结果重试: {retry.modified_slots}")
+                try:
+                    if hasattr(tool_fn, "ainvoke"):
+                        result = await asyncio.wait_for(
+                            tool_fn.ainvoke(exec_slots), timeout=8
+                        )
+                    else:
+                        result = await asyncio.wait_for(
+                            asyncio.get_event_loop().run_in_executor(
+                                None, lambda s=exec_slots: tool_fn(**s)
+                            ),
+                            timeout=8,
+                        )
+                    tool_result = (
+                        result if isinstance(result, dict) else {"raw": result}
+                    )
+                except Exception:
+                    pass  # 重试失败，用原始结果继续
+            elif retry and retry.action == "friendly_error":
+                return _make_result(
+                    task_id, intent, retry.friendly_message, task, msgs,
+                    tool_result=tool_result, status="error",
+                )
+    else:
+        # 不应该走到这，安全兜底
+        tool_result = {"status": "error", "error": "unknown"}
 
     # ── 5. harness.post_validate ──
-    tool_result = result if isinstance(result, dict) else {"raw": result}
     post_result = harness.post_validate(tool_result, ctx)
 
     if not post_result.valid:

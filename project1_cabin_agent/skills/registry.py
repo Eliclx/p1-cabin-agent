@@ -73,6 +73,7 @@ class _SkillEntry:
     proactive_rules: list = field(default_factory=list)  # per-domain 主动规则
     action_formatters: dict = field(default_factory=dict)  # per-domain action 转换
     da_rules: list = field(default_factory=list)  # per-domain DA 规则
+    retry_rules: list = field(default_factory=list)  # per-domain 重试策略
     tools_loaded: bool = False
     harness_loaded: bool = False
     examples_loaded: bool = False
@@ -259,6 +260,18 @@ class SkillRegistry:
             entry.da_rules = getattr(da_mod, da_attr, [])
         except (ImportError, AttributeError):
             pass  # 域没有 DA 规则，正常
+
+        # 自动发现 retry 规则（per-domain）
+        try:
+            from importlib import import_module
+
+            retry_mod = import_module(
+                f"project1_cabin_agent.skills.{domain}.retry_rules"
+            )
+            retry_attr = f"{domain.upper()}_RETRY_RULES"
+            entry.retry_rules = getattr(retry_mod, retry_attr, [])
+        except (ImportError, AttributeError):
+            pass  # 域没有 retry 规则，正常
 
         return True
 
@@ -658,6 +671,20 @@ class SkillRegistry:
         rules = []
         for entry in self._skills.values():
             rules.extend(entry.da_rules)
+        return rules
+
+    def get_retry_rules(self, domain: str) -> list:
+        """获取域的重试策略"""
+        entry = self._skills.get(domain)
+        if not entry:
+            return []
+        return entry.retry_rules
+
+    def get_all_retry_rules(self) -> list:
+        """获取所有域的重试策略"""
+        rules = []
+        for entry in self._skills.values():
+            rules.extend(entry.retry_rules)
         return rules
 
     # ── 旧接口兼容（函数签名不变）───────────────────────────────────
