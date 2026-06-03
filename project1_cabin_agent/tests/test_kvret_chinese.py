@@ -49,7 +49,10 @@ SCENARIOS = [
                 "expected_policy": "fill_from_dst",
                 "expected_dst_filled": True,
                 # 模拟第一轮搜索后 DST 累积的实体
-                "dst_entities": {"poi": "海底捞火锅(春熙路店)", "destination": "海底捞火锅(春熙路店)"},
+                "dst_entities": {
+                    "poi": "海底捞火锅(春熙路店)",
+                    "destination": "海底捞火锅(春熙路店)",
+                },
             },
         ],
     },
@@ -70,7 +73,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 2: 换方案（Policy reroute）
     # KVRet: "route that avoids all heavy traffic"
@@ -80,8 +82,11 @@ SCENARIOS = [
         "desc": "导航结果有过路费，嫌贵换路线",
         "context": {
             "vehicle": {"fuel": 68, "speed": 80, "temperature": 25.0, "ac_on": True},
-            "active_goal": {"goal_type": "map", "slots": {"destination": "重庆"},
-                           "last_result": {"toll": "165元", "distance": "300km"}},
+            "active_goal": {
+                "goal_type": "map",
+                "slots": {"destination": "重庆"},
+                "last_result": {"toll": "165元", "distance": "300km"},
+            },
         },
         "rounds": [
             {
@@ -95,8 +100,11 @@ SCENARIOS = [
         "id": "reroute_shortest",
         "desc": "嫌远要换最短路线",
         "context": {
-            "active_goal": {"goal_type": "map", "slots": {"destination": "天府广场"},
-                           "last_result": {"distance": "25km"}},
+            "active_goal": {
+                "goal_type": "map",
+                "slots": {"destination": "天府广场"},
+                "last_result": {"distance": "25km"},
+            },
         },
         "rounds": [
             {
@@ -110,8 +118,11 @@ SCENARIOS = [
         "id": "reroute_fastest",
         "desc": "嫌慢要换最快路线",
         "context": {
-            "active_goal": {"goal_type": "map", "slots": {"destination": "重庆"},
-                           "last_result": {"duration": "6小时"}},
+            "active_goal": {
+                "goal_type": "map",
+                "slots": {"destination": "重庆"},
+                "last_result": {"duration": "6小时"},
+            },
         },
         "rounds": [
             {
@@ -125,8 +136,11 @@ SCENARIOS = [
         "id": "reroute_general",
         "desc": "换一条路（通用不满）",
         "context": {
-            "active_goal": {"goal_type": "map", "slots": {"destination": "天府广场"},
-                           "last_result": {"toll": "0元"}},
+            "active_goal": {
+                "goal_type": "map",
+                "slots": {"destination": "天府广场"},
+                "last_result": {"toll": "0元"},
+            },
         },
         "rounds": [
             {
@@ -135,7 +149,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 3: 追问详情（Policy explain）
     # KVRet: "What is the address?" + 多轮追问
@@ -144,8 +157,15 @@ SCENARIOS = [
         "id": "explain_route",
         "desc": "追问为什么走这条路线",
         "context": {
-            "active_goal": {"goal_type": "map", "slots": {"destination": "重庆"},
-                           "last_result": {"distance": "300km", "toll": "165元", "route": "G75兰海高速"}},
+            "active_goal": {
+                "goal_type": "map",
+                "slots": {"destination": "重庆"},
+                "last_result": {
+                    "distance": "300km",
+                    "toll": "165元",
+                    "route": "G75兰海高速",
+                },
+            },
         },
         "rounds": [
             {
@@ -154,7 +174,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 4: 放弃（Policy abandon）
     # KVRet: "Thanks for all the help"（结束语）
@@ -185,7 +204,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 5: 连续失败放弃
     # ─────────────────────────────────────────────
@@ -203,7 +221,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 6: 纠正（不是A是B）
     # KVRet 里常见: 用户更正之前的信息
@@ -230,7 +247,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 7: 条件分支
     # KVRet: "avoid heavy traffic if possible"
@@ -246,7 +262,6 @@ SCENARIOS = [
             },
         ],
     },
-
     # ─────────────────────────────────────────────
     # 模式 8: Proactive 触发
     # ─────────────────────────────────────────────
@@ -254,8 +269,16 @@ SCENARIOS = [
         "id": "proactive_fuel_low",
         "desc": "导航中油量低于20%",
         "proactive_test": True,
-        "vehicle": {"fuel": 12, "speed": 80, "temperature": 25.0, "ac_on": True,
-                    "battery": 82, "seat_heat_level": 0, "ac_temp": 24.0, "ac_mode": "auto"},
+        "vehicle": {
+            "fuel": 12,
+            "speed": 80,
+            "temperature": 25.0,
+            "ac_on": True,
+            "battery": 82,
+            "seat_heat_level": 0,
+            "ac_temp": 24.0,
+            "ac_mode": "auto",
+        },
         "goals": [{"goal_type": "map", "status": "active"}],
         "expected_proactive": "map_fuel_warning",
     },
@@ -263,8 +286,16 @@ SCENARIOS = [
         "id": "proactive_hot_no_ac",
         "desc": "高温+空调关+行驶中",
         "proactive_test": True,
-        "vehicle": {"fuel": 68, "speed": 60, "temperature": 38.0, "ac_on": False,
-                    "battery": 82, "seat_heat_level": 0, "ac_temp": 24.0, "ac_mode": "auto"},
+        "vehicle": {
+            "fuel": 68,
+            "speed": 60,
+            "temperature": 38.0,
+            "ac_on": False,
+            "battery": 82,
+            "seat_heat_level": 0,
+            "ac_temp": 24.0,
+            "ac_mode": "auto",
+        },
         "goals": [],
         "expected_proactive": "climate_hot_no_ac",
     },
@@ -272,8 +303,16 @@ SCENARIOS = [
         "id": "proactive_normal_no_trigger",
         "desc": "一切正常不触发",
         "proactive_test": True,
-        "vehicle": {"fuel": 68, "speed": 60, "temperature": 25.0, "ac_on": True,
-                    "battery": 82, "seat_heat_level": 0, "ac_temp": 24.0, "ac_mode": "auto"},
+        "vehicle": {
+            "fuel": 68,
+            "speed": 60,
+            "temperature": 25.0,
+            "ac_on": True,
+            "battery": 82,
+            "seat_heat_level": 0,
+            "ac_temp": 24.0,
+            "ac_mode": "auto",
+        },
         "goals": [],
         "expected_proactive": None,
     },
@@ -281,12 +320,19 @@ SCENARIOS = [
         "id": "proactive_pending_blocks_suggest",
         "desc": "有pending goal时建议类不触发",
         "proactive_test": True,
-        "vehicle": {"fuel": 68, "speed": 0, "temperature": 5.0, "ac_on": False,
-                    "battery": 82, "seat_heat_level": 0, "ac_temp": 24.0, "ac_mode": "auto"},
+        "vehicle": {
+            "fuel": 68,
+            "speed": 0,
+            "temperature": 5.0,
+            "ac_on": False,
+            "battery": 82,
+            "seat_heat_level": 0,
+            "ac_temp": 24.0,
+            "ac_mode": "auto",
+        },
         "goals": [{"goal_type": "map", "status": "pending"}],
         "expected_proactive": None,
     },
-
     # ─────────────────────────────────────────────
     # 模式 9: 正常导航不触发任何规则
     # ─────────────────────────────────────────────
@@ -332,12 +378,14 @@ def _build_dst(context: dict) -> "DialogueState":
     goals = []
     goal_cfg = context.get("active_goal", {})
     if goal_cfg:
-        goals.append(ActiveGoal(
-            goal_type=goal_cfg.get("goal_type", "map"),
-            slots=goal_cfg.get("slots", {}),
-            status="active",
-            last_result=goal_cfg.get("last_result"),
-        ))
+        goals.append(
+            ActiveGoal(
+                goal_type=goal_cfg.get("goal_type", "map"),
+                slots=goal_cfg.get("slots", {}),
+                status="active",
+                last_result=goal_cfg.get("last_result"),
+            )
+        )
 
     return DialogueState(
         consecutive_failures=context.get("consecutive_failures", 0),
@@ -362,6 +410,7 @@ class TestPolicyScenarios:
         ds = _build_dst(context)
 
         from project1_cabin_agent.nodes.policy import PolicyEngine
+
         engine = PolicyEngine()
 
         for i, turn in enumerate(rounds):
@@ -399,7 +448,10 @@ class TestProactiveScenarios:
         if not scenario.get("proactive_test"):
             pytest.skip("非 Proactive 场景")
 
-        from project1_cabin_agent.nodes.proactive import ProactiveContext, ProactiveEngine
+        from project1_cabin_agent.nodes.proactive import (
+            ProactiveContext,
+            ProactiveEngine,
+        )
         from project1_cabin_agent.nodes.dialogue_state import ActiveGoal, DialogueState
 
         goals = [
@@ -431,16 +483,11 @@ class TestScenarioSummary:
     def test_scenario_count(self):
         """确保场景覆盖足够全面"""
         policy_count = sum(
-            1 for s in SCENARIOS
-            if not s.get("proactive_test") and s.get("rounds")
+            1 for s in SCENARIOS if not s.get("proactive_test") and s.get("rounds")
         )
-        proactive_count = sum(
-            1 for s in SCENARIOS if s.get("proactive_test")
-        )
+        proactive_count = sum(1 for s in SCENARIOS if s.get("proactive_test"))
         total_rounds = sum(
-            len(s.get("rounds", []))
-            for s in SCENARIOS
-            if not s.get("proactive_test")
+            len(s.get("rounds", [])) for s in SCENARIOS if not s.get("proactive_test")
         )
 
         print(f"\n  Policy 场景: {policy_count}")

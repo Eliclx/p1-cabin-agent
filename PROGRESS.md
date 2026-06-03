@@ -452,3 +452,59 @@ memory/manager.py  ← 零外部 import, 完全独立
 - KVRet HuggingFace: https://huggingface.co/datasets/ConvLab/kvret
 - In-Car Agent V1: https://github.com/goreasoning/In-Car-Intelligent-Interaction-Agent-Dataset-V1
 - Magic Data: https://zhuanlan.zhihu.com/p/582273388
+
+---
+
+## ⏭️ 待规划：P1-Eval-Sandbox（独立项目）
+
+> 多 Agent 自动化评估沙盒，P1 是被测系统，沙盒是测试工具。独立项目，不耦合。
+
+### 背景
+
+基于 CarMem（宝马，2025）和 VehicleMemBench（中科大，2026）的方法论，构建中文车机 Agent 的自动化评估闭环。
+
+### 架构
+
+```
+User Agent（模拟司机）
+  → 发送多轮中文对话（30+ 轮/用户，模拟一周驾驶）
+  → Cabin Agent（P1 座舱系统，被测）
+  → Judge Agent（评判对错）
+      → 工具调用结果 vs 目标状态（客观指标，VehicleMemBench 思路）
+      → 回复质量检查（意图/槽位/Policy 行为）
+  → 错误报告（模块/轮次/期望 vs 实际）
+  → [可选] Fix Agent 生成 .patch → 人工审核
+```
+
+### 核心能力
+
+| 层 | 职责 | 评估方式 |
+|----|------|----------|
+| User Agent | 生成多样化中文对话（不同司机画像/场景/方言） | 覆盖率 |
+| Judge Agent | 意图+槽位+Policy+DST 正确性 | 规则判断（不依赖 LLM 打分） |
+| 沙盒环境 | 隔离运行，不污染真实数据 | Docker / 临时 DB |
+| 错误报告 | 聚合错误模式，按模块分类 | 人工可读报告 |
+| Fix Agent | 生成 patch（只建议，不自动合并） | PR + 人工审核 |
+
+### 行业参考
+
+- **CarMem**（宝马，COLING 2025）— 100 用户×10 偏好×50 对话，评估偏好提取/维护/检索三层
+  - 代码: github.com/johanneskirmayr/CarMem
+  - 论文: aclanthology.org/2025.coling-industry.29
+  - 关键: 预定义分类体系（GDPR 合规），偏好去重 95%，矛盾消解 92%
+
+- **VehicleMemBench**（中科大，2026.03）— 多用户长程记忆基准，可执行沙盒
+  - 代码: github.com/MINE-USTC/VehicleMemBench
+  - 论文: arxiv.org/abs/2603.23840
+  - 关键: 对比工具调用后状态 vs 目标状态（客观评估），23 个车辆工具，>80 条历史事件/样本
+  - 发现: 强模型做直接指令好，但偏好动态变化场景严重退化
+
+### 与 P1 的边界
+
+- P1 是被测系统（不动）
+- Sandbox 是测试工具（独立项目）
+- 解耦理由: 变更频率不同（原则 1）+ 测试需要独立（原则 3）
+
+### 优先级
+
+⏸ P1 Phase 5/6 完成后再启动。先把基本 eval 跑到 95%+ 再做长程自动化。
