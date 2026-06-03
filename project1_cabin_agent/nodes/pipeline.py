@@ -84,16 +84,17 @@ def _extract_slots_from_reply(
 
 
 def _is_confirm_positive(answer: str) -> bool:
-    """判断用户回复是否确认。优先使用 DA 分类结果，兜底关键词。"""
-    # DA 分类的 CONFIRM 是确定性的，优先使用
+    """判断用户回复是否确认。优先用 DA 分类，兜底关键词。"""
+    # DA 分类是确定性的，优先使用（直接分类 answer，不需要 state）
     try:
-        from project1_cabin_agent.nodes.da import DialogueAct
+        from project1_cabin_agent.nodes.da import classify_dialogue_act, DialogueAct
 
-        da_result = _get_current_da_result()
-        if da_result and da_result.get("act") == DialogueAct.CONFIRM.value:
-            return True
-        if da_result and da_result.get("act") == DialogueAct.DENY.value:
-            return False
+        da = classify_dialogue_act(answer, {})
+        if da is not None:
+            if da.act == DialogueAct.CONFIRM:
+                return True
+            if da.act == DialogueAct.DENY:
+                return False
     except Exception:
         pass
 
@@ -114,18 +115,6 @@ def _is_confirm_positive(answer: str) -> bool:
             "是",
         )
     )
-
-
-def _get_current_da_result() -> dict | None:
-    """获取当前轮次的 DA 结果（从 state 传入）"""
-    # pipeline 函数的 state 参数通过闭包或参数传递
-    # 在 _handle_skill_task 的调用链中，通过全局变量暂存
-    # 这比改 harness 接口侵入性小
-    return _current_da_result
-
-
-# 当前轮次 DA 结果暂存（best-effort）
-_current_da_result: dict | None = None
 
 
 # 取消关键词：短输入快速路径
@@ -796,10 +785,6 @@ async def task_pipeline(state: CabinAgentState) -> dict | Command:
 
     所有工具意图统一走 _handle_skill_task（infer_slots → pre_validate → tool → post_validate）。
     legacy _handle_tool_task 已删除（E1 清理）。"""
-    # 暂存 DA 结果，供 _is_confirm_positive 使用
-    global _current_da_result
-    _current_da_result = state.get("da_result")
-
     task = state.get("current_task")
     if not task:
         return {"task_results": [], "completed_task_ids": []}
