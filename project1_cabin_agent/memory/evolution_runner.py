@@ -75,6 +75,7 @@ def run_evolution(memory_manager, max_events: int = 50) -> int:
     def llm_fn(prompt: str) -> str:
         llm = get_llm("fast", temperature=0.1)
         from project1_cabin_agent.memory.evolution import _EVOLUTION_SYSTEM_PROMPT
+
         messages = [
             {"role": "system", "content": _EVOLUTION_SYSTEM_PROMPT},
             HumanMessage(content=prompt),

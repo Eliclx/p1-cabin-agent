@@ -317,6 +317,7 @@ def _trigger_evolution() -> None:
     except Exception as e:
         logger.debug(f"[Evolution] 跳过: {e}")
 
+
 # ── Proactive 主动建议 ────────────────────────────────
 
 _proactive_engine = None  # 延迟初始化，避免顶层 import

@@ -106,22 +106,24 @@ class TestBuildPrompt:
 
 class TestParseResponse:
     def test_valid_response(self):
-        raw = json.dumps({
-            "preferences": [
-                {
-                    "key": "frequent_destination_tianfu",
-                    "value": "天府广场",
-                    "reason": "用户3次导航去天府广场",
-                    "confidence": 0.85,
-                },
-                {
-                    "key": "preferred_route_type",
-                    "value": "avoid_toll",
-                    "reason": "用户多次抱怨过路费",
-                    "confidence": 0.7,
-                },
-            ]
-        })
+        raw = json.dumps(
+            {
+                "preferences": [
+                    {
+                        "key": "frequent_destination_tianfu",
+                        "value": "天府广场",
+                        "reason": "用户3次导航去天府广场",
+                        "confidence": 0.85,
+                    },
+                    {
+                        "key": "preferred_route_type",
+                        "value": "avoid_toll",
+                        "reason": "用户多次抱怨过路费",
+                        "confidence": 0.7,
+                    },
+                ]
+            }
+        )
         prefs = parse_evolution_response(raw)
         assert len(prefs) == 2
         assert prefs[0].key == "frequent_destination_tianfu"
@@ -151,26 +153,30 @@ class TestParseResponse:
 
     def test_missing_key_skipped(self):
         """缺少 key 或 value 的条目被跳过"""
-        raw = json.dumps({
-            "preferences": [
-                {"value": "v", "reason": "r", "confidence": 0.5},
-                {"key": "k", "reason": "r", "confidence": 0.5},
-                {"key": "valid", "value": "yes", "reason": "r", "confidence": 0.8},
-            ]
-        })
+        raw = json.dumps(
+            {
+                "preferences": [
+                    {"value": "v", "reason": "r", "confidence": 0.5},
+                    {"key": "k", "reason": "r", "confidence": 0.5},
+                    {"key": "valid", "value": "yes", "reason": "r", "confidence": 0.8},
+                ]
+            }
+        )
         prefs = parse_evolution_response(raw)
         assert len(prefs) == 1
         assert prefs[0].key == "valid"
 
     def test_confidence_bounded(self):
         """confidence 超出 0-1 范围被裁剪"""
-        raw = json.dumps({
-            "preferences": [
-                {"key": "a", "value": "v", "reason": "r", "confidence": 1.5},
-                {"key": "b", "value": "v", "reason": "r", "confidence": -0.3},
-                {"key": "c", "value": "v", "reason": "r", "confidence": 0.7},
-            ]
-        })
+        raw = json.dumps(
+            {
+                "preferences": [
+                    {"key": "a", "value": "v", "reason": "r", "confidence": 1.5},
+                    {"key": "b", "value": "v", "reason": "r", "confidence": -0.3},
+                    {"key": "c", "value": "v", "reason": "r", "confidence": 0.7},
+                ]
+            }
+        )
         prefs = parse_evolution_response(raw)
         assert prefs[0].confidence == 1.0
         assert prefs[1].confidence == 0.0
@@ -178,21 +184,25 @@ class TestParseResponse:
 
     def test_confidence_missing_defaults(self):
         """confidence 缺失默认 0.5"""
-        raw = json.dumps({
-            "preferences": [
-                {"key": "a", "value": "v", "reason": "r"},
-            ]
-        })
+        raw = json.dumps(
+            {
+                "preferences": [
+                    {"key": "a", "value": "v", "reason": "r"},
+                ]
+            }
+        )
         prefs = parse_evolution_response(raw)
         assert prefs[0].confidence == 0.5
 
     def test_confidence_non_numeric(self):
         """confidence 非数字默认 0.5"""
-        raw = json.dumps({
-            "preferences": [
-                {"key": "a", "value": "v", "reason": "r", "confidence": "high"},
-            ]
-        })
+        raw = json.dumps(
+            {
+                "preferences": [
+                    {"key": "a", "value": "v", "reason": "r", "confidence": "high"},
+                ]
+            }
+        )
         prefs = parse_evolution_response(raw)
         assert prefs[0].confidence == 0.5
 
@@ -227,16 +237,18 @@ class TestEvolutionEngine:
 
     def test_llm_returns_preferences(self):
         def mock_llm(prompt: str) -> str:
-            return json.dumps({
-                "preferences": [
-                    {
-                        "key": "frequent_destination_chongqing",
-                        "value": "重庆",
-                        "reason": "3次导航",
-                        "confidence": 0.8,
-                    }
-                ]
-            })
+            return json.dumps(
+                {
+                    "preferences": [
+                        {
+                            "key": "frequent_destination_chongqing",
+                            "value": "重庆",
+                            "reason": "3次导航",
+                            "confidence": 0.8,
+                        }
+                    ]
+                }
+            )
 
         engine = EvolutionEngine(llm_fn=mock_llm)
         events = [
@@ -256,6 +268,7 @@ class TestEvolutionEngine:
 
     def test_llm_exception_handled(self):
         """LLM 调用失败不崩溃"""
+
         def broken_llm(prompt: str) -> str:
             raise RuntimeError("LLM down")
 
@@ -279,13 +292,30 @@ class TestEvolutionEngine:
 
     def test_multiple_preferences(self):
         def mock_llm(prompt: str) -> str:
-            return json.dumps({
-                "preferences": [
-                    {"key": "frequent_dest", "value": "重庆", "reason": "3次", "confidence": 0.8},
-                    {"key": "preferred_route", "value": "avoid_toll", "reason": "抱怨过路费", "confidence": 0.7},
-                    {"key": "preferred_temp", "value": "24", "reason": "多次设24度", "confidence": 0.6},
-                ]
-            })
+            return json.dumps(
+                {
+                    "preferences": [
+                        {
+                            "key": "frequent_dest",
+                            "value": "重庆",
+                            "reason": "3次",
+                            "confidence": 0.8,
+                        },
+                        {
+                            "key": "preferred_route",
+                            "value": "avoid_toll",
+                            "reason": "抱怨过路费",
+                            "confidence": 0.7,
+                        },
+                        {
+                            "key": "preferred_temp",
+                            "value": "24",
+                            "reason": "多次设24度",
+                            "confidence": 0.6,
+                        },
+                    ]
+                }
+            )
 
         engine = EvolutionEngine(llm_fn=mock_llm)
         events = [_make_event()]
@@ -343,7 +373,6 @@ class TestEvolutionRunner:
     def test_full_flow_with_mock_llm(self):
         """完整流程：events → LLM → 偏好写回"""
         from project1_cabin_agent.memory.evolution_runner import run_evolution
-        
 
         # 准备 mock events
         mock_event = MagicMock()
@@ -361,16 +390,18 @@ class TestEvolutionRunner:
 
         # Mock LLM
         mock_llm_resp = MagicMock()
-        mock_llm_resp.content = json.dumps({
-            "preferences": [
-                {
-                    "key": "frequent_destination_chongqing",
-                    "value": "重庆",
-                    "reason": "3次导航去重庆",
-                    "confidence": 0.85,
-                }
-            ]
-        })
+        mock_llm_resp.content = json.dumps(
+            {
+                "preferences": [
+                    {
+                        "key": "frequent_destination_chongqing",
+                        "value": "重庆",
+                        "reason": "3次导航去重庆",
+                        "confidence": 0.85,
+                    }
+                ]
+            }
+        )
         mock_llm = MagicMock()
         mock_llm.invoke.return_value = mock_llm_resp
 
@@ -392,7 +423,6 @@ class TestEvolutionRunner:
     def test_no_preferences_still_marks_analyzed(self):
         """LLM 没提取到偏好，仍标记事件已分析"""
         from project1_cabin_agent.memory.evolution_runner import run_evolution
-        
 
         mock_event = MagicMock()
         mock_event.id = 42
@@ -425,7 +455,6 @@ class TestEvolutionRunner:
     def test_max_events_truncation(self):
         """事件超过 max_events 时截断"""
         from project1_cabin_agent.memory.evolution_runner import run_evolution
-        
 
         events = []
         for i in range(10):

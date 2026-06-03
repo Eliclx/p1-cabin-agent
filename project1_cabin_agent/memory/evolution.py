@@ -34,9 +34,9 @@ from dataclasses import dataclass
 class ExtractedPreference:
     """从 LLM 分析中提取的偏好"""
 
-    key: str          # "preferred_route_type" / "frequent_destination_xxx"
-    value: str        # "avoid_toll" / "天府广场"
-    reason: str       # "用户3次导航去天府广场"
+    key: str  # "preferred_route_type" / "frequent_destination_xxx"
+    value: str  # "avoid_toll" / "天府广场"
+    reason: str  # "用户3次导航去天府广场"
     confidence: float  # 0.0 ~ 1.0
 
     def to_dict(self) -> dict:
@@ -160,12 +160,14 @@ def parse_evolution_response(llm_output: str) -> list[ExtractedPreference]:
             confidence = 0.5
         confidence = max(0.0, min(1.0, confidence))
 
-        results.append(ExtractedPreference(
-            key=key,
-            value=value,
-            reason=raw.get("reason", ""),
-            confidence=confidence,
-        ))
+        results.append(
+            ExtractedPreference(
+                key=key,
+                value=value,
+                reason=raw.get("reason", ""),
+                confidence=confidence,
+            )
+        )
 
     return results
 
