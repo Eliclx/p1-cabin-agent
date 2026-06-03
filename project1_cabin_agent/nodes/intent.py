@@ -130,18 +130,20 @@ def _handle_da_select(da_result, state: CabinAgentState) -> dict | None:
 
     # 构造 navigate 子任务
     return {
-        "sub_tasks": [{
-            "task_id": f"task_da_{idx}",
-            "intent": "navigate",
-            "extracted_slots": {
-                "destination": chosen.get("name", ""),
-                "destination_lng": chosen.get("lng"),
-                "destination_lat": chosen.get("lat"),
-            },
-            "required_slots": ["destination"],
-            "urgency": "normal",
-            "status": "completed",
-        }],
+        "sub_tasks": [
+            {
+                "task_id": f"task_da_{idx}",
+                "intent": "navigate",
+                "extracted_slots": {
+                    "destination": chosen.get("name", ""),
+                    "destination_lng": chosen.get("lng"),
+                    "destination_lat": chosen.get("lat"),
+                },
+                "required_slots": ["destination"],
+                "urgency": "normal",
+                "status": "completed",
+            }
+        ],
         "is_complex": False,
         "task_results": None,
         "completed_task_ids": None,
@@ -152,7 +154,10 @@ def _handle_da_select(da_result, state: CabinAgentState) -> dict | None:
 
 
 def _handle_da_correction(da_result, state: CabinAgentState) -> dict | None:
-    """DA=CORRECTION → 修改上一轮参数，重新执行"""
+    """DA=CORRECTION → 修改上一轮参数，重新执行
+
+    从 tool_result 提取业务参数（过滤元数据），合并纠正字段。
+    """
     corrections = da_result.corrections
     if not corrections:
         return None
@@ -160,26 +165,34 @@ def _handle_da_correction(da_result, state: CabinAgentState) -> dict | None:
     task_results = state.get("task_results", [])
     last_result = task_results[-1] if task_results else {}
     last_intent = last_result.get("intent", "")
-    last_slots = (last_result.get("tool_result") or {}).copy()
 
     if not last_intent:
         return None
 
+    # 从 tool_result 提取业务参数，过滤元数据字段
+    _META_KEYS = {"status", "success", "intent", "action", "error", "voice_reply"}
+    tool_result = last_result.get("tool_result") or {}
+    data = tool_result.get("data", tool_result)  # map 域有 data 层，climate 域没有
+    if isinstance(data, dict):
+        last_slots = {k: v for k, v in data.items() if k not in _META_KEYS}
+    else:
+        last_slots = {}
+
     # 合并纠正
-    new_slots = last_slots.copy()
-    new_slots.update(corrections)
-    new_slots["_intent"] = last_intent
+    new_slots = {**last_slots, **corrections, "_intent": last_intent}
     logger.info(f"[DA] CORRECTION → {last_intent}, corrections={corrections}")
 
     return {
-        "sub_tasks": [{
-            "task_id": "task_da_corr",
-            "intent": last_intent,
-            "extracted_slots": new_slots,
-            "required_slots": [],
-            "urgency": "normal",
-            "status": "completed",
-        }],
+        "sub_tasks": [
+            {
+                "task_id": "task_da_corr",
+                "intent": last_intent,
+                "extracted_slots": new_slots,
+                "required_slots": [],
+                "urgency": "normal",
+                "status": "completed",
+            }
+        ],
         "is_complex": False,
         "task_results": None,
         "completed_task_ids": None,

@@ -254,9 +254,7 @@ class SkillRegistry:
         try:
             from importlib import import_module
 
-            da_mod = import_module(
-                f"project1_cabin_agent.skills.{domain}.da_rules"
-            )
+            da_mod = import_module(f"project1_cabin_agent.skills.{domain}.da_rules")
             da_attr = f"{domain.upper()}_DA_RULES"
             entry.da_rules = getattr(da_mod, da_attr, [])
         except (ImportError, AttributeError):

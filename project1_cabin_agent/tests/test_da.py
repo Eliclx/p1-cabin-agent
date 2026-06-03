@@ -28,18 +28,41 @@ from project1_cabin_agent.nodes.da import (
 
 
 class TestConfirm:
-    @pytest.mark.parametrize("text", [
-        "好", "好的", "确认", "确定", "可以", "行", "嗯", "对",
-        "是的", "是", "要", "执行", "没问题", "OK", "ok",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "好",
+            "好的",
+            "确认",
+            "确定",
+            "可以",
+            "行",
+            "嗯",
+            "对",
+            "是的",
+            "是",
+            "要",
+            "执行",
+            "没问题",
+            "OK",
+            "ok",
+        ],
+    )
     def test_confirm_words(self, text):
         result = _rule_confirm(text, {})
         assert result is not None
         assert result.act == DialogueAct.CONFIRM
 
-    @pytest.mark.parametrize("text", [
-        "不好", "不要", "不对", "算了", "取消",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "不好",
+            "不要",
+            "不对",
+            "算了",
+            "取消",
+        ],
+    )
     def test_not_confirm(self, text):
         result = _rule_confirm(text, {})
         assert result is None
@@ -55,18 +78,37 @@ class TestConfirm:
 
 
 class TestDeny:
-    @pytest.mark.parametrize("text", [
-        "不", "不要", "不用", "不用了", "算了", "取消",
-        "别", "不行", "否", "不要了", "取消吧", "算了",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "不",
+            "不要",
+            "不用",
+            "不用了",
+            "算了",
+            "取消",
+            "别",
+            "不行",
+            "否",
+            "不要了",
+            "取消吧",
+            "算了",
+        ],
+    )
     def test_deny_words(self, text):
         result = _rule_deny(text, {})
         assert result is not None
         assert result.act == DialogueAct.DENY
 
-    @pytest.mark.parametrize("text", [
-        "好的", "确认", "要", "是",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "好的",
+            "确认",
+            "要",
+            "是",
+        ],
+    )
     def test_not_deny(self, text):
         result = _rule_deny(text, {})
         assert result is None
@@ -78,26 +120,32 @@ class TestDeny:
 
 
 class TestSelectIndex:
-    @pytest.mark.parametrize("text,expected_idx", [
-        ("第一个", 0),
-        ("第二个", 1),
-        ("第三个", 2),
-        ("第1个", 0),
-        ("第2个", 1),
-        ("1号", 0),
-        ("2号", 1),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected_idx",
+        [
+            ("第一个", 0),
+            ("第二个", 1),
+            ("第三个", 2),
+            ("第1个", 0),
+            ("第2个", 1),
+            ("1号", 0),
+            ("2号", 1),
+        ],
+    )
     def test_select_index(self, text, expected_idx):
         result = _rule_select_index(text, {})
         assert result is not None
         assert result.act == DialogueAct.SELECT
         assert result.selection["index"] == expected_idx
 
-    @pytest.mark.parametrize("text", [
-        "第一",  # 不完整
-        "个",    # 无序号
-        "导航去重庆",  # 新意图
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "第一",  # 不完整
+            "个",  # 无序号
+            "导航去重庆",  # 新意图
+        ],
+    )
     def test_not_select(self, text):
         result = _rule_select_index(text, {})
         assert result is None
@@ -143,6 +191,7 @@ class TestClassify:
 class TestClimateCorrection:
     def test_change_to_heat(self):
         from project1_cabin_agent.skills.climate.da_rules import rule_climate_correction
+
         result = rule_climate_correction("不要制冷", {"last_intent": "ac_control"})
         assert result is not None
         assert result.act == DialogueAct.CORRECTION
@@ -150,32 +199,41 @@ class TestClimateCorrection:
 
     def test_change_to_cool(self):
         from project1_cabin_agent.skills.climate.da_rules import rule_climate_correction
+
         result = rule_climate_correction("不要制热", {"last_intent": "ac_control"})
         assert result is not None
         assert result.corrections["mode"] == "cool"
 
     def test_change_to_auto(self):
         from project1_cabin_agent.skills.climate.da_rules import rule_climate_correction
+
         result = rule_climate_correction("改成自动", {"last_intent": "ac_control"})
         assert result is not None
         assert result.corrections["mode"] == "auto"
 
     def test_change_temperature(self):
         from project1_cabin_agent.skills.climate.da_rules import rule_climate_correction
-        result = rule_climate_correction("太冷了调到26度", {"last_intent": "ac_control"})
+
+        result = rule_climate_correction(
+            "太冷了调到26度", {"last_intent": "ac_control"}
+        )
         assert result is not None
         assert result.corrections["temperature"] == 26
 
     def test_wrong_intent_no_correction(self):
         from project1_cabin_agent.skills.climate.da_rules import rule_climate_correction
+
         result = rule_climate_correction("不要制冷", {"last_intent": "navigate"})
         assert result is None
 
     def test_via_engine(self):
-        result = classify_dialogue_act("不要制冷", {
-            "last_domain": "climate",
-            "last_intent": "ac_control",
-        })
+        result = classify_dialogue_act(
+            "不要制冷",
+            {
+                "last_domain": "climate",
+                "last_intent": "ac_control",
+            },
+        )
         assert result is not None
         assert result.act == DialogueAct.CORRECTION
         assert result.corrections["mode"] == "heat"
@@ -189,14 +247,18 @@ class TestClimateCorrection:
 class TestMapDA:
     def test_select_by_name(self):
         from project1_cabin_agent.skills.map.da_rules import rule_map_select_by_name
+
         candidates = [
             {"name": "海底捞火锅(春熙路店)"},
             {"name": "小龙坎(科华北路店)"},
         ]
-        result = rule_map_select_by_name("小龙坎", {
-            "last_intent": "search_poi",
-            "candidates": candidates,
-        })
+        result = rule_map_select_by_name(
+            "小龙坎",
+            {
+                "last_intent": "search_poi",
+                "candidates": candidates,
+            },
+        )
         assert result is not None
         assert result.act == DialogueAct.SELECT
         assert result.selection["index"] == 1
@@ -204,14 +266,19 @@ class TestMapDA:
 
     def test_select_name_not_found(self):
         from project1_cabin_agent.skills.map.da_rules import rule_map_select_by_name
-        result = rule_map_select_by_name("不存在的店", {
-            "last_intent": "search_poi",
-            "candidates": [{"name": "海底捞"}],
-        })
+
+        result = rule_map_select_by_name(
+            "不存在的店",
+            {
+                "last_intent": "search_poi",
+                "candidates": [{"name": "海底捞"}],
+            },
+        )
         assert result is None
 
     def test_avoid_toll(self):
         from project1_cabin_agent.skills.map.da_rules import rule_map_correction
+
         result = rule_map_correction("不要收费的", {"last_intent": "navigate"})
         assert result is not None
         assert result.act == DialogueAct.CORRECTION
@@ -219,27 +286,33 @@ class TestMapDA:
 
     def test_avoid_highway(self):
         from project1_cabin_agent.skills.map.da_rules import rule_map_correction
+
         result = rule_map_correction("不走高速", {"last_intent": "navigate"})
         assert result is not None
         assert result.corrections["avoid_highway"] is True
 
     def test_route_shortest(self):
         from project1_cabin_agent.skills.map.da_rules import rule_map_correction
+
         result = rule_map_correction("走近路", {"last_intent": "navigate"})
         assert result is not None
         assert result.corrections["route_type"] == "shortest"
 
     def test_route_fastest(self):
         from project1_cabin_agent.skills.map.da_rules import rule_map_correction
+
         result = rule_map_correction("赶时间走最快的", {"last_intent": "navigate"})
         assert result is not None
         assert result.corrections["route_type"] == "fastest"
 
     def test_correction_via_engine(self):
-        result = classify_dialogue_act("不要收费的", {
-            "last_domain": "map",
-            "last_intent": "navigate",
-        })
+        result = classify_dialogue_act(
+            "不要收费的",
+            {
+                "last_domain": "map",
+                "last_intent": "navigate",
+            },
+        )
         assert result is not None
         assert result.act == DialogueAct.CORRECTION
 
@@ -304,19 +377,25 @@ class TestE2EScenarios:
 
     def test_correction_mode(self):
         """Agent: 空调24度制冷 用户: 不要制冷"""
-        result = classify_dialogue_act("不要制冷", {
-            "last_domain": "climate",
-            "last_intent": "ac_control",
-        })
+        result = classify_dialogue_act(
+            "不要制冷",
+            {
+                "last_domain": "climate",
+                "last_intent": "ac_control",
+            },
+        )
         assert result.act == DialogueAct.CORRECTION
         assert result.corrections["mode"] == "heat"
 
     def test_correction_route(self):
         """Agent: 导航路线规划好了 用户: 不要收费的"""
-        result = classify_dialogue_act("不要收费的", {
-            "last_domain": "map",
-            "last_intent": "navigate",
-        })
+        result = classify_dialogue_act(
+            "不要收费的",
+            {
+                "last_domain": "map",
+                "last_intent": "navigate",
+            },
+        )
         assert result.act == DialogueAct.CORRECTION
         assert result.corrections["avoid_toll"] is True
 

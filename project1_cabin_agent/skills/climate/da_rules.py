@@ -17,7 +17,12 @@ def rule_climate_correction(user_input: str, context: dict) -> DAResult | None:
     text = user_input.strip()
 
     last_intent = context.get("last_intent", "")
-    if last_intent not in ("ac_control", "window_control", "light_control", "seat_control"):
+    if last_intent not in (
+        "ac_control",
+        "window_control",
+        "light_control",
+        "seat_control",
+    ):
         return None
 
     # 空调模式纠正
