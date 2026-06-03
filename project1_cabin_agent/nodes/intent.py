@@ -321,7 +321,9 @@ def intent_classifier(state: CabinAgentState) -> dict:
     _policy = PolicyEngine()
     _policy_action = _policy.decide(_ds, user_input)
     _policy_dict = _policy_action.to_dict()
-    logger.info(f"[Policy] action={_policy_action.action.value}, reason={_policy_action.reason}")
+    logger.info(
+        f"[Policy] action={_policy_action.action.value}, reason={_policy_action.reason}"
+    )
 
     # Policy: ABANDON → 直接返回模板回复，不走 LLM
     if _policy_action.action == PolicyActionType.ABANDON:

@@ -135,7 +135,8 @@ def _rule_reroute_cost(ds: DialogueState, user_input: str) -> PolicyAction | Non
         return None
 
     last = goal.last_result
-    has_toll = "toll" in last and last["toll"]
+    toll_val = last.get("toll", "")
+    has_toll = bool(toll_val and toll_val not in ("0", "0元", "免费"))
     if not has_toll:
         return None
 
