@@ -332,9 +332,9 @@
 | — | Skill-Memory解耦: 声明式 {DOMAIN}_MEMORY + 依赖注入 | ✅ 04e10e8 | 22/22 集成 |
 | 4E | 旧模块迁移: episodic/user_profile → MemoryManager 薄代理 | ✅ 688dbe9 | 38/38 |
 | 4E补 | test_episodic_memory 修 start_navigation→navigate + mock时间 | ✅ eae71c8 | 38/38 |
-| 4C | Policy 对话策略 (nodes/policy.py) | ⬅️ 下一步 | |
-| 4D | Proactive 主动引擎 (nodes/proactive.py) | 待做 | |
-| 4F | Memory evolution (异步 LLM) | 待做 | |
+| 4C | Policy 对话策略 + 域规则解耦 (nodes/policy.py + skills/{domain}/policy_rules.py) | ✅ a472655 | 34/34 |
+| 4D | Proactive 主动引擎 + 域规则解耦 (nodes/proactive.py + skills/{domain}/proactive_rules.py) | ✅ 5252639 | 33/33 |
+| 4F | Memory evolution (异步 LLM) | ⏸ 等真实数据 | — |
 
 ### Phase 4A: MemoryManager ✅
 
@@ -394,8 +394,8 @@ memory/manager.py  ← 零外部 import, 完全独立
 | DST | Belief State | ✅ DialogueState (Phase 4B) | — |
 | DST | Slot Carry-Over | ✅ active_frames | — |
 | DST | Confirmed Facts | ✅ 黑板栈 | — |
-| DPL | Action 选择 | ⚠️ 缺 propose/explain/reroute | 🔴 Phase 4C |
-| DPL | 主动策略 | ❌ 无 Proactive | 🔴 Phase 4D |
+| DPL | Action 选择 | ✅ Policy (Phase 4C) | — |
+| DPL | 主动策略 | ✅ Proactive (Phase 4D) | — |
 | DPL | Safety Guard | ✅ harness | — |
 | NLG | 回复生成 | ⚠️ 纯拼接 | 🟡 Phase 6 |
 | 记忆 | L1-L3 | ✅ MemoryManager (Phase 4A/4E) | — |
@@ -413,7 +413,42 @@ memory/manager.py  ← 零外部 import, 完全独立
 
 ### Demo 测试发现的 4 个问题
 
-1. "太贵了" → LLM 没设 route_type=avoid_toll
-2. "那就走国道" → LLM 丢 destination（黑板有但不利用）
+1. "太贵了" → LLM 没设 route_type=avoid_toll  ← 4C Policy 已解决
+2. "那就走国道" → LLM 丢 destination（黑板有但不利用）  ← 4C FILL_FROM_DST 已解决
 3. avoid_highway 跟 fastest 差不多（300.9km/157元 vs 300.3km/165元）
-4. 对话整体机械，没有记忆和主动性
+4. 对话整体机械，没有记忆和主动性  ← 4A/4D 已解决
+
+---
+
+## ⏭️ 待做：车载对话数据集接入
+
+### 调研结果 (2026-06-02)
+
+#### 开源可用数据集
+
+| 数据集 | 规模 | 域 | 语言 | 格式 | 适配性 |
+|--------|------|----|------|------|--------|
+| **KVRet** (Stanford) | 3,031 多轮对话 | weather / navigate / calendar | 英文 | JSON，带 DST 标注 | ⭐⭐⭐ 域直接对应 |
+| **Magic Data 座舱泛化语料** | 90,000+ 条（开源 1,000+） | 空调/车窗/导航/音乐 | 中文 | 意图+槽位 | ⭐⭐ 中文，单轮为主 |
+| **In-Car Agent V1** (goreasoning) | 200K 意图 + 100K 多轮 + 50K 分层 | 全域（控制/导航/搜索/闲聊/问答） | 中文 | JSON，带情绪+上下文 | ⭐⭐⭐ 最全，需邮件申请 |
+
+- KVRet: HuggingFace `ConvLab/kvret`，`pip install datasets` 即可拉取
+- In-Car Agent V1: 需邮件申请 deepreasoninggo@gmail.com + 填表
+- Magic Data: 知乎专栏有 1,000 条开源样本
+
+#### 现实问题
+
+所有公开数据集都是**对话文本**，没有 `fuel=12%`、`temperature=38°C` 这种实时车辆状态流。Proactive Engine 需要**车辆状态 + 用户对话**配对才能端到端测试。
+
+#### 接入计划
+
+1. **KVRet 接入 eval** — 转格式后测 DST/Policy/Memory 多轮能力（最快，1-2天）
+2. **合成车机状态流** — 定义一周驾驶模式（通勤/周末），注入 fuel/temp/speed 变化，配 Proactive 规则测试
+3. **In-Car Agent V1 扩充** — 申请批下来后用中文数据扩充 eval 覆盖
+
+#### 相关链接
+
+- KVRet 论文: https://nlp.stanford.edu/blog/a-new-multi-turn-multi-domain-task-oriented-dialogue-dataset/
+- KVRet HuggingFace: https://huggingface.co/datasets/ConvLab/kvret
+- In-Car Agent V1: https://github.com/goreasoning/In-Car-Intelligent-Interaction-Agent-Dataset-V1
+- Magic Data: https://zhuanlan.zhihu.com/p/582273388

@@ -341,9 +341,7 @@ def _append_proactive(response: str, state: CabinAgentState | dict) -> str:
 
         suggestion = _proactive_engine.check(ctx)
         if suggestion:
-            logger.info(
-                f"[Proactive] {suggestion.rule_name}: {suggestion.message}"
-            )
+            logger.info(f"[Proactive] {suggestion.rule_name}: {suggestion.message}")
             return f"{response}\n\n{suggestion.message}"
     except Exception as e:
         logger.debug(f"[Proactive] 检查失败，跳过: {e}")

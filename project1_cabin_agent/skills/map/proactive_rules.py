@@ -25,8 +25,7 @@ def rule_fuel_warning(ctx: ProactiveContext) -> ProactiveSuggestion | None:
     # 只在导航中提醒（避免用户只是听歌时骚扰）
     ds = ctx.dialogue_state
     navigating = any(
-        g.goal_type == "map" and g.status == "active"
-        for g in ds.active_goals
+        g.goal_type == "map" and g.status == "active" for g in ds.active_goals
     )
     if not navigating:
         return None
@@ -74,6 +73,7 @@ def rule_frequent_destination(ctx: ProactiveContext) -> ProactiveSuggestion | No
 def _get_now():
     """时间获取函数，方便测试 mock"""
     from datetime import datetime
+
     return datetime.now()
 
 

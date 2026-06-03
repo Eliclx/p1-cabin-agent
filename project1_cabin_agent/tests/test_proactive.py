@@ -96,6 +96,7 @@ class TestCooldownStore:
 
 def _make_rule(name: str, priority: int, should_fire: bool = True):
     """构造测试用规则"""
+
     def rule(ctx: ProactiveContext) -> ProactiveSuggestion | None:
         if not should_fire:
             return None
@@ -105,6 +106,7 @@ def _make_rule(name: str, priority: int, should_fire: bool = True):
             priority=priority,
             message=f"suggestion from {name}",
         )
+
     rule.__name__ = name
     return rule
 
@@ -387,7 +389,9 @@ class TestColdNoHeat:
             rule_cold_no_heat,
         )
 
-        ctx = _ctx(vehicle=_snap(temperature=5.0, ac_on=False, speed=60, seat_heat_level=0))
+        ctx = _ctx(
+            vehicle=_snap(temperature=5.0, ac_on=False, speed=60, seat_heat_level=0)
+        )
         result = rule_cold_no_heat(ctx)
         assert result is not None
         assert "5" in result.message
@@ -398,7 +402,9 @@ class TestColdNoHeat:
             rule_cold_no_heat,
         )
 
-        ctx = _ctx(vehicle=_snap(temperature=5.0, ac_on=False, speed=60, seat_heat_level=2))
+        ctx = _ctx(
+            vehicle=_snap(temperature=5.0, ac_on=False, speed=60, seat_heat_level=2)
+        )
         assert rule_cold_no_heat(ctx) is None
 
     def test_not_cold(self):
@@ -406,7 +412,9 @@ class TestColdNoHeat:
             rule_cold_no_heat,
         )
 
-        ctx = _ctx(vehicle=_snap(temperature=15.0, ac_on=False, speed=60, seat_heat_level=0))
+        ctx = _ctx(
+            vehicle=_snap(temperature=15.0, ac_on=False, speed=60, seat_heat_level=0)
+        )
         assert rule_cold_no_heat(ctx) is None
 
 
@@ -418,21 +426,25 @@ class TestColdNoHeat:
 class TestRegistryDiscovery:
     def test_map_rules_discovered(self):
         from project1_cabin_agent.skills.registry import registry
+
         rules = registry.get_proactive_rules("map")
         assert len(rules) == 2  # fuel_warning + frequent_destination
 
     def test_climate_rules_discovered(self):
         from project1_cabin_agent.skills.registry import registry
+
         rules = registry.get_proactive_rules("climate")
         assert len(rules) == 2  # hot_no_ac + cold_no_heat
 
     def test_vehicle_no_rules(self):
         from project1_cabin_agent.skills.registry import registry
+
         rules = registry.get_proactive_rules("vehicle")
         assert len(rules) == 0
 
     def test_all_rules_collected(self):
         from project1_cabin_agent.skills.registry import registry
+
         rules = registry.get_all_proactive_rules()
         assert len(rules) >= 4  # 2 map + 2 climate
 

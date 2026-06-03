@@ -30,10 +30,10 @@ from project1_cabin_agent.nodes.dialogue_state import DialogueState
 class ProactiveSuggestion:
     """主动建议"""
 
-    rule_name: str           # 规则名（用于 cooldown 去重）
-    domain: str              # "map" / "climate"
-    priority: int            # 1=安全(油量低) 3=建议(常去地点) 5=闲聊
-    message: str             # "油量仅剩12%，需要导航去加油站吗？"
+    rule_name: str  # 规则名（用于 cooldown 去重）
+    domain: str  # "map" / "climate"
+    priority: int  # 1=安全(油量低) 3=建议(常去地点) 5=闲聊
+    message: str  # "油量仅剩12%，需要导航去加油站吗？"
 
     def to_dict(self) -> dict:
         return {
@@ -53,6 +53,7 @@ class ProactiveContext:
     车辆状态用 dict 而不是 VehicleState 类型，
     是为了不让 nodes/ 依赖 vehicle_state（解耦原则 3）。
     """
+
     dialogue_state: DialogueState
     vehicle_snapshot: dict = field(default_factory=dict)
     memory_meta: dict = field(default_factory=dict)  # {intent: memory_meta}
@@ -60,6 +61,7 @@ class ProactiveContext:
     def get_memory(self) -> object | None:
         """延迟获取 MemoryManager 单例（避免顶层 import）"""
         from project1_cabin_agent.memory._instance import get_memory
+
         return get_memory()
 
 
@@ -95,7 +97,7 @@ class CooldownStore:
 
 # 优先级 → 冷却时间映射（安全类冷却短，建议类冷却长）
 _PRIORITY_COOLDOWN: dict[int, float] = {
-    1: 300,   # 安全类（油量低）：5 分钟
+    1: 300,  # 安全类（油量低）：5 分钟
     3: 1800,  # 建议类（常去地点）：30 分钟
     5: 3600,  # 闲聊类：1 小时
 }
@@ -117,6 +119,7 @@ class ProactiveEngine:
         """延迟加载域规则（从 registry）"""
         if self._rules is None:
             from project1_cabin_agent.skills.registry import registry
+
             self._rules = registry.get_all_proactive_rules()
         return self._rules
 
@@ -136,8 +139,7 @@ class ProactiveEngine:
 
             # 对话中降级：有 pending goal → 只允许安全类
             has_pending = any(
-                g.status == "pending"
-                for g in ctx.dialogue_state.active_goals
+                g.status == "pending" for g in ctx.dialogue_state.active_goals
             )
             if has_pending and suggestion.priority > 1:
                 continue
