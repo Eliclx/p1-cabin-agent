@@ -189,6 +189,38 @@ message_compressor → fast_rules → [条件路由]
 | `error_collector.py` | 错误收集器 |
 | `data_pipeline.py` / `synth_data.py` / `expander.py` / `judge.py` | 合成数据+评估流水线 |
 
+## 设计原则
+
+写代码时遵循以下原则，每个决策都用括号说明原因：
+
+### 解耦 6 条判断原则
+
+判断是否需要解耦，逐条过：
+
+1. **变更频率不同** — 两个模块修改节奏不一致，就该隔离。业务逻辑天天改，基础设施月月不动——不隔离就会互相污染
+2. **替换可能性** — 如果能说出"这里将来可能换成 XX"，就该抽接口。TTS 引擎、LLM provider、存储后端——都属于这类
+3. **测试需要独立** — 想单独测某个模块，但它拖着一堆外部依赖跑不起来——说明耦合已经在伤害你了，该注入依赖
+4. **多人并行开发** — 模块之间没有清晰边界，两个人改同一个文件是迟早的事。边界即契约，契约即解耦
+5. **影响范围过大** — 改一个需求要动五个文件，说明职责扩散了。单一职责不是为了"好看"，是为了让变更局部化
+6. **逻辑方向相反** — A 依赖 B，B 也依赖 A——循环依赖是强耦合的极端形式，必须打破
+
+### 模块化实践
+
+- **通用引擎 + per-domain 规则**：`nodes/policy.py` 是通用引擎（零域硬编码），`skills/{domain}/policy_rules.py` 是域规则。加新域只加文件，不改引擎
+- **声明式配置 + 依赖注入**：`{DOMAIN}_MEMORY` 在 schema.py 声明，registry 收集，调用方注入。MemoryManager 零外部 import
+- **三层分离**：纯逻辑层（零依赖）→ 编排层（胶水）→ 触发层（一行调用）。如 evolution.py / evolution_runner.py / response.py
+- **延迟加载**：LLM callable 注入、MemoryManager 参数传入，不在模块顶层硬编码依赖
+- **每个模块能独立阅读和理解**：从下往上读——models → 纯逻辑 → 编排 → 触发，不需要跳来跳去
+
+### 已落地的解耦案例
+
+| 模块 | 解耦方式 | 文件 |
+|------|----------|------|
+| Memory | 声明式 {DOMAIN}_MEMORY + DI | `skills/{domain}/schema.py` 声明 → `manager.py` 读取 |
+| Policy | per-domain 规则文件 | `skills/map/policy_rules.py` 独立于 `nodes/policy.py` |
+| Proactive | per-domain 规则文件 | `skills/{domain}/proactive_rules.py` 独立于 `nodes/proactive.py` |
+| Evolution | 三层分离 | `evolution.py`(纯逻辑) → `evolution_runner.py`(编排) → `response.py`(触发) |
+
 ## 开发约定
 
 ### 代码风格
