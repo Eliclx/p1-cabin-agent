@@ -28,6 +28,7 @@ def format_action(domain: str, intent: str, tool_result: dict) -> CabinAction | 
     """
     try:
         from project1_cabin_agent.skills.registry import registry
+
         formatter = registry.get_action_formatter(domain, intent)
     except Exception:
         return None

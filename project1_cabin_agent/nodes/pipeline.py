@@ -645,28 +645,42 @@ async def _handle_skill_task(
                 task_id, intent, "好的，已取消", task, msgs, tool_result={}
             )
 
-    # ── 7. harness.format_response + action 信号 ──
+    # ── 7. 双通道输出（并行派生，互不依赖）──
+    # voice_reply → TTS/显示（给人听）
+    # action       → CAN/导航 HMI（给硬件执行）
+    # 两者都从 tool_result 独立派生，没有依赖关系
     voice_reply = harness.format_response(tool_result)
-
-    # action 信号：tool_result → CabinAction → task_result.action
-    action_signal = None
-    try:
-        from project1_cabin_agent.actions.engine import format_action
-        cabin_action = format_action(domain, intent, tool_result)
-        if cabin_action:
-            action_signal = cabin_action.to_dict()
-            logger.debug(f"[action] {domain}.{intent} → {cabin_action.command}({cabin_action.params})")
-    except Exception:
-        pass  # action 层 best-effort，不影响主流程
+    action_signal = _build_action_signal(domain, intent, tool_result)
 
     # L2 记忆写入
     user_profile.save_from_tool_result(intent, slots)
 
     logger.info(f"[skill_task] {domain}.{intent} 完成, reply={voice_reply}")
     return _make_result(
-        task_id, intent, voice_reply, task, msgs,
-        tool_result=tool_result, action=action_signal,
+        task_id,
+        intent,
+        voice_reply,
+        task,
+        msgs,
+        tool_result=tool_result,
+        action=action_signal,
     )
+
+
+def _build_action_signal(domain: str, intent: str, tool_result: dict) -> dict | None:
+    """tool_result → CabinAction dict（best-effort，不影响主流程）"""
+    try:
+        from project1_cabin_agent.actions.engine import format_action
+
+        cabin_action = format_action(domain, intent, tool_result)
+        if cabin_action:
+            logger.debug(
+                f"[action] {domain}.{intent} → {cabin_action.command}({cabin_action.params})"
+            )
+            return cabin_action.to_dict()
+    except Exception:
+        pass
+    return None
 
 
 # ═══════════════════════════════════════════════

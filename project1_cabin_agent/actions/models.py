@@ -30,9 +30,9 @@ class CabinAction:
                     command="window_set", params={"target": "driver", "percent": 50})
     """
 
-    domain: str          # "climate" / "map" / "media" / "vehicle"
-    intent: str          # "ac_control" / "navigate" / "media_control" / ...
-    command: str         # "ac_set" / "start_nav" / "play" / "window_set" / ...
+    domain: str  # "climate" / "map" / "media" / "vehicle"
+    intent: str  # "ac_control" / "navigate" / "media_control" / ...
+    command: str  # "ac_set" / "start_nav" / "play" / "window_set" / ...
     params: dict = field(default_factory=dict)  # 动作参数
 
     def to_dict(self) -> dict:
@@ -59,25 +59,25 @@ class CabinAction:
 
 CLIMATE_ACTIONS = {
     "ac_control": {
-        "on":       {"command": "ac_on"},
-        "off":      {"command": "ac_off"},
-        "adjust":   {"command": "ac_set", "params": ["temperature", "mode", "fan_level"]},
+        "on": {"command": "ac_on"},
+        "off": {"command": "ac_off"},
+        "adjust": {"command": "ac_set", "params": ["temperature", "mode", "fan_level"]},
     },
     "window_control": {
-        "open":     {"command": "window_open", "params": ["target"]},
-        "close":    {"command": "window_close", "params": ["target"]},
-        "adjust":   {"command": "window_set", "params": ["target", "percent"]},
+        "open": {"command": "window_open", "params": ["target"]},
+        "close": {"command": "window_close", "params": ["target"]},
+        "adjust": {"command": "window_set", "params": ["target", "percent"]},
     },
     "light_control": {
-        "on":       {"command": "light_on"},
-        "off":      {"command": "light_off"},
-        "adjust":   {"command": "light_set", "params": ["target", "brightness"]},
+        "on": {"command": "light_on"},
+        "off": {"command": "light_off"},
+        "adjust": {"command": "light_set", "params": ["target", "brightness"]},
     },
     "seat_control": {
-        "heat_on":      {"command": "seat_heat_on", "params": ["heat_level"]},
-        "heat_off":     {"command": "seat_heat_off"},
+        "heat_on": {"command": "seat_heat_on", "params": ["heat_level"]},
+        "heat_off": {"command": "seat_heat_off"},
         "ventilate_on": {"command": "seat_vent_on"},
-        "ventilate_off":{"command": "seat_vent_off"},
+        "ventilate_off": {"command": "seat_vent_off"},
     },
 }
 
@@ -102,13 +102,13 @@ MAP_ACTIONS = {
 
 MEDIA_ACTIONS = {
     "media_control": {
-        "play":         {"command": "media_play", "params": ["query", "artist", "source"]},
-        "pause":        {"command": "media_pause"},
-        "next":         {"command": "media_next"},
-        "previous":     {"command": "media_previous"},
-        "set_volume":   {"command": "media_volume", "params": ["volume"]},
-        "volume_up":    {"command": "media_volume_up"},
-        "volume_down":  {"command": "media_volume_down"},
+        "play": {"command": "media_play", "params": ["query", "artist", "source"]},
+        "pause": {"command": "media_pause"},
+        "next": {"command": "media_next"},
+        "previous": {"command": "media_previous"},
+        "set_volume": {"command": "media_volume", "params": ["volume"]},
+        "volume_up": {"command": "media_volume_up"},
+        "volume_down": {"command": "media_volume_down"},
     },
 }
 
