@@ -44,6 +44,7 @@ from project1_cabin_agent.nodes.episodic_memory import (
 
 from project1_cabin_agent.nodes.context_builder import ContextBuilder
 from project1_cabin_agent.memory._instance import get_memory as _get_memory_instance
+from project1_cabin_agent.nodes.policy import PolicyEngine, PolicyActionType
 
 
 # ── 端侧门控（独立于 _needs_context）──
@@ -316,6 +317,28 @@ def intent_classifier(state: CabinAgentState) -> dict:
     if _dst_summary:
         logger.info(f"[DST] 摘要已生成 ({len(_dst_summary)}字)")
 
+    # ===== Policy 决策（0ms）=====
+    _policy = PolicyEngine()
+    _policy_action = _policy.decide(_ds, user_input)
+    _policy_dict = _policy_action.to_dict()
+    logger.info(f"[Policy] action={_policy_action.action.value}, reason={_policy_action.reason}")
+
+    # Policy: ABANDON → 直接返回模板回复，不走 LLM
+    if _policy_action.action == PolicyActionType.ABANDON:
+        logger.info(f"[Policy] ABANDON: {_policy_action.reply_template}")
+        return {
+            "sub_tasks": [],
+            "is_complex": False,
+            "task_results": None,
+            "completed_task_ids": None,
+            "intent": "direct_answer",
+            "active_frames": [],
+            "episodic_context": None,
+            "final_response": _policy_action.reply_template,
+            "dialogue_state": _ds.model_dump(),
+            "policy_action": _policy_dict,
+        }
+
     # ===== Stage 0: Slot Carry-Over（0ms）=====
     carried = _try_carry_over(user_input, active_frames)
     if carried:
@@ -328,6 +351,8 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "intent": carried.get("intent", "chitchat"),
             "active_frames": active_frames,
             "episodic_context": episodic_context,
+            "dialogue_state": _ds.model_dump(),
+            "policy_action": _policy_dict,
         }
 
     # ===== Stage 1: 历史注入判断（0ms）=====
@@ -409,6 +434,8 @@ def intent_classifier(state: CabinAgentState) -> dict:
                 "episodic_context": episodic_context,
                 "_oos_flag": None,
                 "_cross_domain_flag": None,
+                "dialogue_state": _ds.model_dump(),
+                "policy_action": _policy_dict,
             }
         else:
             logger.info(
@@ -540,6 +567,8 @@ def intent_classifier(state: CabinAgentState) -> dict:
             "episodic_context": episodic_context,
             "_oos_flag": None,  # 清空 OOS flag
             "_cross_domain_flag": None,  # 清空跨域 flag
+            "dialogue_state": _ds.model_dump(),
+            "policy_action": _policy_dict,
         }
     except json.JSONDecodeError as je:
         logger.error(f"[意图识别] ❌ JSON 解析错误: {je}")
@@ -549,6 +578,7 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result["_oos_flag"] = None
         result["_cross_domain_flag"] = None
         result["dialogue_state"] = _ds.model_dump()
+        result["policy_action"] = _policy_dict
         return result
 
     except Exception as e:
@@ -558,4 +588,5 @@ def intent_classifier(state: CabinAgentState) -> dict:
         result["_oos_flag"] = None
         result["_cross_domain_flag"] = None
         result["dialogue_state"] = _ds.model_dump()
+        result["policy_action"] = _policy_dict
         return result

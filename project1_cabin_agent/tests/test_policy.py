@@ -139,8 +139,10 @@ class TestRerouteCost:
         )
         action = engine.decide(ds, "太贵了")
         # 没有 toll，不应触发 cost reroute
-        assert action.action != PolicyActionType.REROUTE or \
-               action.slot_overrides.get("route_type") != "avoid_toll"
+        assert (
+            action.action != PolicyActionType.REROUTE
+            or action.slot_overrides.get("route_type") != "avoid_toll"
+        )
 
     def test_no_last_result(self, engine):
         ds = _make_ds(
@@ -296,22 +298,24 @@ class TestExplain:
 
 
 class TestRetryLimit:
-    def test_three_attempts(self, engine):
-        ds = _make_ds(goals=[_nav_goal(attempt=3)])
+    def test_three_failures(self, engine):
+        ds = DialogueState(consecutive_failures=3, active_goals=[_nav_goal()])
         action = engine.decide(ds, "再试一次")
         assert action.action == PolicyActionType.ABANDON
-        assert "重试" in action.reason
+        assert "连续失败" in action.reason
 
-    def test_two_attempts_ok(self, engine):
-        ds = _make_ds(goals=[_nav_goal(attempt=2)])
+    def test_two_failures_ok(self, engine):
+        ds = DialogueState(consecutive_failures=2, active_goals=[_nav_goal()])
         action = engine.decide(ds, "再试一次")
         assert action.action == PolicyActionType.EXECUTE
 
     def test_retry_limit_highest_priority(self, engine):
-        """retry_limit 比 abandon 关键词优先级更高"""
-        ds = _make_ds(goals=[_nav_goal(attempt=3, last_result={"toll": "100元"})])
+        """retry_limit 比 reroute_cost 优先级更高"""
+        ds = DialogueState(
+            consecutive_failures=3,
+            active_goals=[_nav_goal(last_result={"toll": "100元"})],
+        )
         action = engine.decide(ds, "太贵了")
-        # attempt=3 触发 retry_limit ABANDON，不触发 reroute
         assert action.action == PolicyActionType.ABANDON
 
 

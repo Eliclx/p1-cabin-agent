@@ -180,3 +180,10 @@ class CabinAgentState(TypedDict):
     # 由 ContextBuilder 每轮重建，intent_classifier 写入
     # 跨轮保留（不重置），LangGraph checkpoint 自动持久化
     # 用途：Policy 读取策略信号，context_builder 读取上轮状态
+
+    # ── Policy 策略动作 ──────────────────────
+    policy_action: Optional[dict]
+    # PolicyAction 的 dict 序列化
+    # 由 PolicyEngine 每轮决策，intent_classifier 写入
+    # 跨轮保留，response_gen 读取
+    # 用途：ABANDON→直接回复 / REROUTE→调整slots / EXPLAIN→注入上下文

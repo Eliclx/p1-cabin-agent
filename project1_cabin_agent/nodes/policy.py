@@ -256,14 +256,13 @@ def _rule_explain(ds: DialogueState, user_input: str) -> PolicyAction | None:
 
 
 def _rule_retry_limit(ds: DialogueState, user_input: str) -> PolicyAction | None:
-    """优先级 0: 连续失败 ≥ 3 → 放弃"""
-    goal = ds.get_primary_goal()
-    if not goal or goal.attempt_count < 3:
+    """优先级 0: 连续失败 ≥ 3 → 放弃（只计 error，不计成功）"""
+    if ds.consecutive_failures < 3:
         return None
 
     return PolicyAction(
         action=PolicyActionType.ABANDON,
-        reason=f"目标重试 {goal.attempt_count} 次，自动放弃",
+        reason=f"连续失败 {ds.consecutive_failures} 次，自动放弃",
         reply_template="抱歉，多次尝试未成功，已取消",
     )
 
@@ -287,14 +286,14 @@ class PolicyEngine:
     def __init__(self) -> None:
         # 优先级从高到低
         self._rules = [
-            _rule_retry_limit,     # 0: 连续失败放弃
-            _rule_abandon,         # 1: 用户明确放弃
-            _rule_reroute_cost,    # 2: 嫌贵 → 避高速
-            _rule_reroute_distance, # 2b: 嫌远 → 最短
-            _rule_reroute_time,    # 2c: 嫌慢 → 最快
-            _rule_reroute_general, # 3: 换一条
-            _rule_fill_from_dst,   # 4: 指代补槽
-            _rule_explain,         # 5: 追问解释
+            _rule_retry_limit,  # 0: 连续失败放弃
+            _rule_abandon,  # 1: 用户明确放弃
+            _rule_reroute_cost,  # 2: 嫌贵 → 避高速
+            _rule_reroute_distance,  # 2b: 嫌远 → 最短
+            _rule_reroute_time,  # 2c: 嫌慢 → 最快
+            _rule_reroute_general,  # 3: 换一条
+            _rule_fill_from_dst,  # 4: 指代补槽
+            _rule_explain,  # 5: 追问解释
         ]
 
     def decide(self, ds: DialogueState, user_input: str) -> PolicyAction:
